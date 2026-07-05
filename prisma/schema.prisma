@@ -24,33 +24,6 @@ model User {
   pointLogs    PointLog[]
   portfolio    PortfolioItem[]
   prizeWins    PrizeWin[]
-  chatMessages ChatMessage[]
-}
-
-// 채팅 도배 방지 — 사용자별 버스트 카운트 + 누진 제재(밴) 상태.
-// 연속 3회 → 10초, 반복 → 30초, 비정상 반복 → 1시간. 5분간 위반 없으면 단계 초기화.
-model ChatLimit {
-  userId      String    @id
-  recentCount Int       @default(0) // 현재 버스트 윈도우 내 메시지 수
-  windowStart DateTime  @default(now())
-  bannedUntil DateTime? // 이 시각까지 채팅 금지
-  offenses    Int       @default(0) // 누진 위반 단계 (1:10초 · 2:30초 · 3+:1시간)
-  lastOffense DateTime?
-  updatedAt   DateTime  @updatedAt
-}
-
-// 실시간 채팅 메시지 — 단일 공개 라운지(폴링 방식). 닉네임/레벨은 작성 시점 스냅샷으로
-// 저장해 폴링마다 User 조인 없이 빠르게 조회한다.
-model ChatMessage {
-  id        Int      @id @default(autoincrement())
-  user      User     @relation(fields: [userId], references: [id])
-  userId    String
-  nickname  String
-  level     Int      @default(1)
-  content   String
-  createdAt DateTime @default(now())
-
-  @@index([id])
 }
 
 // 랜덤박스 상품 — 어드민(운영진 Lv10+)이 등록/관리
