@@ -365,29 +365,39 @@ function Tile({ t }: { t: BarTile }) {
         </div>
       )}
 
-      {/* MSTR 비트코인 트레저리 — 보유량(전날 대비) · 평단가 · 현재 수익률 */}
+      {/* MSTR 비트코인 트레저리 — 좌: 보유량·평단(수익률) / 우: 전일 대비 보유량 변동폭 */}
       {t.treasury && (
-        <div className="flex flex-col gap-0.5 border-t border-line pt-1 text-[9px] leading-tight">
-          <span className="flex items-baseline justify-between gap-1">
-            <span className="text-navy-400">보유 BTC</span>
-            <span className="font-mono tabular-nums whitespace-nowrap text-navy-900">
-              {Math.round(t.treasury.holdings).toLocaleString()}
-              {t.treasury.holdingsDelta !== 0 && (
-                <span className={`ml-0.5 ${dir(t.treasury.holdingsDelta).text}`}>
-                  {t.treasury.holdingsDelta > 0 ? "+" : ""}
-                  {Math.round(t.treasury.holdingsDelta).toLocaleString()}
-                </span>
-              )}
+        <div className="flex items-center justify-between gap-2 border-t border-line pt-1 text-[9px] leading-tight">
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <span className="flex items-baseline gap-1">
+              <span className="text-navy-400">보유 BTC</span>
+              <span className="font-mono tabular-nums whitespace-nowrap text-navy-900">
+                {Math.round(t.treasury.holdings).toLocaleString()}
+              </span>
             </span>
-          </span>
-          <span className="flex items-baseline justify-between gap-1">
-            <span className="whitespace-nowrap text-navy-400">
-              평단 ${Math.round(t.treasury.avgPriceUsd).toLocaleString()}
+            <span className="flex items-baseline gap-1">
+              <span className="whitespace-nowrap text-navy-400">
+                평단 ${Math.round(t.treasury.avgPriceUsd).toLocaleString()}
+              </span>
+              <span className={`font-mono tabular-nums whitespace-nowrap ${dir(t.treasury.returnPct).text}`}>
+                {formatPercent(t.treasury.returnPct)}
+              </span>
             </span>
-            <span className={`font-mono tabular-nums whitespace-nowrap ${dir(t.treasury.returnPct).text}`}>
-              {formatPercent(t.treasury.returnPct)}
+          </div>
+          <div className="flex shrink-0 flex-col items-end gap-0.5">
+            <span className="whitespace-nowrap text-navy-400">변동(전일)</span>
+            <span
+              className={`font-mono tabular-nums whitespace-nowrap ${
+                t.treasury.holdingsDelta !== 0 ? dir(t.treasury.holdingsDelta).text : "text-navy-300"
+              }`}
+            >
+              {t.treasury.holdingsDelta !== 0
+                ? `${t.treasury.holdingsDelta > 0 ? "+" : ""}${Math.round(
+                    t.treasury.holdingsDelta
+                  ).toLocaleString()} BTC`
+                : "±0 BTC"}
             </span>
-          </span>
+          </div>
         </div>
       )}
     </div>

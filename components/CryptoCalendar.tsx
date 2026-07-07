@@ -3,6 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import EventIcon from "@/components/EventIcon";
 
+type EventSource = {
+  name: string;
+  url: string;
+  tier?: 1 | 2 | 3;
+  isOfficial?: boolean;
+};
+
 type CalendarEvent = {
   id: number;
   date: string;
@@ -14,6 +21,17 @@ type CalendarEvent = {
   groupMain: string;
   groupSub: string;
   sourceUrl: string | null;
+  dateStatus?: string; // confirmed | estimated | tba | revised | postponed | cancelled
+  importance?: number; // 1~3
+  sources?: EventSource[]; // 수집된 모든 출처 (없으면 sourceUrl 폴백)
+};
+
+// 날짜 상태 뱃지 — confirmed(기본)는 표시하지 않음
+const DATE_STATUS_BADGE: Record<string, { label: string; cls: string }> = {
+  estimated: { label: "추정", cls: "bg-amber-500/15 text-amber-700" },
+  revised: { label: "날짜 변경", cls: "bg-amber-500/15 text-amber-700" },
+  postponed: { label: "연기", cls: "bg-red-500/15 text-red-700" },
+  cancelled: { label: "취소", cls: "bg-red-500/15 text-red-700" },
 };
 
 // 필터 탭 기본 분류 체계 (이벤트 데이터에 새 분류가 있으면 자동 추가됨)
@@ -79,11 +97,12 @@ const groupColor = (g: string): GroupStyle => GROUP_COLORS[g] ?? GROUP_FALLBACK;
 const KST_OFFSET = 9 * 3600_000;
 const IMMINENT_MS = 12 * 3600_000; // 시작 12시간 전부터 강조
 
-// 확정 시각이 있는 이벤트만 Date 반환 (00:00 UTC = 시각 미지정 → null)
+// 확정 시각이 있는 이벤트만 Date 반환 (00:00:00 UTC = 시각 미지정 → null)
+// KST 09:00(=UTC 00:00)은 어드민 저장 시 초=1 마커가 붙으므로 초까지 확인한다 (lib/actions parseEventInput)
 function eventTime(ev: CalendarEvent): Date | null {
   if (ev.isTba) return null;
   const d = new Date(ev.date);
-  if (d.getUTCHours() === 0 && d.getUTCMinutes() === 0) return null;
+  if (d.getUTCHours() === 0 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0) return null;
   return d;
 }
 
@@ -502,6 +521,13 @@ export default function CryptoCalendar({
               <span className="bg-paper2 px-1.5 py-0.5 text-[11px] text-navy-500">
                 {selected.groupMain} · {selected.groupSub}
               </span>
+              {selected.dateStatus && DATE_STATUS_BADGE[selected.dateStatus] && (
+                <span
+                  className={`px-1.5 py-0.5 text-[11px] font-bold ${DATE_STATUS_BADGE[selected.dateStatus].cls}`}
+                >
+                  {DATE_STATUS_BADGE[selected.dateStatus].label}
+                </span>
+              )}
               <span className="font-mono text-xs text-ink-500">
                 {selected.isTba
                   ? `${month}월 중 (TBA)`
@@ -528,8 +554,37 @@ export default function CryptoCalendar({
             <p className="mt-3 border-t border-line pt-3 text-sm leading-6 text-ink-900">
               {selected.description}
             </p>
+            {/* 개별 출처 — 수집된 모든 출처를 티어 뱃지와 함께 나열 (docs/data-collection 소스 보존 규칙) */}
+            {selected.sources && selected.sources.length > 0 && (
+              <div className="mt-4 border-t border-line pt-3">
+                <span className="text-[11px] font-semibold text-navy-400">개별 출처</span>
+                <ul className="mt-1.5 flex flex-col gap-1">
+                  {selected.sources.map((s, i) => (
+                    <li key={i} className="flex items-center gap-1.5 text-xs">
+                      {s.tier && (
+                        <span className="shrink-0 bg-paper2 px-1 py-px font-mono text-[10px] text-navy-500">
+                          T{s.tier}
+                        </span>
+                      )}
+                      <a
+                        href={s.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="truncate text-navy-700 underline-offset-2 hover:underline"
+                      >
+                        {s.name} ↗
+                      </a>
+                      {s.isOfficial && (
+                        <span className="shrink-0 text-[10px] text-emerald-700">공식</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             <div className="mt-5 flex items-center justify-between">
-              {selected.sourceUrl ? (
+              {/* 다중 출처가 없을 때만 단일 출처 링크 폴백 (구 데이터) */}
+              {selected.sourceUrl && !(selected.sources && selected.sources.length > 0) ? (
                 <a
                   href={selected.sourceUrl}
                   target="_blank"

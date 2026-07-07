@@ -1,0 +1,229 @@
+# coinom 캘린더 — 소스 레지스트리
+# 수집기 자동화 시 이 파일을 설정으로 사용. 수동 운영 시에는 체크리스트 참조용.
+# trust_tier: 1=공식·구조화(자동발행) / 2=집계·큐레이션(자동발행+샘플검수) / 3=검수필수
+
+sources:
+  # ── 크립토: 언락 / 이벤트 ────────────────────────────────
+  - id: cryptorank
+    name: CryptoRank API
+    categories: [unlock, listing, conference]
+    method: api
+    url: https://api.cryptorank.io/v3
+    endpoints:
+      - /currencies/upcoming-token-unlocks
+      - /currencies/{id}/vesting/schedule
+    cadence: daily
+    trust_tier: 2
+    cost: "무료 Sandbox(400크레딧/일)로 시작 → 부족하면 Basic $19/월"
+    status: free-first   # 무료 Sandbox에 언락 엔드포인트 포함 여부 확인 후 사용
+    notes: 언락 날짜 D-7/D-1 재확인 필수 (언락은 날짜 변동 잦음)
+
+  - id: coindar
+    name: Coindar API 2.0 (무료)
+    categories: [unlock, listing, project, conference]
+    method: api
+    url: https://coindar.org (가입 → 액세스 토큰)
+    cadence: daily
+    trust_tier: 3   # 크라우드소싱 — 교차 검증 필수
+    cost: 무료
+    notes: 무료 언락/이벤트 보조 소스. 단독 발행 금지, T1/T2 소스와 교차 후 발행
+
+  - id: defillama-unlocks-page
+    name: DefiLlama 언락 페이지 (웹 UI, 수동 대조용)
+    categories: [unlock]
+    method: manual-weekly
+    url: https://defillama.com/unlocks
+    cadence: weekly
+    trust_tier: 2
+    cost: 무료
+    notes: API는 유료(Pro) — 웹 페이지를 주간 리서치 때 눈으로 대조하는 용도
+
+  # ── 크립토: 상장/상폐 ────────────────────────────────────
+  # 운영 결정(2026-07-07): 상장·상폐는 연동 텔레그램 채널에서만 추출. 아래 거래소 공지 4종은 보류.
+  - id: telegram-kang-tearoom
+    name: 강프로 찻방 (연동 텔레그램)
+    categories: [listing, delisting]
+    method: scrape   # t.me/s 공개 프리뷰 — lib/telegram.ts, 15분 SWR 폴링
+    url: https://t.me/s/kang_tearoom
+    cadence: 15m
+    trust_tier: 3   # 포착 → 검수 큐(pending_review) → 공식 원문 확인 후 발행
+    cost: 무료
+    status: active
+    notes: 상장/상폐 키워드 자동 포착 + 홈 위젯 피드 공급. 마크업 변경 시 stale 폴백 → /api/cron/telegram 으로 헬스체크
+
+  - id: binance-announcements
+    status: on-hold   # 2026-07-07 운영 결정 — 텔레그램 채널로 대체
+    name: Binance 공지 Push API
+    categories: [listing, delisting, exchange]
+    method: websocket
+    url: "Binance Open Platform — topic: com_announcement_en"
+    cadence: realtime
+    trust_tier: 1
+    cost: 무료
+    notes: 구 bapi/composite 엔드포인트는 403 — 사용 금지
+
+  - id: bithumb-notices
+    status: on-hold   # 2026-07-07 운영 결정 — 텔레그램 채널로 대체
+    name: Bithumb 공지 API (공식)
+    categories: [listing, delisting, exchange]
+    method: api
+    url: https://api.bithumb.com/v1/notices
+    cadence: 2h
+    trust_tier: 1
+    cost: 무료
+
+  - id: upbit-notices
+    status: on-hold   # 2026-07-07 운영 결정 — 텔레그램 채널로 대체
+    name: Upbit 공지 (비공식 JSON)
+    categories: [listing, delisting, exchange]
+    method: api-unofficial
+    url: https://api-manager.upbit.com/api/v1/notices
+    cadence: 2h
+    trust_tier: 1
+    cost: 무료
+    notes: 비공식 엔드포인트 — 브라우저 유사 헤더, 보수적 폴링. 헬스체크 필수(깨짐 감지)
+
+  - id: coinbase-blog
+    status: on-hold   # 2026-07-07 운영 결정 — 텔레그램 채널로 대체
+    name: Coinbase 블로그 / @CoinbaseMarkets
+    categories: [listing, exchange]
+    method: rss+manual
+    url: https://www.coinbase.com/blog
+    cadence: daily
+    trust_tier: 1
+    cost: 무료
+    notes: API 없음 — 가장 약한 고리. RSS + 페이지 diff
+
+  # ── 크립토: 프로젝트 업데이트 ────────────────────────────
+  - id: github-releases
+    name: GitHub Releases RSS (상위 프로토콜 ~30개)
+    categories: [project]
+    method: rss
+    url: "https://github.com/{owner}/{repo}/releases.atom"
+    cadence: daily
+    trust_tier: 2
+    cost: 무료
+    notes: 테스트넷/RC 태그 필터링 필요. LLM 태깅 → 검수 큐 경유
+    watch_repos:  # 예시 시드 — 운영하며 확장
+      - starkware-libs/... (Starknet)
+      - ethereum/go-ethereum
+      - solana-labs/solana
+      - matter-labs/zksync-era
+      - OffchainLabs/nitro (Arbitrum)
+
+  - id: project-blogs
+    name: 프로젝트 공식 블로그 RSS
+    categories: [project, partnership]
+    method: rss
+    cadence: daily
+    trust_tier: 2
+    cost: 무료
+
+  # ── 주식: 실적 / IPO / 경제지표 ──────────────────────────
+  - id: fmp
+    name: Financial Modeling Prep
+    categories: [earnings, ipo, indicator]
+    method: api
+    url: https://financialmodelingprep.com/api
+    endpoints:
+      - /v3/earning_calendar (confirmed)
+      - /v3/ipo_calendar
+      - /v3/economic_calendar
+    cadence: daily
+    trust_tier: 1
+    cost: "무료 250콜/일 — 당분간 무료 티어로 충분 (일 3~4콜이면 캘린더 3종 조회 가능)"
+
+  - id: nasdaq-earnings
+    name: Nasdaq 실적 캘린더 (비공식 JSON, 교차검증용)
+    categories: [earnings]
+    method: api-unofficial
+    url: https://api.nasdaq.com/api/calendar/earnings
+    cadence: weekly
+    trust_tier: 2
+    cost: 무료
+    notes: FMP 날짜 교차확인 전용. 단독 소스로 쓰지 말 것
+
+  - id: opendart
+    name: OpenDART (금감원 공시)
+    categories: [earnings, ipo, regulation]
+    method: api
+    url: https://opendart.fss.or.kr
+    cadence: daily
+    trust_tier: 1
+    cost: 무료
+    watch_tickers: [삼성전자(005930), SK하이닉스(000660), 현대차(005380), 삼성전기(009150), 삼성전자우, KLA/인텔 등 해외는 FMP]
+
+  # ── 매크로: 정적 연간 일정 ───────────────────────────────
+  - id: fomc-schedule
+    name: FOMC 연간 일정
+    categories: [rate]
+    method: static-yearly
+    url: https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm
+    cadence: yearly
+    trust_tier: 1
+    cost: 무료
+
+  - id: bok-schedule
+    name: 한국은행 금통위 연간 일정
+    categories: [rate]
+    method: static-yearly
+    url: https://www.bok.or.kr (매년 10월경 차년도 보도자료)
+    cadence: yearly
+    trust_tier: 1
+    cost: 무료
+    notes: 2026년 = 통방 8회 + 금융안정 4회
+
+  - id: index-rebalancing
+    name: 지수 리밸런싱 일정 (S&P/MSCI/FTSE/KRX)
+    categories: [index]
+    method: static-yearly
+    cadence: yearly
+    trust_tier: 1
+    cost: 무료
+
+  # ── X 큐레이터 (T3 — 발견·검증 채널) ─────────────────────
+  - id: x-curator-list
+    name: X 비공개 리스트 "coinom-sources"
+    categories: [unlock, listing, partnership, project, regulation, policy, earnings, indicator]
+    method: manual-weekly   # 당분간 수동(무료). X API 종량제(~$30/월)는 나중 단계
+    cadence: weekly
+    trust_tier: 3
+    cost: "수동 무료 (API 자동화는 유료 전환 시점에)"
+    accounts:
+      curator_primary:   # 주간 정기 포맷
+        - layerggofficial   # 월간 비주얼 캘린더 (기준점)
+        - pnxgrp
+        - Tokenomist_ai     # 주간 언락 다이제스트
+        - eWhispers         # 주간 실적 그리드
+        - CryptoDiffer      # 월간 이벤트 리스트
+        - RootDataCrypto    # 주간 캘린더
+        - nehalzzzz1        # THIS WEEK IN CRYPTO
+      macro_support:
+        - KobeissiLetter    # 일요일 Key Events This Week
+        - unusual_whales
+        - tedtalksmacro
+        - misterrcrypto
+        - DustyBC
+        - cryptoamanclub
+      verification_wire:   # 발생 확인용 (날짜 소싱 금지)
+        - WuBlockchain
+        - spotonchain
+        - Tree_of_Alpha
+        - DeItaone
+        - CertiKCommunity
+      korean:
+        - coinness_kr       # coinness.com/market/schedule
+        - bloomingbit_io
+    excluded:  # 마케팅 계정 — 소스로 사용 금지
+      - OlympTrade
+      - exolix_com
+
+  # ── 한국어 일정 사이트 (주간 대조용) ─────────────────────
+  - id: coinness-schedule
+    name: 코인니스 오늘의 일정
+    categories: [listing, exchange, project, rate]
+    method: manual-weekly
+    url: https://coinness.com/market/schedule
+    cadence: weekly
+    trust_tier: 3
+    cost: 무료

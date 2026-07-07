@@ -1,9 +1,11 @@
 "use client";
 
-// 한국 텔레그램 인기 포스팅 — 한 개씩 넘기는 캐러셀(채널+게시글 하이퍼링크). 영역만 우선, 더미 데이터.
-// TODO: 실제 채널·게시글 데이터 소스 연동 (현재는 모두 동일 링크로 임시 표시).
+// 한국 텔레그램 인기 포스팅 — 한 개씩 넘기는 캐러셀(채널+게시글 하이퍼링크).
+// 실데이터: lib/telegram(t.me 공개 프리뷰, 15분 캐시) → feed prop. 수신 실패 시 샘플 폴백.
+// t.me/s에는 조회수만 있고 댓글·공유 수가 없어, 실데이터 모드에선 조회수만 표시한다.
 
 import { useCallback, useEffect, useState } from "react";
+import type { TelegramFeed } from "@/lib/telegram";
 
 const TELEGRAM_BLUE = "#229ED9";
 const CHANNEL_LINK = "https://t.me/kang_tearoom";
@@ -11,23 +13,31 @@ const CHANNEL_LINK = "https://t.me/kang_tearoom";
 type Post = {
   channel: string; // 채널명
   handle: string; // @핸들
-  time: string; // 게시 시각(상대)
+  time: string; // 게시 시각 표기
   title: string; // 게시글 제목
   excerpt: string; // 본문 미리보기
   views: string; // 조회수
-  comments: string; // 댓글수
-  forwards: string; // 공유수
-  postId: number; // 게시글 ID (더미 링크 구성용)
+  comments: string; // 댓글수 ("" = 미표시, 실데이터 모드)
+  forwards: string; // 공유수 ("" = 미표시)
+  postUrl: string; // 게시글 링크
 };
 
-// 더미 데이터 — 채널 링크는 CHANNEL_LINK, 게시글 링크는 CHANNEL_LINK/{postId}
-const POSTS: Post[] = [
-  { channel: "강프로 찻방", handle: "@kang_tearoom", time: "2시간 전", title: "비트코인 5.8만달러 지지 확인, 단기 반등 시나리오 점검", excerpt: "거래량 동반 여부가 관건. 이탈 시 5.6만 지지선까지 열어둬야 합니다.", views: "12.4K", comments: "320", forwards: "180", postId: 1487 },
-  { channel: "코인 새벽시황", handle: "@kang_tearoom", time: "4시간 전", title: "美 증시 급락에 알트 동반 조정… 관망 구간 권고", excerpt: "나스닥 -0.46%, 위험자산 회피 심리. 현금 비중 관리가 우선.", views: "9.1K", comments: "210", forwards: "95", postId: 982 },
-  { channel: "김치프리미엄 알림", handle: "@kang_tearoom", time: "5시간 전", title: "USDT 김프 -1.8% 진입, 역프 확대 주의", excerpt: "국내 매도 우위 신호. 환율 변동성 확대 구간이라 차익거래 유의.", views: "15.2K", comments: "410", forwards: "260", postId: 2231 },
-  { channel: "온체인 고래탐지", handle: "@kang_tearoom", time: "6시간 전", title: "거래소로 2,300 BTC 입금 포착, 매도 압력 관찰", excerpt: "대형 지갑 → 바이낸스 이동. 단기 변동성 확대 가능성.", views: "6.3K", comments: "150", forwards: "88", postId: 771 },
-  { channel: "신규상장 速報", handle: "@kang_tearoom", time: "8시간 전", title: "바이낸스 신규 상장 공지: 신규 토큰 현물 마켓 추가", excerpt: "상장 직후 변동성 큼. 진입 전 유통량·언락 일정 확인 필수.", views: "21.7K", comments: "540", forwards: "430", postId: 3390 },
-  { channel: "디파이 리서치", handle: "@kang_tearoom", time: "10시간 전", title: "신규 LST 프로토콜 에어드랍 파밍 가이드", excerpt: "예치·브릿지 조건 정리. 가스비 대비 기대값 계산 표 포함.", views: "4.8K", comments: "120", forwards: "70", postId: 158 },
+// KST "M/D HH:MM" — 서버/클라이언트 동일 결과(하이드레이션 안전)
+function kstTimeLabel(iso: string): string {
+  const k = new Date(new Date(iso).getTime() + 9 * 3600_000);
+  return `${k.getUTCMonth() + 1}/${k.getUTCDate()} ${String(k.getUTCHours()).padStart(2, "0")}:${String(
+    k.getUTCMinutes()
+  ).padStart(2, "0")}`;
+}
+
+// 샘플 데이터 — 피드 수신 실패/최초 수집 전 폴백
+const SAMPLE_POSTS: Post[] = [
+  { channel: "강프로 찻방", handle: "@kang_tearoom", time: "2시간 전", title: "비트코인 5.8만달러 지지 확인, 단기 반등 시나리오 점검", excerpt: "거래량 동반 여부가 관건. 이탈 시 5.6만 지지선까지 열어둬야 합니다.", views: "12.4K", comments: "320", forwards: "180", postUrl: `${CHANNEL_LINK}/1487` },
+  { channel: "코인 새벽시황", handle: "@kang_tearoom", time: "4시간 전", title: "美 증시 급락에 알트 동반 조정… 관망 구간 권고", excerpt: "나스닥 -0.46%, 위험자산 회피 심리. 현금 비중 관리가 우선.", views: "9.1K", comments: "210", forwards: "95", postUrl: `${CHANNEL_LINK}/982` },
+  { channel: "김치프리미엄 알림", handle: "@kang_tearoom", time: "5시간 전", title: "USDT 김프 -1.8% 진입, 역프 확대 주의", excerpt: "국내 매도 우위 신호. 환율 변동성 확대 구간이라 차익거래 유의.", views: "15.2K", comments: "410", forwards: "260", postUrl: `${CHANNEL_LINK}/2231` },
+  { channel: "온체인 고래탐지", handle: "@kang_tearoom", time: "6시간 전", title: "거래소로 2,300 BTC 입금 포착, 매도 압력 관찰", excerpt: "대형 지갑 → 바이낸스 이동. 단기 변동성 확대 가능성.", views: "6.3K", comments: "150", forwards: "88", postUrl: `${CHANNEL_LINK}/771` },
+  { channel: "신규상장 速報", handle: "@kang_tearoom", time: "8시간 전", title: "바이낸스 신규 상장 공지: 신규 토큰 현물 마켓 추가", excerpt: "상장 직후 변동성 큼. 진입 전 유통량·언락 일정 확인 필수.", views: "21.7K", comments: "540", forwards: "430", postUrl: `${CHANNEL_LINK}/3390` },
+  { channel: "디파이 리서치", handle: "@kang_tearoom", time: "10시간 전", title: "신규 LST 프로토콜 에어드랍 파밍 가이드", excerpt: "예치·브릿지 조건 정리. 가스비 대비 기대값 계산 표 포함.", views: "4.8K", comments: "120", forwards: "70", postUrl: `${CHANNEL_LINK}/158` },
 ];
 
 function TelegramIcon() {
@@ -44,11 +54,27 @@ function TelegramIcon() {
   );
 }
 
-export default function TelegramChannels() {
+export default function TelegramChannels({ feed }: { feed?: TelegramFeed | null }) {
   const [idx, setIdx] = useState(0);
   const [paused, setPaused] = useState(false); // 호버 일시정지
   const [autoplay, setAutoplay] = useState(true); // 사용자 명시 정지/재생
-  const total = POSTS.length;
+
+  // 실데이터(t.me 프리뷰) 우선, 없으면 샘플 폴백
+  const live = feed != null && feed.posts.length > 0;
+  const posts: Post[] = live
+    ? feed.posts.map((p) => ({
+        channel: feed.channelName,
+        handle: `@${feed.channel}`,
+        time: kstTimeLabel(p.dateIso),
+        title: p.title,
+        excerpt: p.excerpt,
+        views: p.views,
+        comments: "", // t.me 공개 프리뷰에는 댓글·공유 수가 없음
+        forwards: "",
+        postUrl: p.url,
+      }))
+    : SAMPLE_POSTS;
+  const total = posts.length;
 
   const go = useCallback((n: number) => setIdx(((n % total) + total) % total), [total]);
 
@@ -65,7 +91,11 @@ export default function TelegramChannels() {
         <h2 className="flex flex-wrap items-center gap-2 text-base font-bold text-ink-900">
           <span className="h-2 w-2 rounded-full bg-brand" aria-hidden />
           한국 텔레그램 인기 포스팅
-          <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">실데이터 준비중 · 샘플</span>
+          {!live && (
+            <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
+              실데이터 준비중 · 샘플
+            </span>
+          )}
         </h2>
         {/* 달력처럼 한 개씩 넘기는 네비게이션 */}
         <div className="flex items-center gap-1.5">
@@ -112,7 +142,7 @@ export default function TelegramChannels() {
           className="flex transition-transform duration-300 ease-out"
           style={{ transform: `translateX(-${idx * 100}%)` }}
         >
-          {POSTS.map((p, i) => (
+          {posts.map((p, i) => (
             <article key={i} className="w-full shrink-0 p-4">
               <div className="flex items-center gap-2.5">
                 <TelegramIcon />
@@ -135,7 +165,7 @@ export default function TelegramChannels() {
               </div>
 
               <a
-                href={`${CHANNEL_LINK}/${p.postId}`}
+                href={p.postUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="group mt-3 block"
@@ -149,11 +179,11 @@ export default function TelegramChannels() {
               </a>
 
               <div className="mt-3 flex items-center gap-4 border-t border-line pt-2.5 text-[11px] text-ink-500">
-                <span>👁 {p.views}</span>
-                <span>💬 {p.comments}</span>
-                <span>🔁 {p.forwards}</span>
+                {p.views && <span>👁 {p.views}</span>}
+                {p.comments && <span>💬 {p.comments}</span>}
+                {p.forwards && <span>🔁 {p.forwards}</span>}
                 <a
-                  href={`${CHANNEL_LINK}/${p.postId}`}
+                  href={p.postUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="ml-auto inline-flex items-center gap-1 font-medium"
@@ -169,7 +199,7 @@ export default function TelegramChannels() {
 
       {/* 하단 인디케이터 점 */}
       <div className="mt-2 flex items-center justify-center gap-1.5">
-        {POSTS.map((_, i) => (
+        {posts.map((_, i) => (
           <button
             key={i}
             type="button"

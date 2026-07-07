@@ -1,0 +1,201 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coinom.kang88.io/schemas/event.json",
+  "title": "coinom Calendar Event",
+  "description": "coinom 크립토 캘린더 이벤트 표준 스키마. 모든 수집 소스(API/RSS/수기입력)는 이 형식으로 정규화한다.",
+  "type": "object",
+  "required": ["id", "category", "subcategory", "title_ko", "date", "date_status", "sentiment", "sources", "review"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "고유 ID. 규칙: {date}-{ticker|entity}-{subcategory} 예: 2026-07-06-strk-project",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z0-9-]+$"
+    },
+    "category": {
+      "type": "string",
+      "enum": ["crypto", "stock", "macro", "event"],
+      "description": "UI 최상위 탭: 크립토/주식/매크로/이벤트"
+    },
+    "subcategory": {
+      "type": "string",
+      "enum": [
+        "unlock", "listing", "delisting", "exchange", "partnership", "project", "conference",
+        "earnings", "ipo", "index", "regulation", "product",
+        "indicator", "rate", "policy", "geopolitics",
+        "sports", "misc"
+      ],
+      "description": "UI 필터 칩과 1:1 매핑 (README §2 참조)"
+    },
+    "entity": {
+      "type": "object",
+      "description": "이벤트 주체 (티커 뱃지 표시용)",
+      "properties": {
+        "ticker": { "type": "string", "description": "예: STRK, AAPL, 005930, FED, KR, US" },
+        "name_en": { "type": "string" },
+        "name_ko": { "type": "string", "description": "예: 스타크넷, 삼성전자" },
+        "logo_url": { "type": "string" }
+      }
+    },
+    "title_ko": {
+      "type": "string",
+      "maxLength": 80,
+      "description": "캘린더 셀 표시용 한국어 제목. 예: '스타크넷 v0.14.3 — 동적 L2 가스 기본요금'"
+    },
+    "title_en": { "type": "string" },
+    "description_ko": {
+      "type": "string",
+      "description": "클릭 시 상세 설명 (2~3문장). 왜 중요한지 포함"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "이벤트 날짜 (KST 기준). TBA면 해당 월 1일 + date_precision: month"
+    },
+    "time": {
+      "type": ["string", "null"],
+      "description": "시각 확정 시 HH:MM (KST). 예: FOMC 발표 03:00"
+    },
+    "timezone_note": {
+      "type": "string",
+      "description": "원 소스 시간대 메모. 예: 'ET 14:00 = KST 익일 03:00'"
+    },
+    "date_precision": {
+      "type": "string",
+      "enum": ["time", "day", "range", "month"],
+      "description": "time=시각확정 / day=날짜확정 / range=기간(7/7~8) / month=월만 확정(TBA 섹션 표시)"
+    },
+    "date_end": {
+      "type": ["string", "null"],
+      "format": "date",
+      "description": "range일 때 종료일"
+    },
+    "date_status": {
+      "type": "string",
+      "enum": ["confirmed", "estimated", "tba", "revised", "postponed", "cancelled"],
+      "description": "confirmed=공식확정 / estimated=추정 / tba=미정 / revised=변경됨 / postponed=연기 / cancelled=취소"
+    },
+    "sentiment": {
+      "type": "string",
+      "enum": ["important", "good", "bad", "neutral"],
+      "description": "UI 색상 범례 매핑: important=파랑(Importants), good=초록, bad=빨강, neutral=기본"
+    },
+    "importance": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 3,
+      "description": "3=시장 전체 영향(FOMC, BTC 언락급) / 2=섹터·종목 중대 / 1=참고"
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "description": "수집된 모든 출처. UI '개별 출처' 표시 + 검수 근거. T3 이벤트는 공식 원문 포함 2개 이상 필수",
+      "items": {
+        "type": "object",
+        "required": ["name", "url", "tier"],
+        "properties": {
+          "name": { "type": "string", "description": "예: CryptoRank, Upbit 공지, @Tokenomist_ai" },
+          "url": { "type": "string" },
+          "tier": { "type": "integer", "enum": [1, 2, 3], "description": "1=공식 / 2=집계 / 3=SNS·뉴스" },
+          "is_official": { "type": "boolean", "description": "이벤트 주체의 공식 발표 여부" },
+          "collected_at": { "type": "string", "format": "date-time" }
+        }
+      }
+    },
+    "review": {
+      "type": "object",
+      "required": ["status"],
+      "description": "검수·검증 상태 추적",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["draft", "pending_review", "published", "needs_recheck", "archived"],
+          "description": "draft=수집됨 / pending_review=검수대기(T3) / published=발행 / needs_recheck=재확인필요 / archived=종료"
+        },
+        "last_checked": { "type": "string", "format": "date-time" },
+        "next_check": {
+          "type": ["string", "null"],
+          "format": "date",
+          "description": "다음 재확인일. 규칙: 언락·실적·규제=D-7과 D-1, 나머지=D-1"
+        },
+        "outcome": {
+          "type": ["string", "null"],
+          "enum": ["occurred", "postponed", "cancelled", "unknown", null],
+          "description": "사후 확인 결과 (이벤트 다음 날 기록)"
+        },
+        "history": {
+          "type": "array",
+          "description": "변경 이력. 예: {at, field: 'date', from: '2026-07-15', to: '2026-07-22', reason}",
+          "items": { "type": "object" }
+        }
+      }
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "자유 태그. 예: ['AI', '국내거래소', 'ETF']"
+    },
+    "notes": { "type": "string", "description": "내부 메모 (비공개)" }
+  },
+
+  "examples": [
+    {
+      "id": "2026-07-06-strk-project",
+      "category": "crypto",
+      "subcategory": "project",
+      "entity": { "ticker": "STRK", "name_en": "Starknet", "name_ko": "스타크넷" },
+      "title_ko": "스타크넷 v0.14.3 — 동적 L2 가스 기본요금",
+      "title_en": "Starknet v0.14.3 — Dynamic L2 gas base fee",
+      "date": "2026-07-06",
+      "time": null,
+      "date_precision": "day",
+      "date_status": "confirmed",
+      "sentiment": "neutral",
+      "importance": 2,
+      "sources": [
+        { "name": "Starknet GitHub Release", "url": "https://github.com/starkware-libs/.../releases", "tier": 1, "is_official": true, "collected_at": "2026-06-28T09:00:00+09:00" },
+        { "name": "@layerggofficial", "url": "https://x.com/layerggofficial/status/...", "tier": 3, "is_official": false, "collected_at": "2026-06-30T08:00:00+09:00" }
+      ],
+      "review": {
+        "status": "published",
+        "last_checked": "2026-07-05T09:00:00+09:00",
+        "next_check": "2026-07-07",
+        "outcome": null,
+        "history": []
+      }
+    },
+    {
+      "id": "2026-07-16-kr-rate",
+      "category": "macro",
+      "subcategory": "rate",
+      "entity": { "ticker": "KR", "name_ko": "한국은행" },
+      "title_ko": "한은 기준금리 결정 (금통위)",
+      "date": "2026-07-16",
+      "time": "09:50",
+      "date_precision": "time",
+      "date_status": "confirmed",
+      "sentiment": "important",
+      "importance": 3,
+      "sources": [
+        { "name": "한국은행 2026 금통위 일정", "url": "https://www.bok.or.kr/...", "tier": 1, "is_official": true, "collected_at": "2025-10-20T09:00:00+09:00" }
+      ],
+      "review": { "status": "published", "last_checked": "2026-07-01T09:00:00+09:00", "next_check": "2026-07-15", "outcome": null, "history": [] }
+    },
+    {
+      "id": "2026-07-01-zec-project",
+      "category": "crypto",
+      "subcategory": "project",
+      "entity": { "ticker": "ZEC", "name_ko": "지캐시" },
+      "title_ko": "지캐시 아이언우드 업그레이드",
+      "date": "2026-07-01",
+      "date_precision": "month",
+      "date_status": "tba",
+      "sentiment": "neutral",
+      "importance": 1,
+      "sources": [
+        { "name": "@layerggofficial", "url": "https://x.com/...", "tier": 3, "is_official": false, "collected_at": "2026-06-30T08:00:00+09:00" }
+      ],
+      "review": { "status": "pending_review", "last_checked": "2026-06-30T08:00:00+09:00", "next_check": "2026-07-07", "outcome": null, "history": [] },
+      "notes": "TBA — 공식 원문 미확보. Electric Coin Co 블로그 확인 필요"
+    }
+  ]
+}

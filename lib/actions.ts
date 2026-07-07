@@ -459,3 +459,142 @@ export async function deletePrize(id: number) {
   revalidatePath("/admin/prizes");
   revalidatePath("/box");
 }
+
+/* ───────────────────────── 캘린더 이벤트 (어드민 입력·검수) ─────────────────────────
+   docs/data-collection/templates/event-entry.md 양식을 폼으로 옮긴 것.
+   T3(SNS·뉴스) 발견 이벤트는 pending_review로 두고 공식 원문 확인 후 발행한다. */
+
+const EVENT_CATEGORIES = ["important", "good", "bad", "neutral"] as const;
+const EVENT_GROUPS = ["크립토", "주식", "매크로", "이벤트"] as const;
+const EVENT_DATE_STATUSES = ["confirmed", "estimated", "tba", "revised", "postponed", "cancelled"] as const;
+const EVENT_REVIEW_STATUSES = ["draft", "pending_review", "published", "needs_recheck", "archived"] as const;
+
+function pickEnum<T extends readonly string[]>(v: unknown, allowed: T, fallback: T[number]): T[number] {
+  const s = String(v ?? "");
+  return (allowed as readonly string[]).includes(s) ? (s as T[number]) : fallback;
+}
+
+function parseEventInput(formData: FormData) {
+  const dateStr = String(formData.get("date") ?? "").trim(); // KST 달력일 "YYYY-MM-DD"
+  const timeStr = String(formData.get("time") ?? "").trim(); // KST "HH:MM" (선택)
+  const ticker = String(formData.get("ticker") ?? "").trim().toUpperCase();
+  const title = String(formData.get("title") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim();
+  const groupSub = String(formData.get("groupSub") ?? "").trim() || "기타";
+  const isTba = formData.get("isTba") != null;
+  const importance = Math.min(3, Math.max(1, parseInt(String(formData.get("importance") ?? "1"), 10) || 1));
+  const nextCheckStr = String(formData.get("nextCheck") ?? "").trim();
+
+  const m = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) throw new Error("날짜는 YYYY-MM-DD 형식으로 입력해 주세요.");
+  if (!ticker || ticker.length > 20) throw new Error("티커는 1~20자로 입력해 주세요.");
+  if (!title || title.length > 80) throw new Error("제목은 1~80자로 입력해 주세요.");
+  if (description.length > 2000) throw new Error("설명은 2000자 이내로 입력해 주세요.");
+
+  // TBA 이중 소스 정합 — isTba 체크박스와 dateStatus="tba" 중 하나만 켜도 둘 다 TBA로 통일
+  let dateStatus = pickEnum(formData.get("dateStatus"), EVENT_DATE_STATUSES, "confirmed");
+  let tba = isTba;
+  if (dateStatus === "tba") tba = true;
+  else if (tba) dateStatus = "tba";
+
+  // 저장 규칙: date = 달력 셀(UTC 자정). 시각 입력 시 KST HH:MM → UTC (kstH+15)%24 로 같은 셀에 싣는다.
+  // KST 00:00~08:59 입력은 "셀 날짜의 익일 새벽"으로 표시됨 (기존 FOMC 표기 관례와 동일).
+  let date = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+  // 존재하지 않는 날짜(2/31 등)가 Date.UTC에서 다음 달로 조용히 넘어가는 것을 차단
+  if (
+    date.getUTCFullYear() !== Number(m[1]) ||
+    date.getUTCMonth() !== Number(m[2]) - 1 ||
+    date.getUTCDate() !== Number(m[3])
+  ) {
+    throw new Error(`존재하지 않는 날짜입니다: ${dateStr}`);
+  }
+  const tm = timeStr.match(/^(\d{1,2}):(\d{2})$/);
+  if (tm && !tba) {
+    const kstH = Math.min(23, Number(tm[1]));
+    const min = Math.min(59, Number(tm[2]));
+    const utcH = (kstH + 15) % 24;
+    // KST 09:00은 UTC 00:00이 되어 "시각 미지정" 센티널(00:00:00)과 충돌 → 초=1 마커로 구분
+    // (표시는 HH:MM까지라 사용자에게는 동일하게 09:00으로 보인다)
+    const sec = utcH === 0 && min === 0 ? 1 : 0;
+    date = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), utcH, min, sec));
+  }
+
+  // 출처 1~3행 — 전부 보존 (name+url 있는 행만). 첫 행이 대표 sourceUrl(호환)로 들어간다.
+  const sources: { name: string; url: string; tier: number; isOfficial: boolean }[] = [];
+  for (const i of [1, 2, 3]) {
+    const name = String(formData.get(`srcName${i}`) ?? "").trim();
+    const url = String(formData.get(`srcUrl${i}`) ?? "").trim();
+    if (!name || !url) continue;
+    if (!/^https?:\/\//.test(url)) throw new Error(`출처 ${i} URL은 http(s)로 시작해야 합니다.`);
+    sources.push({
+      name,
+      url,
+      tier: Math.min(3, Math.max(1, parseInt(String(formData.get(`srcTier${i}`) ?? "3"), 10) || 3)),
+      isOfficial: formData.get(`srcOfficial${i}`) != null,
+    });
+  }
+
+  let nextCheck: Date | null = null;
+  const nc = nextCheckStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (nc) nextCheck = new Date(Date.UTC(Number(nc[1]), Number(nc[2]) - 1, Number(nc[3])));
+
+  return {
+    date,
+    isTba: tba,
+    ticker,
+    title,
+    description,
+    category: pickEnum(formData.get("category"), EVENT_CATEGORIES, "neutral"),
+    groupMain: pickEnum(formData.get("groupMain"), EVENT_GROUPS, "크립토"),
+    groupSub: groupSub.slice(0, 20),
+    sourceUrl: sources[0]?.url ?? null,
+    dateStatus,
+    importance,
+    sources,
+    reviewStatus: pickEnum(formData.get("reviewStatus"), EVENT_REVIEW_STATUSES, "draft"),
+    nextCheck,
+  };
+}
+
+function revalidateCalendar() {
+  revalidatePath("/admin/events");
+  revalidatePath("/");
+  revalidatePath("/calendar");
+}
+
+export async function createCalendarEvent(formData: FormData) {
+  await requireAdmin();
+  await prisma.calendarEvent.create({ data: parseEventInput(formData) });
+  revalidateCalendar();
+}
+
+export async function updateCalendarEvent(id: number, formData: FormData) {
+  await requireAdmin();
+  const data = parseEventInput(formData);
+  // 출처를 하나도 입력하지 않은 수정은 기존 대표 sourceUrl을 보존한다
+  // (구 데이터는 sources 없이 sourceUrl만 있어, 무관한 필드 수정으로 출처가 지워지는 사고 방지)
+  if (data.sources.length === 0) {
+    const rest: Partial<typeof data> = { ...data };
+    delete rest.sourceUrl;
+    await prisma.calendarEvent.update({ where: { id }, data: rest });
+  } else {
+    await prisma.calendarEvent.update({ where: { id }, data });
+  }
+  revalidateCalendar();
+}
+
+export async function deleteCalendarEvent(id: number) {
+  await requireAdmin();
+  await prisma.calendarEvent.delete({ where: { id } });
+  revalidateCalendar();
+}
+
+// 검수 큐 → 발행 승격. T3 이벤트는 공식 원문(출처) 확인 후 눌러야 한다.
+export async function publishCalendarEvent(id: number) {
+  await requireAdmin();
+  await prisma.calendarEvent.update({
+    where: { id },
+    data: { reviewStatus: "published" },
+  });
+  revalidateCalendar();
+}
