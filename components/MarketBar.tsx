@@ -4,18 +4,23 @@ import Sparkline from "@/components/Sparkline";
 import LiveSparkline from "@/components/LiveSparkline";
 import MarketStatus, { type Mkt } from "@/components/MarketStatus";
 
-// 모든 타일은 동일한 고정 크기 — 272×72 (px). 내용은 세로 중앙·넘침 숨김으로 맞춤.
-const TILE = "h-[72px] w-[272px] shrink-0 overflow-hidden";
-// 헤드라인 수치 공통 스타일 — 모든 타일에서 크기·굵기·자릿수 정렬을 통일
-const VAL = "font-mono text-[15px] font-semibold tabular-nums whitespace-nowrap";
-// 등락률 공통 스타일 (색상 클래스는 호출부에서 덧붙임)
-const CHG = "font-mono text-[11px] tabular-nums whitespace-nowrap";
+// 2a 파이낸스 그레이드 — 12개 지표 카드 공통 셸 (radius 14 · 보더 기반 · 그림자 없음)
+const CARD = "rounded-[14px] border border-line bg-white px-3 py-2";
+// 제목행 — 캘린더 칩 기준 11.5px semibold
+const TITLE = "flex items-center gap-[7px] text-[11.5px] font-semibold text-navy-900";
+// 값행 숫자 — mono 15~16px medium (캘린더 톤에 맞춰 축소)
+const VAL = "font-mono text-[15px] font-medium leading-none tracking-[-0.3px] tabular-nums text-navy-900";
+const VAL_LG = "font-mono text-[16px] font-medium leading-none tabular-nums";
+// 변동률 — mono 11px
+const CHG = "font-mono text-[11px] font-medium tabular-nums whitespace-nowrap";
+// 서브행 — 상단 헤어라인 + 10px, 줄바꿈 없이 가로 1줄 고정 (라벨만 말줄임)
+const SUB = "mt-1 flex flex-nowrap items-baseline justify-between gap-x-1.5 overflow-hidden border-t border-hairline pt-1 text-[9px] text-ink-500";
 
 // 등락 색: 한국식 (상승=빨강, 하락=파랑)
 function dir(n: number | null): { text: string; stroke: string } {
-  if (n != null && n > 0) return { text: "text-up", stroke: "#e5443b" }; // 상승 — 레드
-  if (n != null && n < 0) return { text: "text-down", stroke: "#2e7ce6" }; // 하락 — 블루
-  return { text: "text-neutral", stroke: "#7d858f" };
+  if (n != null && n > 0) return { text: "text-up", stroke: "#e5484d" }; // 상승 — 레드
+  if (n != null && n < 0) return { text: "text-down", stroke: "#2f6bea" }; // 하락 — 블루
+  return { text: "text-neutral", stroke: "#98a2b3" };
 }
 
 // 타일 키 → 시장 구분 (장중/장마감 판별용). 2행 타일은 tile.market을 우선 사용.
@@ -27,281 +32,182 @@ function marketOf(t: BarTile): Mkt | null {
   return null;
 }
 
-// 공포·탐욕 지수 색 — 공포=레드, 중립=그레이, 탐욕=그린 (alternative.me 게이지 관례)
+// 공포·탐욕 지수 색 — 공포=레드, 중립=그레이, 탐욕=그린
 function fngColor(v: number): string {
-  if (v < 25) return "#e5443b"; // 극단적 공포
-  if (v < 45) return "#f5871f"; // 공포
-  if (v < 55) return "#7d858f"; // 중립
-  if (v < 75) return "#3aa76d"; // 탐욕
-  return "#1e9e5a"; // 극단적 탐욕
+  if (v < 25) return "#e5484d"; // 극단적 공포
+  if (v < 45) return "#e8930c"; // 공포
+  if (v < 55) return "#667085"; // 중립
+  if (v < 75) return "#17a673"; // 탐욕
+  return "#12805c"; // 극단적 탐욕
 }
 
-// 6일 라벨+값 열 (환율·도미넌스·공포탐욕 공통) — 날짜(상) + 값(하)
-function DayCol({ date, value, color }: { date: string; value: string; color?: string }) {
-  return (
-    <span className="flex min-w-0 flex-1 flex-col items-center leading-tight">
-      <span className="text-[8px] text-navy-300">{date}</span>
-      <span className={`font-mono text-[10px] tabular-nums whitespace-nowrap ${color ? "" : "text-navy-900"}`} style={color ? { color } : undefined}>
-        {value}
-      </span>
-    </span>
-  );
-}
-
-// 공포·탐욕 지수 타일 — 현재값 + 0~100 게이지 + 6일 추이(스파크라인·값)
+// 공포·탐욕 지수 — 큰 수치 + 등급(800) + 그라디언트 바(레드→오렌지→그린) 위 다크 마커
 function FngTile({ t }: { t: BarTile }) {
   const f = t.fng!;
-  const history = f.history ?? [];
   const color = fngColor(f.value);
   const pos = Math.min(100, Math.max(0, f.value));
-  const series = [...history.map((d) => d.value), f.value];
   return (
-    <div className={`${TILE} flex flex-col justify-center gap-0.5 border border-line bg-white px-3 py-1`}>
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] whitespace-nowrap text-navy-400">{t.label}</span>
-        <span className="text-[9px] tracking-wider text-navy-300">DAILY</span>
-      </div>
-      <div className="flex items-center justify-between gap-2">
-        <span className="flex items-baseline gap-1.5">
-          <span className="font-mono text-[16px] font-bold leading-none tabular-nums" style={{ color }}>
-            {f.value}
-          </span>
-          <span className="text-[11px] font-medium" style={{ color }}>
-            {f.label}
-          </span>
+    <div className={CARD}>
+      <div className={TITLE}>{t.label}</div>
+      <div className="mt-1 flex items-baseline gap-[9px]">
+        <span className={VAL_LG} style={{ color }}>
+          {f.value}
         </span>
-        {/* 6일 추이 스파크라인 — 지수 상승(탐욕)=그린 / 하락(공포)=레드 */}
-        {series.length >= 2 && (
-          <span className="shrink-0">
-            <Sparkline
-              values={series}
-              width={52}
-              height={16}
-              stroke={series[series.length - 1] - series[0] >= 0 ? "#1e9e5a" : "#e5443b"}
-            />
-          </span>
-        )}
+        <span className="text-[11.5px] font-semibold" style={{ color }}>
+          {f.label}
+        </span>
       </div>
-      {/* 0~100 그라데이션 게이지 + 현재 위치 마커 */}
       <div
-        className="relative h-1.5 w-full rounded-full"
-        style={{ background: "linear-gradient(90deg,#e5443b,#f5871f,#d9dde2,#3aa76d,#1e9e5a)" }}
+        className="relative mt-[7px] h-[7px] rounded-[4px]"
+        style={{ background: "linear-gradient(90deg,#e5484d,#e8930c,#17a673)" }}
       >
         <span
-          className="absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-navy-900 shadow"
+          className="absolute -top-1 h-[15px] w-[3px] -translate-x-1/2 rounded-[2px] bg-navy-900"
           style={{ left: `${pos}%` }}
         />
       </div>
-      {/* 최근 6일 — 날짜 + 값(레벨 색) */}
-      {history.length > 0 && (
-        <div className="flex items-stretch justify-between gap-0.5 border-t border-line pt-1">
-          {history.map((d) => (
-            <DayCol key={d.date} date={d.date} value={String(d.value)} color={fngColor(d.value)} />
-          ))}
-        </div>
-      )}
     </div>
   );
 }
 
-// 테더(USDT) 김프 타일 — 테더 시세(헤드라인) + 김프% + 6일 김프 스파크라인 + 환율·변동폭
+// 테더(USDT) 김프 — 큰 %(음수=블루) + 원화 환산가
 function UsdtTile({ t }: { t: BarTile }) {
   const u = t.usdt!;
   const km = dir(u.tetherKimchi);
-  const spark = u.kimchiSpark ?? [];
-  const range = spark.length >= 2 ? { min: Math.min(...spark), max: Math.max(...spark) } : null;
   return (
-    <div className={`${TILE} flex flex-col justify-center gap-0.5 border border-line bg-white px-3 py-1`}>
-      {/* 라벨 + 6일 김프 추이 스파크라인 */}
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-[10px] whitespace-nowrap text-navy-400">{t.label}</span>
-        {spark.length >= 2 && (
-          <span className="shrink-0">
-            <Sparkline values={spark} width={52} height={16} stroke={km.stroke} />
-          </span>
-        )}
-      </div>
-
-      {/* 테더 시세(헤드라인) + 김프 % */}
-      <div className="flex items-baseline justify-between gap-1.5">
-        <span className={`${VAL} text-navy-900`}>
+    <div className={CARD}>
+      <div className={TITLE}>{t.label}</div>
+      <div className="mt-1 flex items-baseline gap-[9px]">
+        <span className={`${VAL_LG} ${km.text}`}>
+          {u.tetherKimchi != null ? formatPercent(u.tetherKimchi) : "-"}
+        </span>
+        <span className="font-mono text-[11.5px] font-medium tabular-nums whitespace-nowrap text-navy-600">
           {u.tetherKrw != null ? `${Math.round(u.tetherKrw).toLocaleString("ko-KR")}원` : "-"}
         </span>
-        <span className={`font-mono text-[13px] font-semibold tabular-nums whitespace-nowrap ${km.text}`}>
-          김프 {u.tetherKimchi != null ? formatPercent(u.tetherKimchi) : "-"}
-        </span>
-      </div>
-
-      {/* 환율(+변동) + 6일 김프 변동폭 */}
-      <div className="flex items-baseline justify-between gap-1 border-t border-line pt-1 text-[9px] leading-tight text-navy-400">
-        <span className="min-w-0 truncate">
-          환율{" "}
-          <span className="font-mono tabular-nums text-navy-900">
-            {u.usdKrw != null ? u.usdKrw.toLocaleString("ko-KR", { maximumFractionDigits: 2 }) : "-"}
-          </span>
-          <span className={`ml-1 font-mono tabular-nums ${dir(u.fxChangePct).text}`}>{formatPercent(u.fxChangePct)}</span>
-        </span>
-        <span className="shrink-0 whitespace-nowrap">
-          6일{" "}
-          <span className="font-mono tabular-nums text-navy-900">
-            {range ? `${formatPercent(range.min)}~${formatPercent(range.max)}` : "-"}
-          </span>
-        </span>
       </div>
     </div>
   );
 }
 
-// 환율 USD/KRW 타일 — 현재값(+변동) + 6일 추이(스파크라인·값)
-function FxTile({ t }: { t: BarTile }) {
-  const f = t.fx!;
-  const c = dir(t.changePct);
-  const fx6 = f.fx6 ?? [];
-  const rates = fx6.map((d) => d.rate);
-  return (
-    <div className={`${TILE} flex flex-col justify-center gap-0.5 border border-line bg-white px-3 py-1`}>
-      {/* 현재값(+변동) + 6일 추이 스파크라인 */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex min-w-0 flex-col leading-tight">
-          <span className="text-[10px] whitespace-nowrap text-navy-400">{t.label}</span>
-          <span className="flex items-baseline gap-1">
-            <span className={`${VAL} text-navy-900`}>{t.value}</span>
-            {t.changePct != null && <span className={`${CHG} ${c.text}`}>{formatPercent(t.changePct)}</span>}
-          </span>
-        </div>
-        {rates.length >= 2 && (
-          <span className="shrink-0">
-            <Sparkline values={rates} width={52} height={22} stroke={c.stroke} />
-          </span>
-        )}
-      </div>
-
-      {/* 환율 USD/KRW 최근 6일 — 전일 대비 상승=레드 / 하락=블루 */}
-      {fx6.length > 0 && (
-        <div className="flex items-stretch justify-between gap-0.5 border-t border-line pt-1">
-          {fx6.map((d, i) => {
-            const prev = i > 0 ? fx6[i - 1].rate : null;
-            const diff = prev != null ? d.rate - prev : 0;
-            return (
-              <DayCol
-                key={i}
-                date={d.date}
-                value={Math.round(d.rate).toLocaleString("ko-KR")}
-                color={diff > 0 ? "#e5443b" : diff < 0 ? "#2e7ce6" : undefined}
-              />
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// BTC 도미넌스 타일 — 현재값(+전일 대비 %p) + 6일 추이(스파크라인·값)
+// BTC 도미넌스 — 큰 값 + 전일 대비 등락(%p, 색상) + 우측 최근 6일 추이 스파크라인 (다른 카드와 동일한 문법)
 function DomTile({ t }: { t: BarTile }) {
   const dom6 = t.dom6 ?? [];
   const vals = dom6.map((d) => d.value);
   const last = vals.length ? vals[vals.length - 1] : null;
   const prev = vals.length >= 2 ? vals[vals.length - 2] : null;
-  // 0.1%p 단위로 반올림 — -0.04 같은 값이 "-0.0%p"로 보이지 않도록
-  const raw = last != null && prev != null ? last - prev : null;
-  const deltaPp = raw == null ? null : Math.round(raw * 10) / 10;
+  const deltaPp = last != null && prev != null ? last - prev : null;
   const d = dir(deltaPp);
   return (
-    <div className={`${TILE} flex flex-col justify-center gap-0.5 border border-line bg-white px-3 py-1`}>
-      {/* 라벨 + 6일 추이 스파크라인 */}
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-[10px] whitespace-nowrap text-navy-400">{t.label}</span>
-        {vals.length >= 2 && (
-          <span className="shrink-0">
-            <Sparkline values={vals} width={52} height={16} stroke={d.stroke} />
-          </span>
-        )}
-      </div>
-
-      {/* 현재값(헤드라인) + 전일 대비 %p */}
-      <div className="flex items-baseline gap-1.5">
-        <span className={`${VAL} text-navy-900`}>{t.value}</span>
-        {deltaPp != null && (
-          <span className={`${CHG} ${d.text}`}>
-            {deltaPp > 0 ? "+" : ""}
-            {deltaPp.toFixed(1)}%p
-          </span>
-        )}
-      </div>
-
-      {/* 최근 6일 — 전일 대비 상승=레드 / 하락=블루 */}
-      {dom6.length > 0 ? (
-        <div className="flex items-stretch justify-between gap-0.5 border-t border-line pt-1">
-          {dom6.map((x, i) => {
-            const p = i > 0 ? dom6[i - 1].value : null;
-            const diff = p != null ? x.value - p : 0;
-            return (
-              <DayCol
-                key={i}
-                date={x.date}
-                value={x.value.toFixed(1)}
-                color={diff > 0 ? "#e5443b" : diff < 0 ? "#2e7ce6" : undefined}
-              />
-            );
-          })}
-        </div>
-      ) : (
-        t.barPct != null && (
-          <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-line">
-            <div
-              className="h-full rounded-full bg-navy-400"
-              style={{ width: `${Math.min(100, Math.max(0, t.barPct))}%` }}
-            />
+    <div className={CARD}>
+      <div className="flex gap-2.5">
+        <div className="min-w-0 flex-1">
+          <div className={TITLE}>{t.label}</div>
+          <div className="mt-1 flex items-baseline gap-[9px]">
+            <span className={`${VAL_LG} text-navy-900`}>{t.value}</span>
+            {deltaPp != null && (
+              <span className={`${CHG} ${d.text}`}>
+                전일 {deltaPp > 0 ? "+" : ""}
+                {deltaPp.toFixed(2)}%p
+              </span>
+            )}
           </div>
-        )
+        </div>
+        {vals.length >= 2 && (
+          <span
+            className="shrink-0 pt-0.5"
+            title={dom6.map((x) => `${x.date} ${x.value.toFixed(2)}%`).join(" · ")}
+          >
+            <Sparkline values={vals} width={76} height={26} stroke={d.stroke} />
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// 비트코인 채굴 손익분기점 — 우상단 업데이트 캡션 + 값·손익 라벨 + 손익분기 대비 현재가
+function MiningTile({ t }: { t: BarTile }) {
+  const m = t.mining!;
+  const loss = m.pricePct != null && m.pricePct < 0;
+  const col = m.pricePct == null ? "#667085" : loss ? "#e5484d" : "#12805c";
+  return (
+    <div className={CARD}>
+      <div className="flex items-baseline text-[11.5px] font-semibold text-navy-900">
+        <span className="min-w-0 truncate">{t.label}</span>
+        {t.sub && (
+          <span className="ml-auto shrink-0 pl-2 font-mono text-[9px] font-medium text-ink-500">
+            {t.sub}
+          </span>
+        )}
+      </div>
+      <div className="mt-1 flex items-baseline gap-[9px]">
+        <span className={`${VAL_LG} text-navy-900`}>{t.value}</span>
+        {m.pricePct != null && (
+          <span className="ml-auto text-[11.5px] font-semibold whitespace-nowrap" style={{ color: col }}>
+            {loss ? "채굴 손실" : "채굴 이익"}
+          </span>
+        )}
+      </div>
+      <div className="mt-1 flex items-baseline border-t border-hairline pt-1 text-[9px] text-ink-500">
+        손익분기 대비 현재가
+        <b className="ml-auto font-mono text-[9px] font-semibold tabular-nums" style={{ color: col }}>
+          {m.pricePct != null ? formatPercent(m.pricePct) : "-"}
+        </b>
+      </div>
+    </div>
+  );
+}
+
+// 환율 USD/KRW — 값(+변동) + 최근 영업일 "nD+값" 한 줄 (그래프 없음, 실제 날짜는 툴팁)
+function FxTile({ t }: { t: BarTile }) {
+  const f = t.fx!;
+  const c = dir(t.changePct);
+  const fx6 = f.fx6 ?? [];
+  return (
+    <div className={CARD}>
+      <div className={TITLE}>{t.label}</div>
+      <div className="mt-1 flex items-baseline gap-[9px]">
+        <span className={VAL}>{t.value}</span>
+        {t.changePct != null && <span className={`${CHG} ${c.text}`}>{formatPercent(t.changePct)}</span>}
+      </div>
+      {/* 최근 영업일 — "1D(1일 전)·2D…" 상대 날짜 + 값, 들어가는 만큼(최신 5일)만 한 줄 */}
+      {fx6.length > 1 && (
+        <div className="mt-1 flex flex-nowrap justify-between gap-x-1 overflow-hidden border-t border-hairline pt-1 font-mono text-[9px] font-medium text-ink-400">
+          {fx6
+            .map((d, i) => {
+              const prev = i > 0 ? fx6[i - 1].rate : null;
+              const diff = prev != null ? d.rate - prev : 0;
+              return { ...d, diff, daysAgo: fx6.length - i };
+            })
+            .slice(-5)
+            .reverse()
+            .map((d) => (
+              <span key={d.daysAgo} title={d.date} className="flex shrink-0 items-baseline gap-[3px]">
+                <span className="text-ink-300">{d.daysAgo}D</span>
+                <b
+                  className="font-semibold tabular-nums"
+                  style={{ color: d.diff > 0 ? "#e5484d" : d.diff < 0 ? "#2f6bea" : "#414a5c" }}
+                >
+                  {Math.round(d.rate).toLocaleString("ko-KR")}
+                </b>
+              </span>
+            ))}
+        </div>
       )}
     </div>
   );
 }
 
-// 비트코인 채굴 손익분기점 타일 — 손익분기가(헤드라인) + 채굴 손익 라벨 + 손익분기 대비 현재가%
-function MiningTile({ t }: { t: BarTile }) {
-  const m = t.mining!;
-  const loss = m.pricePct != null && m.pricePct < 0;
-  const col = m.pricePct == null ? "#7d858f" : loss ? "#e5443b" : "#1e9e5a";
-  return (
-    <div className={`${TILE} flex flex-col justify-center gap-0.5 border border-line bg-white px-3 py-1`}>
-      {/* 라벨 + 업데이트 날짜 */}
-      <div className="flex items-center justify-between gap-2">
-        <span className="min-w-0 truncate text-[10px] text-navy-400">{t.label}</span>
-        {t.sub && <span className="shrink-0 text-[8px] whitespace-nowrap text-navy-300">{t.sub}</span>}
-      </div>
-      {/* 손익분기가(헤드라인) + 채굴 손익 라벨 */}
-      <div className="flex items-baseline justify-between gap-1.5">
-        <span className={`${VAL} text-navy-900`}>{t.value}</span>
-        {m.pricePct != null && (
-          <span className="text-[11px] font-semibold whitespace-nowrap" style={{ color: col }}>
-            {loss ? "채굴 손실" : "채굴 이익"}
-          </span>
-        )}
-      </div>
-      {/* 손익분기 대비 현재가 등락 */}
-      <div className="flex items-baseline justify-between gap-1 border-t border-line pt-1 text-[9px] leading-tight">
-        <span className="whitespace-nowrap text-navy-400">손익분기 대비 현재가</span>
-        <span className="font-mono tabular-nums whitespace-nowrap" style={{ color: col }}>
-          {m.pricePct != null ? formatPercent(m.pricePct) : "-"}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-// 단일 타일 렌더 — 지수·코인·MSTR 공통
+// 단일 카드 렌더 — 지수·코인·MSTR 공통 (제목+장상태 / 값+변동 / 서브행 / 우측 스파크라인)
 function Tile({ t }: { t: BarTile }) {
   // 자리표시자(데이터 미수신) — 특수 타일보다 먼저 판별해 빈 값 대신 안내를 노출
   if (t.placeholder) {
     return (
-      <div className={`${TILE} flex flex-col justify-center border border-dashed border-line bg-white/60 px-3 py-1`}>
-        {t.label && <span className="text-[10px] whitespace-nowrap text-navy-400">{t.label}</span>}
-        <span className="flex flex-1 items-center justify-center text-[11px] text-navy-300">
-          {t.note ?? "고민중…"}
-        </span>
+      <div className={`${CARD} border-dashed bg-white/60`}>
+        {t.label && <div className={TITLE}>{t.label}</div>}
+        <div className="flex min-h-12 items-center justify-center text-[11px] text-ink-300">
+          {t.note ?? "데이터 수집 중…"}
+        </div>
       </div>
     );
   }
@@ -317,45 +223,42 @@ function Tile({ t }: { t: BarTile }) {
   const mkt = marketOf(t);
   const spark = t.spark ?? [];
   return (
-    <div className={`${TILE} flex flex-col justify-center gap-0.5 border border-line bg-white px-3 py-1`}>
-      <div className="flex items-center justify-between gap-2.5">
-        <div className="flex min-w-0 flex-col leading-tight">
-          <span className="flex items-center gap-1.5">
-            <span className="truncate text-[10px] text-navy-400">{t.label}</span>
+    <div className={CARD}>
+      <div className="flex gap-2.5">
+        <div className="min-w-0 flex-1">
+          <div className={TITLE}>
+            <span className="min-w-0 truncate">{t.label}</span>
             {mkt && <MarketStatus market={mkt} />}
-          </span>
-          <span className="flex items-baseline gap-1">
-            <span className={`${VAL} text-navy-900`}>{t.value}</span>
+          </div>
+          <div className="mt-1 flex items-baseline gap-2">
+            <span className={VAL}>{t.value}</span>
             {t.changePct != null && <span className={`${CHG} ${c.text}`}>{formatPercent(t.changePct)}</span>}
-          </span>
+          </div>
         </div>
-        {spark.length >= 2 && (
-          <span className="shrink-0">
+
+        {/* MSTR(트레저리 카드)은 그래프 없이 수치만 — 카드 높이 절감 */}
+        {spark.length >= 2 && !t.treasury && (
+          <span className="shrink-0 pt-0.5">
             {mkt ? (
-              <LiveSparkline market={mkt} values={spark} width={56} height={26} stroke={c.stroke} />
+              <LiveSparkline market={mkt} values={spark} width={76} height={26} stroke={c.stroke} />
             ) : (
-              <Sparkline values={spark} width={56} height={26} stroke={c.stroke} />
+              <Sparkline values={spark} width={76} height={26} stroke={c.stroke} />
             )}
           </span>
         )}
       </div>
 
-      {/* 대표 종목 2개 — 좌우 2열 그리드 (나스닥·코스피) */}
+      {/* 대표 종목 (나스닥·코스피) — 이름 + 시세 + 변동률, 가로 1줄에 2종목 (라벨만 말줄임) */}
       {t.stocks && t.stocks.length > 0 && (
-        <div className="grid grid-cols-2 gap-2 border-t border-line pt-1">
+        <div className={SUB}>
           {t.stocks.map((s, i) => {
             const sc = dir(s.changePct);
             return (
-              <span
-                key={i}
-                className={`flex min-w-0 items-baseline gap-1 overflow-hidden ${i === 1 ? "justify-end" : ""}`}
-              >
-                <span className="truncate text-[9px] text-navy-400">{s.label}</span>
-                <span className="shrink-0 font-mono text-[10px] tabular-nums whitespace-nowrap text-navy-900">
-                  {s.value}
-                </span>
+              <span key={i} className="flex min-w-0 items-baseline gap-[3px]">
+                <span className="truncate">{s.label}</span>
+                <b className="shrink-0 font-mono text-[9px] font-semibold tabular-nums text-navy-900">{s.value}</b>
                 {s.changePct != null && (
-                  <span className={`shrink-0 font-mono text-[9px] tabular-nums whitespace-nowrap ${sc.text}`}>
+                  <span className={`shrink-0 font-mono text-[9px] font-semibold tabular-nums ${sc.text}`}>
                     {formatPercent(s.changePct)}
                   </span>
                 )}
@@ -365,72 +268,81 @@ function Tile({ t }: { t: BarTile }) {
         </div>
       )}
 
-      {/* MSTR 비트코인 트레저리 — 좌: 보유량·평단(수익률) / 우: 전일 대비 보유량 변동폭 */}
+      {/* MSTR 비트코인 트레저리 — 보유 / 변동(전일) / 평단(수익률), 가로 1줄 */}
       {t.treasury && (
-        <div className="flex items-center justify-between gap-2 border-t border-line pt-1 text-[9px] leading-tight">
-          <div className="flex min-w-0 flex-col gap-0.5">
-            <span className="flex items-baseline gap-1">
-              <span className="text-navy-400">보유 BTC</span>
-              <span className="font-mono tabular-nums whitespace-nowrap text-navy-900">
-                {Math.round(t.treasury.holdings).toLocaleString()}
-              </span>
-            </span>
-            <span className="flex items-baseline gap-1">
-              <span className="whitespace-nowrap text-navy-400">
-                평단 ${Math.round(t.treasury.avgPriceUsd).toLocaleString()}
-              </span>
-              <span className={`font-mono tabular-nums whitespace-nowrap ${dir(t.treasury.returnPct).text}`}>
-                {formatPercent(t.treasury.returnPct)}
-              </span>
-            </span>
-          </div>
-          <div className="flex shrink-0 flex-col items-end gap-0.5">
-            <span className="whitespace-nowrap text-navy-400">변동(전일)</span>
-            <span
-              className={`font-mono tabular-nums whitespace-nowrap ${
-                t.treasury.holdingsDelta !== 0 ? dir(t.treasury.holdingsDelta).text : "text-navy-300"
+        <div className={SUB}>
+          <span className="flex shrink-0 items-baseline gap-[3px]">
+            보유
+            <b className="font-mono text-[9px] font-semibold tabular-nums text-navy-900">
+              {Math.round(t.treasury.holdings).toLocaleString()} BTC
+            </b>
+          </span>
+          <span className="flex min-w-0 items-baseline gap-[3px]">
+            변동
+            <b
+              className={`truncate font-mono text-[9px] font-semibold tabular-nums ${
+                t.treasury.holdingsDelta !== 0 ? dir(t.treasury.holdingsDelta).text : "text-ink-400"
               }`}
             >
               {t.treasury.holdingsDelta !== 0
                 ? `${t.treasury.holdingsDelta > 0 ? "+" : ""}${Math.round(
                     t.treasury.holdingsDelta
                   ).toLocaleString()} BTC`
-                : "±0 BTC"}
+                : "±0"}
+            </b>
+          </span>
+          <span className="flex shrink-0 items-baseline gap-[3px]">
+            평단
+            <b className="font-mono text-[9px] font-semibold tabular-nums text-navy-900">
+              ${Math.round(t.treasury.avgPriceUsd).toLocaleString()}
+            </b>
+            <span className={`font-mono text-[9px] font-semibold tabular-nums ${dir(t.treasury.returnPct).text}`}>
+              {formatPercent(t.treasury.returnPct)}
             </span>
-          </div>
+          </span>
         </div>
       )}
     </div>
   );
 }
 
-// 상단 마켓바 — 1행: 지수·금 / 2행: 코인·MSTR·공포탐욕 / 3행: 도미넌스 등
+// 12개 시장 지표 카드 — 4×3 그리드, 크립토 커뮤니티 우선 배치:
+// 1행 크립토 핵심(BTC·ETH·도미넌스·공포탐욕) → 2행 크립토 파생(김프·환율·MSTR·채굴) → 3행 전통시장(나스닥·코스피·코스닥·금)
+const TILE_ORDER = [
+  "btc",
+  "eth",
+  "btcDom",
+  "fng",
+  "usdtKimchi",
+  "fx",
+  "mstr",
+  "btcBreakeven",
+  "nasdaq",
+  "kospi",
+  "kosdaq",
+  "gold",
+];
+
 export default async function MarketBar() {
-  const { tiles } = await getMarketBar();
-  // 그룹별 행 (순서 고정) — 각 행은 고정 크기 타일을 균등 분배해 열이 정렬됨
-  const rows = [
-    tiles.filter((t) => t.group !== "crypto" && t.group !== "macro"), // index
-    tiles.filter((t) => t.group === "crypto"),
-    tiles.filter((t) => t.group === "macro"),
-  ].filter((row) => row.length > 0);
+  const { tiles: rawTiles } = await getMarketBar();
+  const tiles = [...rawTiles].sort((a, b) => {
+    const ia = TILE_ORDER.indexOf(a.key);
+    const ib = TILE_ORDER.indexOf(b.key);
+    return (ia === -1 ? TILE_ORDER.length : ia) - (ib === -1 ? TILE_ORDER.length : ib);
+  });
 
   return (
-    <div className="border-b border-line bg-paper">
-      <div className="mx-auto flex max-w-6xl items-stretch gap-3 px-4">
-        <div className="flex flex-1 flex-col gap-2 py-2">
-          {tiles.length === 0 ? (
-            <span className="rail self-center">마켓 데이터 불러오는 중…</span>
-          ) : (
-            // 고정 크기(272×72) 타일을 행마다 균등 분배 — 모든 행의 열이 항상 정렬됨
-            rows.map((row, i) => (
-              <div key={i} className="flex flex-wrap justify-between gap-y-2">
-                {row.map((t) => (
-                  <Tile key={t.key} t={t} />
-                ))}
-              </div>
-            ))
-          )}
-        </div>
+    <div className="bg-paper">
+      <div className="mx-auto max-w-6xl px-4 pt-[12px]">
+        {tiles.length === 0 ? (
+          <p className="rail py-2 text-center">마켓 데이터 불러오는 중…</p>
+        ) : (
+          <div className="grid auto-rows-fr grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+            {tiles.map((t) => (
+              <Tile key={t.key} t={t} />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

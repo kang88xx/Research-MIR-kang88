@@ -45,53 +45,58 @@ export default async function UpcomingEvents() {
   }
 
   return (
-    <section className="rounded-xl border border-line bg-white shadow-card overflow-hidden transition-shadow hover:shadow-pop">
-      <header className="flex items-center justify-between border-b border-line bg-white px-4 py-3">
-        <div className="flex items-baseline gap-2">
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-ink-900"><span className="h-1.5 w-1.5 rounded-full bg-brand" aria-hidden />다가오는 일정</h2>
-          <span className="hidden text-[11px] font-medium tracking-[0.12em] text-ink-500 uppercase sm:inline">
-            Upcoming · 7d
-          </span>
-        </div>
-        <Link href="/calendar" className="text-xs text-ink-500 hover:text-ink-900">
-          전체 캘린더 +
+    <section className="rounded-[14px] border border-line bg-white px-5 py-[18px]">
+      <header className="flex items-baseline gap-2.5">
+        <h2 className="text-[15.5px] font-extrabold tracking-[-0.3px] text-navy-900">
+          다가오는 일정
+        </h2>
+        <Link
+          href="/calendar"
+          className="ml-auto text-xs font-bold text-brand-ink hover:underline"
+        >
+          전체 캘린더 →
         </Link>
       </header>
 
       {groups.size === 0 ? (
-        <p className="px-4 py-8 text-center text-sm text-ink-500">
+        <p className="py-8 text-center text-sm text-ink-500">
           다가오는 7일 내 등록된 일정이 없습니다.
         </p>
       ) : (
-        <ul className="divide-y divide-line">
+        <ul>
           {[...groups.values()].map((g, gi) => (
-            <li key={gi} className="flex flex-col gap-1.5 px-4 py-2.5 sm:flex-row sm:gap-3">
-              <div className="flex shrink-0 items-baseline gap-1.5 sm:w-20 sm:flex-col sm:gap-0">
-                <span
-                  className={`text-xs font-semibold ${
-                    g.label === "오늘" ? "text-red-600" : "text-navy-900"
-                  }`}
-                >
-                  {g.label}
-                </span>
-                {g.sub && <span className="text-[10px] text-navy-300">{g.sub}</span>}
-              </div>
-              <ul className="min-w-0 flex-1 space-y-1.5">
+            <li
+              key={gi}
+              className="flex items-start gap-3 border-b border-hairline py-[9px] first:pt-[11px] last:border-b-0 last:pb-0.5"
+            >
+              <span
+                className={`w-14 shrink-0 pt-0.5 font-mono text-[11px] font-semibold leading-[1.5] ${
+                  gi === 0 && (g.label === "오늘" || g.label === "내일")
+                    ? "text-up"
+                    : "text-ink-500"
+                }`}
+              >
+                {g.label === "오늘" || g.label === "내일" ? `${g.label} ${g.sub}` : g.label}
+              </span>
+              <ul className="min-w-0 flex-1 space-y-[5px]">
                 {g.items.map((ev) => {
                   const { time, nextDay } = kstTimeLabel(ev.date);
                   return (
-                    <li key={ev.id} className="flex items-center gap-2 text-sm">
+                    <li
+                      key={ev.id}
+                      className="flex items-center gap-1.5 text-[12.5px] leading-[1.5] text-navy-700"
+                    >
                       <span
                         className={`h-1.5 w-1.5 shrink-0 rounded-full ${
                           CAT_DOT[ev.category] ?? CAT_DOT.neutral
                         }`}
                         title={CAT_LABEL[ev.category] ?? "중립"}
                       />
-                      <EventIcon ticker={ev.ticker} size={15} />
+                      <EventIcon ticker={ev.ticker} size={14} />
                       {time && (
-                        <span className="shrink-0 font-mono text-xs font-semibold text-navy-700">
+                        <span className="shrink-0 font-mono text-[11px] font-semibold text-navy-600">
                           {time}
-                          {nextDay && <span className="ml-0.5 text-[9px] text-navy-300">익일</span>}
+                          {nextDay && <span className="ml-0.5 text-[9px] text-ink-300">익일</span>}
                         </span>
                       )}
                       {ev.sourceUrl ? (
@@ -99,14 +104,14 @@ export default async function UpcomingEvents() {
                           href={ev.sourceUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="min-w-0 flex-1 truncate text-ink-900 hover:text-navy-700 hover:underline"
+                          className="min-w-0 flex-1 truncate hover:underline"
                           title="출처 보기"
                         >
-                          <b className="text-navy-900">{ev.ticker}</b> {ev.title}
+                          <b className="font-bold text-navy-900">{ev.ticker}</b> {ev.title}
                         </a>
                       ) : (
-                        <span className="min-w-0 flex-1 truncate text-ink-900">
-                          <b className="text-navy-900">{ev.ticker}</b> {ev.title}
+                        <span className="min-w-0 flex-1 truncate">
+                          <b className="font-bold text-navy-900">{ev.ticker}</b> {ev.title}
                         </span>
                       )}
                     </li>
@@ -117,8 +122,8 @@ export default async function UpcomingEvents() {
           ))}
         </ul>
       )}
-      <p className="border-t border-line px-4 py-2">
-        <span className="rail">날짜 통상(UTC) 기준 · 시각은 KST(익일=한국시간 다음날 새벽)</span>
+      <p className="mt-3 border-t border-hairline pt-2.5 text-[10.5px] text-ink-400">
+        날짜 통상(UTC) 기준 · 시각은 KST(익일=한국시간 다음날 새벽)
       </p>
     </section>
   );

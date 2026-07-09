@@ -9,13 +9,13 @@ export type Signal = { label: string; tone: SignalTone };
 export function toneClass(tone: SignalTone): string {
   switch (tone) {
     case "alert":
-      return "bg-red-50 text-red-700";
+      return "bg-up-bg text-up"; // 경계 — 레드 틴트
     case "caution":
-      return "bg-orange-50 text-orange-600";
+      return "bg-warn-bg text-warn"; // 주의 — 앰버 틴트
     case "note":
-      return "bg-indigo-50 text-indigo-700";
+      return "bg-info-bg text-info"; // 참고 — 블루 틴트
     default:
-      return "bg-paper2 text-ink-500";
+      return "bg-navy-100 text-ink-500"; // 정상 — 그레이
   }
 }
 

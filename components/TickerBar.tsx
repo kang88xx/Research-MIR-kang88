@@ -5,10 +5,10 @@ import type { TickerSnapshot } from "@/lib/ticker";
 import { formatKrw, formatPercent } from "@/lib/format";
 
 function changeColor(n: number | null): string {
-  if (n == null) return "text-navy-300";
-  if (n > 0) return "text-red-300";
-  if (n < 0) return "text-indigo-300";
-  return "text-navy-300";
+  if (n == null) return "text-ink-300";
+  if (n > 0) return "text-up";
+  if (n < 0) return "text-down";
+  return "text-ink-300";
 }
 
 export default function TickerBar() {
@@ -47,23 +47,36 @@ export default function TickerBar() {
   const items = snapshot?.tickers.filter((t) => t.priceKrw != null) ?? [];
 
   return (
-    <div className="overflow-hidden bg-navy-900">
-      <div className="ticker-track flex w-max items-center gap-10 px-4 py-2 font-mono text-[11px] tracking-wide whitespace-nowrap">
+    // 티커 테이프 — 36px 화이트 바, mono 12px.
+    // 무한 루프: 동일한 복사본 2개를 나란히 두고 트랙을 -50% 이동 — 복사본 폭(pr 포함)만큼
+    // 정확히 이동한 시점에 처음과 같은 화면이 되어 끊김 없이 반복된다.
+    <div className="flex h-9 items-center border-b border-line bg-white">
+      <div className="min-w-0 flex-1 overflow-hidden">
         {error ? (
-          <span className="text-red-400">시세 불러오기 실패</span>
+          <span className="px-4 font-mono text-xs font-medium text-up">시세 불러오기 실패</span>
         ) : items.length === 0 ? (
-          <span className="text-navy-300">LOADING MARKET DATA...</span>
+          <span className="px-4 font-mono text-xs font-medium text-ink-400">LOADING MARKET DATA...</span>
         ) : (
-          [...items, ...items].map((t, i) => (
-            <span key={`${t.symbol}-${i}`} className="flex items-center gap-2">
-              <span className="font-semibold text-white">{t.symbol}</span>
-              <span className="font-light text-navy-100">{formatKrw(t.priceKrw)}</span>
-              <span className={changeColor(t.change24h)}>{formatPercent(t.change24h)}</span>
-              {t.kimchiPremium != null && (
-                <span className="text-[#f3d266]">김프 {formatPercent(t.kimchiPremium)}</span>
-              )}
-            </span>
-          ))
+          <div className="ticker-track flex w-max">
+            {[0, 1].map((copy) => (
+              <div
+                key={copy}
+                aria-hidden={copy === 1}
+                className="flex items-center gap-10 pr-10 font-mono text-xs font-medium whitespace-nowrap text-navy-600"
+              >
+                {items.map((t) => (
+                  <span key={t.symbol} className="flex items-center gap-1.5">
+                    <span>{t.symbol}</span>
+                    <span className="font-semibold text-navy-900">{formatKrw(t.priceKrw)}</span>
+                    <span className={changeColor(t.change24h)}>{formatPercent(t.change24h)}</span>
+                    {t.kimchiPremium != null && (
+                      <span className="text-ink-400">김프 {formatPercent(t.kimchiPremium)}</span>
+                    )}
+                  </span>
+                ))}
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>

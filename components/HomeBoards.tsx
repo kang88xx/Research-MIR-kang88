@@ -2,23 +2,15 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { formatPostDate } from "@/lib/format";
 
-// 홈 하단 게시판 영역 — 자유게시판 최신글 + 시장 분석 + 인기글 TOP 9.
+// 홈 하단 게시판 영역 — 자유게시판 최신글 + 시장 분석.
 // 페이지에서 분리해 자체 Suspense 경계로 독립 스트리밍되게 한다(상단 시장 카드와 병렬).
 export default async function HomeBoards() {
-  const [recentPosts, hotCandidates, analysisPosts] = await Promise.all([
+  const [recentPosts, analysisPosts] = await Promise.all([
     prisma.post.findMany({
       where: { board: { slug: "free" } },
       orderBy: { createdAt: "desc" },
       take: 12,
       include: { author: { select: { nickname: true } } },
-    }),
-    // 인기글 후보를 넉넉히 가져와 "추천수 + 시간감쇠" 점수로 재정렬한다.
-    // 추천수만으로 정렬하면 오래된 글이 영구 고착되므로 HN식 점수로 신선도를 반영.
-    prisma.post.findMany({
-      orderBy: [{ upvotes: "desc" }, { viewCount: "desc" }],
-      where: { upvotes: { gte: 1 } },
-      take: 60,
-      select: { id: true, title: true, upvotes: true, createdAt: true, board: { select: { slug: true } } },
     }),
     prisma.post.findMany({
       where: { board: { slug: "analysis" } },
@@ -28,25 +20,15 @@ export default async function HomeBoards() {
     }),
   ]);
 
-  // HN식 시간감쇠: score = upvotes / (ageHours + 2)^0.6 — 추천수가 같으면 최신 글이 우선.
-  // 서버 컴포넌트라 요청당 1회만 평가됨 — 요청 시각(now)을 읽는 건 의도된 동작이라 purity 룰을 끈다.
-  // eslint-disable-next-line react-hooks/purity
-  const nowMs = Date.now();
-  const hotPosts = [...hotCandidates]
-    .map((p) => {
-      const ageHours = Math.max(0, (nowMs - p.createdAt.getTime()) / 3_600_000);
-      return { ...p, score: p.upvotes / Math.pow(ageHours + 2, 0.6) };
-    })
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 9);
-
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
-      <section className="rounded-xl border border-line bg-white shadow-card overflow-hidden transition-shadow hover:shadow-pop">
-        <header className="flex items-center justify-between border-b border-line bg-white px-4 py-3">
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-ink-900"><span className="h-1.5 w-1.5 rounded-full bg-brand" aria-hidden />자유게시판 최신글</h2>
-          <Link href="/free" className="text-xs text-ink-500 hover:text-ink-900">
-            더보기 +
+      <section className="overflow-hidden rounded-[14px] border border-line bg-white">
+        <header className="flex items-baseline justify-between border-b border-hairline px-5 py-3.5">
+          <h2 className="text-[15.5px] font-extrabold tracking-[-0.3px] text-navy-900">
+            자유게시판 최신글
+          </h2>
+          <Link href="/free" className="text-xs font-bold text-brand-ink hover:underline">
+            더보기 →
           </Link>
         </header>
         {recentPosts.length === 0 ? (
@@ -80,11 +62,11 @@ export default async function HomeBoards() {
       </section>
 
       <aside className="flex flex-col gap-6">
-        <section className="rounded-xl border border-line bg-white shadow-card overflow-hidden transition-shadow hover:shadow-pop">
-          <header className="flex items-center justify-between border-b border-line bg-white px-4 py-3">
-            <h2 className="flex items-center gap-2 text-sm font-semibold text-ink-900"><span className="h-1.5 w-1.5 rounded-full bg-brand" aria-hidden />시장 분석</h2>
-            <Link href="/analysis" className="text-xs text-ink-500 hover:text-ink-900">
-              더보기 +
+        <section className="overflow-hidden rounded-[14px] border border-line bg-white">
+          <header className="flex items-baseline justify-between border-b border-hairline px-5 py-3.5">
+            <h2 className="text-[15.5px] font-extrabold tracking-[-0.3px] text-navy-900">시장 분석</h2>
+            <Link href="/analysis" className="text-xs font-bold text-brand-ink hover:underline">
+              더보기 →
             </Link>
           </header>
           {analysisPosts.length === 0 ? (
@@ -110,31 +92,6 @@ export default async function HomeBoards() {
                 </li>
               ))}
             </ul>
-          )}
-        </section>
-        <section className="rounded-xl border border-line bg-white shadow-card overflow-hidden transition-shadow hover:shadow-pop">
-          <header className="border-b border-line bg-white px-4 py-3">
-            <h2 className="flex items-center gap-2 text-sm font-semibold text-ink-900"><span className="h-1.5 w-1.5 rounded-full bg-brand" aria-hidden />인기글 TOP 9</h2>
-          </header>
-          {hotPosts.length === 0 ? (
-            <p className="px-4 py-6 text-center text-xs text-ink-500">아직 인기글이 없습니다.</p>
-          ) : (
-            <ol className="divide-y divide-line">
-              {hotPosts.map((post, i) => (
-                <li key={post.id} className="flex items-center gap-2 px-4 py-2 text-sm">
-                  <span className={`w-4 shrink-0 text-center text-xs font-bold ${i < 3 ? "text-navy-700" : "text-navy-300"}`}>
-                    {i + 1}
-                  </span>
-                  <Link
-                    href={`/${post.board.slug}/${post.id}`}
-                    className="flex-1 truncate text-ink-900 hover:text-navy-700 hover:underline"
-                  >
-                    {post.title}
-                  </Link>
-                  <span className="shrink-0 text-xs text-red-600">+{post.upvotes}</span>
-                </li>
-              ))}
-            </ol>
           )}
         </section>
       </aside>

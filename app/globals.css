@@ -1,79 +1,82 @@
-@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css");
 @import "tailwindcss";
 
 /* ───────────────────────────────────────────────────────────────
-   Cobak Design System tokens
-   네온 그린 브랜드 · 뉴트럴 그레이 표면 · 한국 증시 관례(상승=레드/하락=블루)
-   기존 토큰 이름(paper/navy/amber/ink/indigo)은 유지하고 값만 Cobak으로 매핑 →
-   사이트 전체 색·타이포가 일괄 전환된다.
+   2a "파이낸스 그레이드" Design tokens
+   브랜드 오렌지 · 잉크 뉴트럴 표면 · 한국 증시 관례(상승=레드/하락=블루)
+   기존 토큰 이름(paper/navy/amber/ink/indigo)은 유지하고 값만 재매핑 →
+   사이트 전체 색·타이포가 일괄 전환된다. (그림자 없는 보더 기반 플랫 톤)
    ─────────────────────────────────────────────────────────────── */
 @theme {
   /* 표면 · 그라운드 */
-  --color-paper: #f7f8fa; /* bg */
-  --color-paper2: #f1f3f6; /* surface-2 */
-  --color-line: #e8ebef; /* border */
+  --color-paper: #f6f7f9; /* bg */
+  --color-paper2: #f9fafc; /* surface-2 — 카드 내부 헤더행/빈 셀 */
+  --color-line: #e4e8ef; /* border — 카드/구분 */
+  --color-hairline: #eef1f6; /* 헤어라인 — 카드 내부 구분 */
 
-  /* navy* → Cobak 뉴트럴 그레이(다크) — 다크버튼·표면. 순검정 대신 살짝 누그러뜨림(피로↓) */
-  --color-navy-950: #111418;
-  --color-navy-900: #1f252c; /* 다크 표면/버튼 (헤더 검정바는 P2에서 밝게 교체됨) */
-  --color-navy-700: #12161b; /* 다크버튼 hover(더 진하게) */
-  --color-navy-600: #404650; /* 보조 다크 텍스트 */
-  --color-navy-500: #5a616b;
-  --color-navy-400: #6e757f;
-  --color-navy-300: #d3d8df; /* border-strong — 인풋 보더 */
-  --color-navy-100: #e9ecf1; /* surface-3 */
+  /* navy* → 잉크 다크 스케일 — 다크버튼·표면·본문 보조 */
+  --color-navy-950: #10141c;
+  --color-navy-900: #171c26; /* ink — 다크 버튼/헤드라인 */
+  --color-navy-700: #2c3444; /* 본문 보조 */
+  --color-navy-600: #414a5c;
+  --color-navy-500: #667085;
+  --color-navy-400: #667085;
+  --color-navy-300: #c3cad4; /* 최흐림 텍스트·옅은 보더 */
+  --color-navy-100: #eceff4; /* 칩 배경 */
 
-  /* amber* → Cobak 브랜드 그린. 넓은 면적용으로 톤다운(#00FF16→#00D91F, 망막 자극↓) */
-  --color-amber-500: #00d91f; /* brand */
-  --color-amber-400: #00c81d; /* hover(진하게) */
-  --color-amber-300: #7de88a;
-  --color-amber-50: #eaffed; /* green-50 — 소프트 하이라이트 */
-  --color-amber-700: #078f18; /* 읽히는 다크 그린(텍스트) */
-  --color-amber-800: #066312;
-  --color-amber-900: #04300a;
+  /* amber* → 브랜드 오렌지 (로고·활성 탭·오늘 표시·도미넌스 강조) */
+  --color-amber-500: #e8930c; /* brand */
+  --color-amber-400: #d9880a; /* hover(진하게) */
+  --color-amber-300: #f2bb5e;
+  --color-amber-50: #fdf6e9; /* 앰버 틴트 배경 */
+  --color-amber-700: #a86a0a; /* 읽히는 다크 앰버(텍스트) */
+  --color-amber-800: #7c4e08;
+  --color-amber-900: #4a2f05;
 
-  /* indigo* → Cobak 블루(하락) */
-  --color-indigo-500: #2e7ce6;
-  --color-indigo-300: #88b4f0;
-  --color-indigo-700: #2566c9;
+  /* indigo* → 블루(하락) */
+  --color-indigo-500: #2f6bea;
+  --color-indigo-300: #9db9f2;
+  --color-indigo-700: #2b5fce;
 
-  /* ink* → Cobak 텍스트 위계 */
-  --color-ink-900: #14161a; /* fg */
-  --color-ink-700: #4a4f57; /* fg-2 */
-  --color-ink-500: #878e97; /* fg-3 */
-  --color-ink-400: #9aa0a8;
-  --color-ink-300: #bfc4cc;
+  /* ink* → 텍스트 위계 */
+  --color-ink-900: #171c26; /* fg */
+  --color-ink-700: #414a5c; /* fg-2 */
+  --color-ink-500: #667085; /* fg-3 — 서브 */
+  --color-ink-400: #98a2b3; /* 흐림 */
+  --color-ink-300: #c3cad4; /* 최흐림 */
 
-  /* ── Cobak 전용 시맨틱 토큰 (신규 컴포넌트용) ── */
-  --color-brand: #00d91f; /* CTA·로고·활성 (톤다운) */
-  --color-brand-ink: #078f18; /* 읽히는 그린 — 텍스트·아이콘 */
-  --color-brand-weak: #eaffed;
-  --color-on-brand: #04300a; /* 브랜드 위 다크 텍스트 */
+  /* ── 시맨틱 토큰 ── */
+  --color-brand: #e8930c; /* CTA·로고·활성 */
+  --color-brand-ink: #a86a0a; /* 읽히는 앰버 — 텍스트·아이콘·링크 */
+  --color-brand-weak: #fdf6e9;
+  --color-on-brand: #ffffff; /* 브랜드 위 텍스트 */
 
   --color-surface: #ffffff;
-  --color-surface-2: #f1f3f6;
-  --color-surface-3: #e9ecf1;
-  --color-border-strong: #d3d8df;
+  --color-surface-2: #f9fafc;
+  --color-surface-3: #eceff4;
+  --color-border-strong: #d5dae2;
 
-  --color-up: #e5443b; /* 상승 — 레드 */
-  --color-down: #2e7ce6; /* 하락 — 블루 */
-  --color-neutral: #7d858f; /* 보합 — 뉴트럴 */
-  --color-warn: #e08a12;
-  --color-info: #2e7ce6;
-  --color-up-bg: #fdecec;
-  --color-down-bg: #eaf2fd;
-  --color-warn-bg: #fef4e2;
-  --color-info-bg: #eaf2fd;
+  --color-up: #e5484d; /* 상승 — 레드 */
+  --color-down: #2f6bea; /* 하락 — 블루 */
+  --color-neutral: #667085; /* 보합 — 뉴트럴 */
+  --color-good: #12805c; /* 성공/이익 그린 */
+  --color-live: #17a673; /* 장중 도트 */
+  --color-warn: #a86a0a;
+  --color-info: #2b5fce;
+  --color-up-bg: #fdeeef;
+  --color-down-bg: #f0f4fd;
+  --color-warn-bg: #fdf6e9;
+  --color-info-bg: #f0f4fd;
+  --color-good-bg: #edf7f3;
 
-  /* 엘리베이션 — shadow-card / shadow-pop 유틸리티 생성 */
-  --shadow-card: 0 1px 3px rgba(20, 22, 26, 0.08), 0 1px 2px rgba(20, 22, 26, 0.04);
-  --shadow-pop: 0 10px 30px rgba(20, 22, 26, 0.1);
+  /* 엘리베이션 — 플랫 금융 톤: 카드는 보더 기반(그림자 없음), 팝오버/모달만 그림자 */
+  --shadow-card: 0 0 #0000;
+  --shadow-pop: 0 10px 30px rgba(23, 28, 38, 0.12);
 }
 
 @theme inline {
-  --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
-    "Segoe UI", sans-serif;
-  --font-mono: var(--font-geist-mono), "Geist Mono", ui-monospace, monospace;
+  --font-sans: var(--font-noto-sans-kr), "Noto Sans KR", -apple-system,
+    BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), "IBM Plex Mono", ui-monospace, monospace;
 }
 
 body {
@@ -83,10 +86,10 @@ body {
   letter-spacing: -0.01em;
 }
 
-/* Cobak: 그린 셀렉션 */
+/* 브랜드 오렌지 셀렉션 */
 ::selection {
-  background: #00ff16;
-  color: #04300a;
+  background: #e8930c;
+  color: #ffffff;
 }
 
 /* 숫자(시세)는 tabular-nums로 자리수 정렬 */
