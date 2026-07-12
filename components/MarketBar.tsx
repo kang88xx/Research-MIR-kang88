@@ -129,7 +129,8 @@ function DomTile({ t }: { t: BarTile }) {
 function MiningTile({ t }: { t: BarTile }) {
   const m = t.mining!;
   const loss = m.pricePct != null && m.pricePct < 0;
-  const col = m.pricePct == null ? "#667085" : loss ? "#e5484d" : "#12805c";
+  const col =
+    m.pricePct == null ? "var(--color-neutral)" : loss ? "var(--color-up)" : "var(--color-good)";
   return (
     <div className={CARD}>
       <div className="flex items-baseline text-[11.5px] font-semibold text-navy-900">
@@ -186,7 +187,14 @@ function FxTile({ t }: { t: BarTile }) {
                 <span className="text-ink-300">{d.daysAgo}D</span>
                 <b
                   className="font-semibold tabular-nums"
-                  style={{ color: d.diff > 0 ? "#e5484d" : d.diff < 0 ? "#2f6bea" : "#414a5c" }}
+                  style={{
+                    color:
+                      d.diff > 0
+                        ? "var(--color-up)"
+                        : d.diff < 0
+                          ? "var(--color-down)"
+                          : "var(--color-navy-600)",
+                  }}
                 >
                   {Math.round(d.rate).toLocaleString("ko-KR")}
                 </b>

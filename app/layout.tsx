@@ -34,8 +34,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko" className={`${notoSansKr.variable} ${plexMono.variable} h-full antialiased`}>
+    <html
+      lang="ko"
+      className={`${notoSansKr.variable} ${plexMono.variable} h-full antialiased`}
+      suppressHydrationWarning
+    >
       <body className="flex min-h-full flex-col">
+        {/* 다크 모드 초기화 — 페인트 전에 html.dark 적용(FOUC 방지). 저장값 없으면 시스템 설정. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=localStorage.getItem("theme");if(t==="dark"||(!t&&matchMedia("(prefers-color-scheme: dark)").matches))document.documentElement.classList.add("dark")}catch(e){}`,
+          }}
+        />
         <VisitTracker />
         {/* Header·MarketBar는 async라 Suspense로 감싸 셸을 막지 않게 한다(즉시 스트리밍) */}
         <Suspense fallback={<HeaderSkeleton />}>

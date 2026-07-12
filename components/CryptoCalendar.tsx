@@ -53,8 +53,8 @@ const CATEGORY_LABEL: Record<string, string> = {
 
 const BADGE_STYLE: Record<string, string> = {
   important: "bg-indigo-500/15 text-indigo-700",
-  good: "bg-emerald-500/15 text-emerald-700",
-  bad: "bg-red-500/15 text-red-700",
+  good: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
+  bad: "bg-red-500/15 text-red-700 dark:text-red-400",
   neutral: "bg-paper2 text-ink-500",
 };
 
@@ -63,36 +63,40 @@ const BADGE_STYLE: Record<string, string> = {
 type GroupStyle = { solid: string; text: string; dot: string; chip: string; tick: string; filterChip: string };
 const GROUP_COLORS: Record<string, GroupStyle> = {
   크립토: {
-    solid: "bg-[#2b5fce] text-white",
-    text: "text-[#2b5fce]",
+    solid: "bg-[#2b5fce] text-[#fff]",
+    text: "text-[#2b5fce] dark:text-[#7fa5f5]",
     dot: "bg-[#2b5fce]",
-    chip: "border-[#d6e1f8] bg-[#f0f4fd] text-navy-700",
-    tick: "text-[#2b5fce]",
-    filterChip: "border-[#d6e1f8] bg-[#f0f4fd] text-[#2b5fce]",
+    chip: "border-[#d6e1f8] bg-[#f0f4fd] text-navy-700 dark:border-[#28365a] dark:bg-[#18223a]",
+    tick: "text-[#2b5fce] dark:text-[#7fa5f5]",
+    filterChip:
+      "border-[#d6e1f8] bg-[#f0f4fd] text-[#2b5fce] dark:border-[#28365a] dark:bg-[#18223a] dark:text-[#7fa5f5]",
   },
   주식: {
-    solid: "bg-[#12805c] text-white",
-    text: "text-[#12805c]",
+    solid: "bg-[#12805c] text-[#fff]",
+    text: "text-[#12805c] dark:text-[#3fbf8f]",
     dot: "bg-[#12805c]",
-    chip: "border-[#cfe9de] bg-[#edf7f3] text-navy-700",
-    tick: "text-[#12805c]",
-    filterChip: "border-[#cfe9de] bg-[#edf7f3] text-[#12805c]",
+    chip: "border-[#cfe9de] bg-[#edf7f3] text-navy-700 dark:border-[#1d4034] dark:bg-[#122b22]",
+    tick: "text-[#12805c] dark:text-[#3fbf8f]",
+    filterChip:
+      "border-[#cfe9de] bg-[#edf7f3] text-[#12805c] dark:border-[#1d4034] dark:bg-[#122b22] dark:text-[#3fbf8f]",
   },
   매크로: {
-    solid: "bg-[#a86a0a] text-white",
-    text: "text-[#a86a0a]",
+    solid: "bg-[#a86a0a] text-[#fff]",
+    text: "text-[#a86a0a] dark:text-[#e8b25c]",
     dot: "bg-[#a86a0a]",
-    chip: "border-[#f1e1c2] bg-[#fdf6e9] text-navy-700",
-    tick: "text-[#a86a0a]",
-    filterChip: "border-[#f1e1c2] bg-[#fdf6e9] text-[#a86a0a]",
+    chip: "border-[#f1e1c2] bg-[#fdf6e9] text-navy-700 dark:border-[#4a3a17] dark:bg-[#2a2214]",
+    tick: "text-[#a86a0a] dark:text-[#e8b25c]",
+    filterChip:
+      "border-[#f1e1c2] bg-[#fdf6e9] text-[#a86a0a] dark:border-[#4a3a17] dark:bg-[#2a2214] dark:text-[#e8b25c]",
   },
   이벤트: {
-    solid: "bg-[#c53d78] text-white",
-    text: "text-[#c53d78]",
+    solid: "bg-[#c53d78] text-[#fff]",
+    text: "text-[#c53d78] dark:text-[#ef86b5]",
     dot: "bg-[#c53d78]",
-    chip: "border-[#f6d5e4] bg-[#fdf0f6] text-navy-700",
-    tick: "text-[#c53d78]",
-    filterChip: "border-[#f6d5e4] bg-[#fdf0f6] text-[#c53d78]",
+    chip: "border-[#f6d5e4] bg-[#fdf0f6] text-navy-700 dark:border-[#4a2338] dark:bg-[#301524]",
+    tick: "text-[#c53d78] dark:text-[#ef86b5]",
+    filterChip:
+      "border-[#f6d5e4] bg-[#fdf0f6] text-[#c53d78] dark:border-[#4a2338] dark:bg-[#301524] dark:text-[#ef86b5]",
   },
 };
 const GROUP_FALLBACK: GroupStyle = {
@@ -439,7 +443,7 @@ export default function CryptoCalendar({
               key={i}
               className={`relative min-h-20 border-b border-r border-hairline p-[7px] sm:min-h-[132px] [&:nth-child(7n)]:border-r-0 ${
                 day == null ? "bg-paper2" : ""
-              } ${isToday ? "z-10 bg-[#fffaf0] shadow-[inset_0_0_0_2px_var(--color-brand)]" : ""}`}
+              } ${isToday ? "z-10 bg-[#fffaf0] shadow-[inset_0_0_0_2px_var(--color-brand)] dark:bg-[#231d10]" : ""}`}
             >
               {day != null && (
                 <>

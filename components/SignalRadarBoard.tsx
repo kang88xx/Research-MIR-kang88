@@ -63,7 +63,7 @@ export default function SignalRadarBoard({
         <ul>
           {items.map(({ coin, chips }, idx) => (
             // 데이터 소스가 같은 심볼을 중복 반환할 수 있어 순번을 키에 포함한다
-            <li key={`${coin.symbol}-${idx}`} className="border-b border-[#f2f4f8] last:border-b-0">
+            <li key={`${coin.symbol}-${idx}`} className="border-b border-hairline last:border-b-0">
               <button
                 onClick={() => setSelected({ coin, chips })}
                 className={`${ROW_GRID} w-full px-4 py-[11px] text-left hover:bg-paper2 sm:px-6`}
@@ -95,7 +95,7 @@ export default function SignalRadarBoard({
         </ul>
       )}
 
-      <p className="border-t border-[#f2f4f8] px-4 py-[11px] text-[11px] text-ink-400 sm:px-6">
+      <p className="border-t border-hairline px-4 py-[11px] text-[11px] text-ink-400 sm:px-6">
         ※ 등락률과 거래대금(규모·7일 평균 대비 급증) 기준 주목도순 선별입니다. 종목을 누르면 시그널·김프 상세와 업비트·바이낸스 링크가 열립니다. 스테이블코인·거래대금 10억원 미만은 제외.
       </p>
 

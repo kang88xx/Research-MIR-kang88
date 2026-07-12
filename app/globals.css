@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* 클래스 기반 다크 모드 — html.dark 에서 dark: 유틸리티 활성화 */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* ───────────────────────────────────────────────────────────────
    2a "파이낸스 그레이드" Design tokens
    브랜드 오렌지 · 잉크 뉴트럴 표면 · 한국 증시 관례(상승=레드/하락=블루)
@@ -71,6 +74,86 @@
   /* 엘리베이션 — 플랫 금융 톤: 카드는 보더 기반(그림자 없음), 팝오버/모달만 그림자 */
   --shadow-card: 0 0 #0000;
   --shadow-pop: 0 10px 30px rgba(23, 28, 38, 0.12);
+}
+
+/* ───────────────────────────────────────────────────────────────
+   다크 모드 — html.dark 에서 @theme 토큰 값만 재정의.
+   유틸리티가 var(--color-*)를 참조하므로 사이트 전체가 일괄 전환된다.
+   navy·ink(텍스트/다크버튼)는 명암 반전, 브랜드 오렌지는 유지,
+   bg-white 계열 표면은 --color-white 재매핑으로 흡수한다.
+   ─────────────────────────────────────────────────────────────── */
+html {
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
+
+  /* 표면 · 그라운드 */
+  --color-paper: #0e1218;
+  --color-paper2: #141926;
+  --color-line: #262d3b;
+  --color-hairline: #1c2230;
+
+  /* navy* — 명암 반전: 다크버튼/헤드라인이 밝은 면으로 */
+  --color-navy-950: #f2f5f9;
+  --color-navy-900: #e9edf4;
+  --color-navy-700: #c4cbd8;
+  --color-navy-600: #a4adbe;
+  --color-navy-500: #8a94a6;
+  --color-navy-400: #8a94a6;
+  --color-navy-300: #4a5468;
+  --color-navy-100: #222938;
+
+  /* amber* — 브랜드 오렌지: 다크에서 살짝 밝게 */
+  --color-amber-500: #f0a12b;
+  --color-amber-400: #f7b04a;
+  --color-amber-300: #a8721c;
+  --color-amber-50: #2a2214;
+  --color-amber-700: #e8b25c;
+  --color-amber-800: #f2c67e;
+  --color-amber-900: #f8dba8;
+
+  /* indigo* — 블루(하락) */
+  --color-indigo-500: #5d8cf2;
+  --color-indigo-300: #33507e;
+  --color-indigo-700: #7fa5f5;
+
+  /* ink* — 텍스트 위계 반전 */
+  --color-ink-900: #e9edf4;
+  --color-ink-700: #c4cbd8;
+  --color-ink-500: #8a94a6;
+  --color-ink-400: #69738a;
+  --color-ink-300: #4a5468;
+
+  /* ── 시맨틱 토큰 ── */
+  --color-brand: #f0a12b;
+  --color-brand-ink: #e8b25c;
+  --color-brand-weak: #2a2214;
+  --color-on-brand: #171c26;
+
+  --color-surface: #161b26;
+  --color-surface-2: #1a2030;
+  --color-surface-3: #222938;
+  --color-border-strong: #39435a;
+
+  --color-up: #f0565b;
+  --color-down: #5d8cf2;
+  --color-neutral: #8a94a6;
+  --color-good: #2eb182;
+  --color-live: #2eb182;
+  --color-warn: #e8b25c;
+  --color-info: #7fa5f5;
+  --color-up-bg: #2c181b;
+  --color-down-bg: #161f36;
+  --color-warn-bg: #2a2214;
+  --color-info-bg: #161f36;
+  --color-good-bg: #12291f;
+
+  /* bg-white/text-white — 흰 표면을 다크 표면으로 흡수(버튼 텍스트는 반전 배경과 짝) */
+  --color-white: #161b26;
+
+  --shadow-pop: 0 10px 30px rgba(0, 0, 0, 0.55);
 }
 
 @theme inline {

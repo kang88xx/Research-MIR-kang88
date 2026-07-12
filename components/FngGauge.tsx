@@ -63,12 +63,12 @@ export default function FngGauge({
         y1={tail.y}
         x2={tip.x}
         y2={tip.y}
-        stroke="#20305f"
+        stroke="var(--color-navy-900)"
         strokeWidth={2.5}
         strokeLinecap="round"
       />
-      <circle cx={cx} cy={cy} r={4.5} fill="#20305f" />
-      <circle cx={cx} cy={cy} r={1.8} fill="#FFFFFF" />
+      <circle cx={cx} cy={cy} r={4.5} fill="var(--color-navy-900)" />
+      <circle cx={cx} cy={cy} r={1.8} fill="var(--color-surface)" />
 
       {/* 양끝 라벨 — baseline 모서리 */}
       <text x={cx - r} y={cy + 13} textAnchor="middle" fontSize={9} fill="#A0A6BB">
@@ -96,7 +96,7 @@ export default function FngGauge({
         textAnchor="middle"
         fontSize={width * 0.058}
         fontWeight={600}
-        fill="#0F1320"
+        fill="var(--color-ink-900)"
       >
         {label}
       </text>

@@ -43,7 +43,7 @@ export default function FxChart({ points }: { points: Pt[] }) {
           <g key={p.date} fontFamily="ui-monospace, monospace">
             <circle cx={cx} cy={cy} r={3} fill={c} />
             {/* 환율값 — 점 위 */}
-            <text x={cx} y={cy - 8} textAnchor="middle" fontSize="11" fontWeight="600" fill="#20305f">
+            <text x={cx} y={cy - 8} textAnchor="middle" fontSize="11" fontWeight="600" fill="var(--color-navy-900)">
               {Math.round(p.rate).toLocaleString()}
             </text>
             {/* 날짜 — 하단 */}

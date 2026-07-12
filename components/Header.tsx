@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import RefreshButton from "@/components/RefreshButton";
 import LiveViewers from "@/components/LiveViewers";
 import LangToggle from "@/components/LangToggle";
+import ThemeToggle from "@/components/ThemeToggle";
 import NavLinks from "@/components/NavLinks";
 
 const ADMIN_MIN_LEVEL = 10;
@@ -98,9 +99,10 @@ export default async function Header() {
             </>
           )}
 
-          {/* 동시접속 · 언어 — 회원가입(로그아웃) 오른쪽 */}
+          {/* 동시접속 · 다크모드 · 언어 — 회원가입(로그아웃) 오른쪽 */}
           <span className="flex items-center gap-3 border-l border-line pl-3">
             <LiveViewers />
+            <ThemeToggle />
             <LangToggle />
           </span>
         </div>
