@@ -1,6 +1,5 @@
 import { cachedJson } from "@/lib/cache";
 import { fetchJson } from "@/lib/http";
-import { getBubbles } from "@/lib/market";
 
 export type Ticker = {
   symbol: string;
@@ -415,7 +414,7 @@ export async function getKimchiTable(): Promise<KimchiTable> {
   }
 }
 
-// ── KRW 시그널 레이더 — 거래대금 상위 코인 + 등락 + 김프 (reason chip 원천) ──
+// ── KRW 시그널 레이더 — "지금 주목할 코인" 어텐션 랭킹 (등락·거래대금 급증·김프) ──
 export type RadarCoin = {
   symbol: string;
   nameKo: string; // 한글명 (업비트 마켓 기준)
@@ -424,60 +423,128 @@ export type RadarCoin = {
   kimchi: number | null; // % (바이낸스 USDT 페어 없으면 null)
   volumeKrw24h: number;
   volumeRank: number; // 유동성 종목 내 거래대금 순위(1-base)
+  surge: number | null; // 거래대금 급증배수 — 오늘 24h ÷ 직전 7일 평균 (일봉 8개 미만이면 null)
+  score: number; // 어텐션 점수 — 선정·정렬 기준 (아래 attentionScore)
 };
 
 export type SignalRadar = { coins: RadarCoin[]; updatedAt: string; usdKrwSource: FxSource };
 
 const RADAR_TTL_MS = 60_000;
 
+// 어텐션 점수 — "지금 주목할 이유"의 크기. 등락률과 거래대금(절대 규모·급증)을 중심으로 합산.
+// 김프 이탈은 참고 수준의 소가중치 (운영 결정 2026-07-13: 등락·거래량 중심, 김프 비중 축소).
+// 급증배수는 8배로 캡해 극단 종목이 점수를 무한 독식하지 않게 한다.
+function attentionScore(
+  change24h: number,
+  volumeKrw24h: number,
+  surge: number | null,
+  kimchi: number | null
+): number {
+  const changePt = Math.abs(change24h) * 2; // ±10% → 20pt
+  // 절대 거래대금 — 100억원 기준 0pt, 10배마다 ±12pt (1000억 +12pt, 10억 -12pt).
+  // 저유동성 코인이 자기 대비 급증배수만으로 상위를 독식하지 않게 규모로 보정한다.
+  const volumePt = volumeKrw24h > 0 ? (Math.log10(volumeKrw24h) - 10) * 12 : -24;
+  const surgePt = surge != null ? Math.min(surge, 8) * 4 : 0; // 3배 급증 → 12pt
+  const kimchiPt = kimchi != null ? Math.abs(kimchi) * 0.5 : 0; // 김프 ±3% → 1.5pt
+  return changePt + volumePt + surgePt + kimchiPt;
+}
+
+// 거래대금 급증배수 — 오늘 24h 누적(티커) ÷ 직전 7일 평균(일봉). 일봉 8개 미만(신규상장)이면 null.
+async function fetchVolumeSurge(market: string, todayVolKrw: number): Promise<number | null> {
+  try {
+    const candles = await fetchJson<{ candle_acc_trade_price: number }[]>(
+      `https://api.upbit.com/v1/candles/days?market=${market}&count=8`,
+      5000
+    );
+    if (candles.length < 8) return null; // [0]=오늘(부분) — 기준선은 이전 7일
+    const base = candles.slice(1, 8).reduce((a, c) => a + c.candle_acc_trade_price, 0) / 7;
+    return base > 0 ? todayVolKrw / base : null;
+  } catch {
+    return null;
+  }
+}
+
 async function fetchSignalRadar(): Promise<SignalRadar> {
-  // 하이브리드: '종목 범위'는 코인게코 글로벌 시총 상위로 잡고, 가격·역프·추세는 업비트/바이낸스로.
-  // → 잡코인 KRW 거래대금 순이 아니라 글로벌 주요 코인 위주로 보여주되, 역프·추세 신호는 유지.
-  const [{ rows: krwRows, fetchedAt }, fx, priceMap, namesKo, bubbles] = await Promise.all([
+  // 어텐션 랭킹: 시총 상위 고정이 아니라 "지금 주목할 이유"가 있는 종목을 전 KRW 마켓에서 선별.
+  // (운영 결정 2026-07-12: 메이저는 상단 마켓바에 상시 표시되므로 이 테이블은 전부 어텐션순)
+  // 1차(무비용): |등락|+거래대금 규모(+김프 소가중) → 상위 20개만 일봉 조회로 급증배수 → 최종 점수 상위 12.
+  const [{ rows: krwRows, fetchedAt }, fx, priceMap, namesKo] = await Promise.all([
     getAllKrwTickers(),
     fetchUsdKrw(),
     getBinancePrices().catch(() => new Map<string, number>()), // 김프는 보조 — 실패해도 레이더는 동작
     getUpbitNamesKo().catch(() => new Map<string, string>()), // 한글명도 보조 — 실패 시 심볼 폴백
-    getBubbles().catch(() => ({ coins: [], updatedAt: "" })), // 시총 순서도 보조 — 실패 시 거래대금 순 폴백
   ]);
   if (krwRows.length === 0) throw new Error("upbit all-KRW unavailable");
 
   // 스테이블코인(USDT·USDC 등)은 '봐야 할 코인'에서 제외
   const RADAR_STABLES = new Set(["USDT", "USDC", "DAI", "TUSD", "USDS", "FDUSD"]);
-  const liquid = [...krwRows]
-    .filter((r) => (r.acc_trade_price_24h ?? 0) >= LIQUIDITY_FLOOR_KRW)
+  // 레이더 전용 유동성 하한 10억원 — 거래대금이 너무 낮은 코인은 후보에서 제외
+  // (공용 LIQUIDITY_FLOOR_KRW 1억은 시장 통계용이라 그대로 둔다. 운영 결정 2026-07-13)
+  const RADAR_VOLUME_FLOOR_KRW = 1e9;
+  const marketWide = krwRows.filter((r) => (r.acc_trade_price_24h ?? 0) >= LIQUIDITY_FLOOR_KRW);
+  const liquid = marketWide
+    .filter((r) => (r.acc_trade_price_24h ?? 0) >= RADAR_VOLUME_FLOOR_KRW)
     .filter((r) => !RADAR_STABLES.has(r.market.replace("KRW-", "")));
 
   // 업비트 KRW 거래대금 순위(시장 전체) — "거래대금 N위" 배지의 기준은 그대로 유지
-  const byVolume = [...liquid].sort((a, b) => b.acc_trade_price_24h - a.acc_trade_price_24h);
+  const byVolume = [...marketWide].sort((a, b) => b.acc_trade_price_24h - a.acc_trade_price_24h);
   const volumeRank = new Map<string, number>();
   byVolume.forEach((r, i) => volumeRank.set(r.market.replace("KRW-", ""), i + 1));
 
-  // 심볼 → 업비트 ticker (KRW 가격·변동률·거래대금)
-  const upbitBySym = new Map(byVolume.map((r) => [r.market.replace("KRW-", ""), r]));
-
-  // 종목 선정: 코인게코 시총 상위 순서 중 '업비트 상장(유동성 충족)'인 것만. 비면 거래대금 순 폴백.
-  const mcapOrder = bubbles.coins.map((c) => c.symbol).filter((s) => upbitBySym.has(s));
-  const orderedSyms =
-    mcapOrder.length > 0 ? mcapOrder : byVolume.map((r) => r.market.replace("KRW-", ""));
-
-  const coins: RadarCoin[] = orderedSyms.slice(0, 12).map((symbol) => {
-    const r = upbitBySym.get(symbol)!;
+  const kimchiOf = (symbol: string, priceKrw: number): number | null => {
     const usd = priceMap.get(`${symbol}USDT`);
-    const kimchi =
-      usd != null && Number.isFinite(usd) && usd > 0
-        ? (r.trade_price / (usd * fx.rate) - 1) * 100
-        : null;
-    return {
-      symbol,
-      nameKo: namesKo.get(symbol) ?? symbol,
-      priceKrw: r.trade_price,
-      change24h: r.signed_change_rate * 100,
-      kimchi,
-      volumeKrw24h: r.acc_trade_price_24h,
-      volumeRank: volumeRank.get(symbol) ?? 0,
-    };
-  });
+    return usd != null && Number.isFinite(usd) && usd > 0
+      ? (priceKrw / (usd * fx.rate) - 1) * 100
+      : null;
+  };
+
+  // 1차 후보: 등락·김프만으로 상위 20개 (일봉 조회 비용을 후보군에만 지불)
+  const prelim = [...liquid]
+    .map((r) => {
+      const symbol = r.market.replace("KRW-", "");
+      return {
+        r,
+        symbol,
+        prelimScore: attentionScore(
+          r.signed_change_rate * 100,
+          r.acc_trade_price_24h,
+          null,
+          kimchiOf(symbol, r.trade_price)
+        ),
+      };
+    })
+    .sort((a, b) => b.prelimScore - a.prelimScore)
+    .slice(0, 20);
+
+  // 후보 20개 일봉 → 급증배수 (업비트 quotation 10/s 제한 고려, 4개씩 배치)
+  const surgeBySym = new Map<string, number | null>();
+  for (let i = 0; i < prelim.length; i += 4) {
+    const batch = prelim.slice(i, i + 4);
+    const results = await Promise.all(
+      batch.map((c) => fetchVolumeSurge(c.r.market, c.r.acc_trade_price_24h))
+    );
+    batch.forEach((c, j) => surgeBySym.set(c.symbol, results[j]));
+  }
+
+  const coins: RadarCoin[] = prelim
+    .map(({ r, symbol }) => {
+      const kimchi = kimchiOf(symbol, r.trade_price);
+      const change24h = r.signed_change_rate * 100;
+      const surge = surgeBySym.get(symbol) ?? null;
+      return {
+        symbol,
+        nameKo: namesKo.get(symbol) ?? symbol,
+        priceKrw: r.trade_price,
+        change24h,
+        kimchi,
+        volumeKrw24h: r.acc_trade_price_24h,
+        volumeRank: volumeRank.get(symbol) ?? 0,
+        surge,
+        score: attentionScore(change24h, r.acc_trade_price_24h, surge, kimchi),
+      };
+    })
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 12);
 
   return {
     coins,

@@ -61,7 +61,7 @@ export default async function ListingsStrip() {
           <h2 className="flex items-center gap-2 text-sm font-semibold text-ink-900"><span className="h-1.5 w-1.5 rounded-full bg-brand" aria-hidden />신규 상장·상폐 정보</h2>
           <span className="text-xs text-ink-500">{listings.length}건 · 예정 시각(KST)</span>
         </div>
-        {freshness && <span className="text-[10px] text-ink-400">{freshness} · @NewListingsFeed</span>}
+        {freshness && <span className="text-[10px] text-ink-400">{freshness}</span>}
       </header>
 
       {!ok ? (

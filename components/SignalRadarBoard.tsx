@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { Signal } from "@/lib/signals";
 import { toneClass } from "@/lib/signals";
-import { formatKrw, formatPercent } from "@/lib/format";
+import { formatKrw, formatPercent, formatVolume } from "@/lib/format";
 import CoinDrawer, { type DrawerCoin } from "@/components/CoinDrawer";
 import EventIcon from "@/components/EventIcon";
 
@@ -13,11 +13,12 @@ function changeColor(n: number): string {
   return "text-ink-500";
 }
 
-// 행 그리드 — # / 종목 / 현재가 / 24H / 시그널 / 김프 (시그널·김프는 sm 미만에서 숨김)
+// 행 그리드 — # / 종목 / 현재가 / 24H / 거래대금 (거래대금은 sm 미만에서 숨김)
+// 시그널·김프 컬럼은 테이블에서 제거 — 종목 클릭 시 드로어(CoinDrawer)에서 상세로 노출한다.
 const ROW_GRID =
-  "grid grid-cols-[22px_minmax(0,1fr)_92px_62px] items-center gap-1 sm:grid-cols-[26px_minmax(0,1fr)_104px_68px_minmax(0,176px)_56px]";
+  "grid grid-cols-[22px_minmax(0,1fr)_92px_62px] items-center gap-1 sm:grid-cols-[26px_minmax(0,1fr)_130px_76px_110px]";
 
-// 실시간 시세 테이블 — 2a 파이낸스 그레이드 (좌측 메인 컬럼)
+// 지금 주목할 코인 — 어텐션 랭킹 테이블, 2a 파이낸스 그레이드 (좌측 메인 컬럼)
 export default function SignalRadarBoard({
   items,
   breadth,
@@ -32,7 +33,7 @@ export default function SignalRadarBoard({
   return (
     <section className="overflow-hidden rounded-[14px] border border-line bg-white">
       <header className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 pt-4 pb-3 sm:px-6">
-        <h2 className="text-[17px] font-extrabold tracking-[-0.3px] text-navy-900">실시간 시세</h2>
+        <h2 className="text-[17px] font-extrabold tracking-[-0.3px] text-navy-900">지금 주목할 코인</h2>
         <span className="font-mono text-[11px] font-medium text-ink-400">{freshness}</span>
         {breadth && (
           <span
@@ -53,8 +54,7 @@ export default function SignalRadarBoard({
         <span>종목</span>
         <span className="text-right">현재가</span>
         <span className="text-right">24H</span>
-        <span className="hidden pl-4 sm:block">시그널</span>
-        <span className="hidden text-right sm:block">김프</span>
+        <span className="hidden text-right sm:block">거래대금(24H)</span>
       </div>
 
       {items.length === 0 ? (
@@ -86,24 +86,8 @@ export default function SignalRadarBoard({
                 >
                   {formatPercent(coin.change24h)}
                 </span>
-                <span className="hidden min-w-0 flex-wrap gap-[5px] pl-4 sm:flex">
-                  {chips.map((c, i) => (
-                    <span
-                      key={i}
-                      className={`rounded-[5px] px-[7px] py-0.5 text-[10.5px] font-bold whitespace-nowrap ${toneClass(
-                        c.tone
-                      )}`}
-                    >
-                      {c.label}
-                    </span>
-                  ))}
-                </span>
-                <span className="hidden text-right font-mono text-xs font-medium tabular-nums sm:block">
-                  {coin.kimchi != null ? (
-                    <span className={changeColor(coin.kimchi)}>{formatPercent(coin.kimchi)}</span>
-                  ) : (
-                    <span className="text-ink-300">—</span>
-                  )}
+                <span className="hidden text-right font-mono text-xs font-medium tabular-nums text-ink-500 sm:block">
+                  {formatVolume(coin.volumeKrw24h)}
                 </span>
               </button>
             </li>
@@ -112,7 +96,7 @@ export default function SignalRadarBoard({
       )}
 
       <p className="border-t border-[#f2f4f8] px-4 py-[11px] text-[11px] text-ink-400 sm:px-6">
-        ※ 스테이블코인(USDT·USDC 등)은 시세 변동 신호 대상이 아니므로 표시하지 않습니다.
+        ※ 등락률과 거래대금(규모·7일 평균 대비 급증) 기준 주목도순 선별입니다. 종목을 누르면 시그널·김프 상세와 업비트·바이낸스 링크가 열립니다. 스테이블코인·거래대금 10억원 미만은 제외.
       </p>
 
       <CoinDrawer item={selected} onClose={() => setSelected(null)} />

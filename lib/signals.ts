@@ -55,7 +55,7 @@ export function breadthSignal(upRatio: number | null): Signal | null {
 // listing: 오늘 상장 칩(거래소·유형별로 호출부에서 라벨/톤을 만들어 전달).
 // fxEstimated: 환율이 추정치(fallback)면 김프 칩은 가짜 신호가 되므로 표시하지 않는다.
 export function radarChips(
-  c: { volumeRank: number; change24h: number; kimchi: number | null },
+  c: { volumeRank: number; change24h: number; kimchi: number | null; surge?: number | null },
   opts: {
     event?: boolean;
     listing?: Signal;
@@ -66,6 +66,13 @@ export function radarChips(
 ): Signal[] {
   const chips: Signal[] = [];
   if (c.volumeRank <= 3) chips.push({ label: `거래대금 ${c.volumeRank}위`, tone: "note" });
+  // 거래대금 급증 — 직전 7일 평균 대비 배수 (어텐션 선정의 핵심 신호라 칩으로도 근거 노출)
+  if (c.surge != null && c.surge >= 2) {
+    chips.push({
+      label: `거래대금 ${c.surge.toFixed(1)}배↑`,
+      tone: c.surge >= 4 ? "alert" : "caution",
+    });
+  }
   if (opts.trend) {
     const tone: SignalTone = opts.trend === "과매수" ? "caution" : "note";
     chips.push({ label: opts.trend, tone });
