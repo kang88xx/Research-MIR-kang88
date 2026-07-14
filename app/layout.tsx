@@ -4,7 +4,6 @@ import { Noto_Sans_KR, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
 import TickerBar from "@/components/TickerBar";
-import LogoStrip from "@/components/LogoStrip";
 import MarketBar from "@/components/MarketBar";
 import AppPromo from "@/components/AppPromo";
 import VisitTracker from "@/components/VisitTracker";
@@ -24,8 +23,8 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Coinom 코인놈 - 크립토 커뮤니티",
-  description: "실시간 시세와 김치프리미엄, 크립토 커뮤니티 코인놈(Coinom)",
+  title: "가자가자 - 크립토 커뮤니티",
+  description: "실시간 시세와 김치프리미엄, 크립토 커뮤니티 가자가자",
 };
 
 export default function RootLayout({
@@ -40,10 +39,10 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="flex min-h-full flex-col">
-        {/* 다크 모드 초기화 — 페인트 전에 html.dark 적용(FOUC 방지). 저장값 없으면 시스템 설정. */}
+        {/* 다크 모드 초기화 — 페인트 전에 html.dark 적용(FOUC 방지). 다크가 기본, 명시적으로 light 저장 시에만 라이트. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{var t=localStorage.getItem("theme");if(t==="dark"||(!t&&matchMedia("(prefers-color-scheme: dark)").matches))document.documentElement.classList.add("dark")}catch(e){}`,
+            __html: `try{if(localStorage.getItem("theme")!=="light")document.documentElement.classList.add("dark")}catch(e){document.documentElement.classList.add("dark")}`,
           }}
         />
         <VisitTracker />
@@ -60,11 +59,10 @@ export default function RootLayout({
         </Suspense>
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">{children}</main>
         <AppPromo />
-        <LogoStrip />
         {/* 푸터 — 투명 배경 한 줄: 워드마크 · 출처 · 면책 + 우측 앱 심사 칩 */}
         <footer>
           <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-4 text-[11.5px] text-ink-400">
-            <span className="font-mono text-xs font-bold text-navy-600">COINOM</span>
+            <span className="text-xs font-bold text-navy-600">가자가자</span>
             <span>시세 출처: 업비트 · 바이낸스 · Yahoo(환율)</span>
             <span>투자 판단의 책임은 본인에게 있습니다.</span>
             <span className="ml-auto flex items-center gap-2">

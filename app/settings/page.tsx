@@ -5,7 +5,7 @@ import { NICK_MAX_CHANGES } from "@/lib/nickname";
 import NicknameForm from "@/components/NicknameForm";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "내 설정 · 코인놈" };
+export const metadata = { title: "내 설정 · 가자가자" };
 
 export default async function SettingsPage() {
   const session = await auth();

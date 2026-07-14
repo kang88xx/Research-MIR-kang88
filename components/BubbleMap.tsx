@@ -12,6 +12,7 @@ import {
   forceY,
   type Simulation,
 } from "d3-force";
+import GajaLoader from "@/components/GajaLoader";
 import { formatRelativeTime } from "@/lib/format";
 
 const EPOCH = new Date(0).toISOString();
@@ -440,7 +441,8 @@ export default function BubbleMap() {
         )}
 
         {renderNodes.length === 0 && !error && (
-          <div className="absolute inset-0 flex items-center justify-center text-xs text-ink-500">
+          <div className="absolute inset-0 flex items-center justify-center gap-2 text-xs text-ink-500">
+            <GajaLoader size={16} />
             버블맵 로딩 중…
           </div>
         )}

@@ -56,12 +56,12 @@ export default async function ListingsStrip() {
 
   return (
     <section className="rounded-xl border border-line bg-white shadow-card overflow-hidden transition-shadow hover:shadow-pop">
-      <header className="flex items-center justify-between border-b border-line bg-white px-4 py-3">
+      <header className="title-band flex items-center justify-between border-b px-4 py-3">
         <div className="flex items-baseline gap-2">
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-ink-900"><span className="h-1.5 w-1.5 rounded-full bg-brand" aria-hidden />신규 상장·상폐 정보</h2>
-          <span className="text-xs text-ink-500">{listings.length}건 · 예정 시각(KST)</span>
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-[#e5e4e2]"><span className="h-1.5 w-1.5 rounded-full bg-[#7e95a6]" aria-hidden />신규 상장·상폐 정보</h2>
+          <span className="text-xs text-[#aeb9c2]">{listings.length}건 · 예정 시각(KST)</span>
         </div>
-        {freshness && <span className="text-[10px] text-ink-400">{freshness}</span>}
+        {freshness && <span className="text-[10px] text-[#93a5b2]">{freshness}</span>}
       </header>
 
       {!ok ? (

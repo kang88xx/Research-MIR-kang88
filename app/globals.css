@@ -4,83 +4,85 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ───────────────────────────────────────────────────────────────
-   2a "파이낸스 그레이드" Design tokens
-   브랜드 오렌지 · 잉크 뉴트럴 표면 · 한국 증시 관례(상승=레드/하락=블루)
+   "옵시디언 크롬" Design tokens
+   Onyx #0A0A0A · Blue Slate #536878 · Alabaster Grey #E5E4E2
+   브랜드 블루슬레이트 · 알라바스터 웜그레이 표면 · 한국 증시 관례(상승=레드/하락=블루)
    기존 토큰 이름(paper/navy/amber/ink/indigo)은 유지하고 값만 재매핑 →
    사이트 전체 색·타이포가 일괄 전환된다. (그림자 없는 보더 기반 플랫 톤)
    ─────────────────────────────────────────────────────────────── */
 @theme {
-  /* 표면 · 그라운드 */
-  --color-paper: #f6f7f9; /* bg */
-  --color-paper2: #f9fafc; /* surface-2 — 카드 내부 헤더행/빈 셀 */
-  --color-line: #e4e8ef; /* border — 카드/구분 */
-  --color-hairline: #eef1f6; /* 헤어라인 — 카드 내부 구분 */
+  /* 표면 · 그라운드 — Alabaster Grey */
+  --color-paper: #e5e4e2; /* bg — Alabaster Grey */
+  --color-paper2: #f2f1ef; /* surface-2 — 카드 내부 헤더행/빈 셀 */
+  --color-line: #d2d0cc; /* border — 카드/구분 */
+  --color-hairline: #e8e7e4; /* 헤어라인 — 카드 내부 구분 */
 
-  /* navy* → 잉크 다크 스케일 — 다크버튼·표면·본문 보조 */
-  --color-navy-950: #10141c;
-  --color-navy-900: #171c26; /* ink — 다크 버튼/헤드라인 */
-  --color-navy-700: #2c3444; /* 본문 보조 */
-  --color-navy-600: #414a5c;
-  --color-navy-500: #667085;
-  --color-navy-400: #667085;
-  --color-navy-300: #c3cad4; /* 최흐림 텍스트·옅은 보더 */
-  --color-navy-100: #eceff4; /* 칩 배경 */
+  /* navy* → 오닉스 잉크 스케일 — 다크버튼·표면·본문 보조 */
+  --color-navy-950: #0a0a0a; /* Onyx */
+  --color-navy-900: #16181b; /* ink — 다크 버튼/헤드라인 */
+  --color-navy-700: #333d47; /* 본문 보조 */
+  --color-navy-600: #46525d;
+  --color-navy-500: #6b7883;
+  --color-navy-400: #6b7883;
+  --color-navy-300: #c0c5ca; /* 최흐림 텍스트·옅은 보더 */
+  --color-navy-100: #e9ebed; /* 칩 배경 */
 
-  /* amber* → 브랜드 오렌지 (로고·활성 탭·오늘 표시·도미넌스 강조) */
-  --color-amber-500: #e8930c; /* brand */
-  --color-amber-400: #d9880a; /* hover(진하게) */
-  --color-amber-300: #f2bb5e;
-  --color-amber-50: #fdf6e9; /* 앰버 틴트 배경 */
-  --color-amber-700: #a86a0a; /* 읽히는 다크 앰버(텍스트) */
-  --color-amber-800: #7c4e08;
-  --color-amber-900: #4a2f05;
+  /* amber* → 브랜드 블루슬레이트 (로고·활성 탭·오늘 표시·도미넌스 강조) */
+  --color-amber-500: #536878; /* brand — Blue Slate */
+  --color-amber-400: #465a69; /* hover(진하게) */
+  --color-amber-300: #93a5b2;
+  --color-amber-50: #eef1f3; /* 슬레이트 틴트 배경 */
+  --color-amber-700: #3f5160; /* 읽히는 다크 슬레이트(텍스트) */
+  --color-amber-800: #303f4b;
+  --color-amber-900: #1d2831;
 
-  /* indigo* → 블루(하락) */
-  --color-indigo-500: #2f6bea;
-  --color-indigo-300: #9db9f2;
-  --color-indigo-700: #2b5fce;
+  /* indigo* → 블루(하락) — 슬레이트 톤에 맞춰 살짝 뮤트 */
+  --color-indigo-500: #3b6fb0;
+  --color-indigo-300: #a3bdd9;
+  --color-indigo-700: #33619c;
 
   /* ink* → 텍스트 위계 */
-  --color-ink-900: #171c26; /* fg */
-  --color-ink-700: #414a5c; /* fg-2 */
-  --color-ink-500: #667085; /* fg-3 — 서브 */
-  --color-ink-400: #98a2b3; /* 흐림 */
-  --color-ink-300: #c3cad4; /* 최흐림 */
+  --color-ink-900: #16181b; /* fg */
+  --color-ink-700: #46525d; /* fg-2 */
+  --color-ink-500: #6b7883; /* fg-3 — 서브 */
+  --color-ink-400: #98a1aa; /* 흐림 */
+  --color-ink-300: #c0c5ca; /* 최흐림 */
 
   /* ── 시맨틱 토큰 ── */
-  --color-brand: #e8930c; /* CTA·로고·활성 */
-  --color-brand-ink: #a86a0a; /* 읽히는 앰버 — 텍스트·아이콘·링크 */
-  --color-brand-weak: #fdf6e9;
+  --color-brand: #536878; /* CTA·로고·활성 — Blue Slate */
+  --color-brand-ink: #3f5160; /* 읽히는 슬레이트 — 텍스트·아이콘·링크 */
+  --color-brand-weak: #eef1f3;
   --color-on-brand: #ffffff; /* 브랜드 위 텍스트 */
 
   --color-surface: #ffffff;
-  --color-surface-2: #f9fafc;
-  --color-surface-3: #eceff4;
-  --color-border-strong: #d5dae2;
+  --color-surface-2: #f2f1ef;
+  --color-surface-3: #e9ebed;
+  --color-border-strong: #c4c2be;
 
-  --color-up: #e5484d; /* 상승 — 레드 */
-  --color-down: #2f6bea; /* 하락 — 블루 */
-  --color-neutral: #667085; /* 보합 — 뉴트럴 */
+  --color-up: #d24b50; /* 상승 — 레드(뮤트) */
+  --color-down: #3b6fb0; /* 하락 — 블루(뮤트) */
+  --color-neutral: #6b7883; /* 보합 — 뉴트럴 */
   --color-good: #12805c; /* 성공/이익 그린 */
   --color-live: #17a673; /* 장중 도트 */
-  --color-warn: #a86a0a;
-  --color-info: #2b5fce;
-  --color-up-bg: #fdeeef;
-  --color-down-bg: #f0f4fd;
-  --color-warn-bg: #fdf6e9;
-  --color-info-bg: #f0f4fd;
-  --color-good-bg: #edf7f3;
+  --color-warn: #8a6b34;
+  --color-info: #33619c;
+  --color-up-bg: #faeceb;
+  --color-down-bg: #ecf1f7;
+  --color-warn-bg: #f3eee1;
+  --color-info-bg: #ecf1f7;
+  --color-good-bg: #ecf4f0;
 
   /* 엘리베이션 — 플랫 금융 톤: 카드는 보더 기반(그림자 없음), 팝오버/모달만 그림자 */
   --shadow-card: 0 0 #0000;
-  --shadow-pop: 0 10px 30px rgba(23, 28, 38, 0.12);
+  --shadow-pop: 0 10px 30px rgba(10, 10, 10, 0.14);
 }
 
 /* ───────────────────────────────────────────────────────────────
    다크 모드 — html.dark 에서 @theme 토큰 값만 재정의.
    유틸리티가 var(--color-*)를 참조하므로 사이트 전체가 일괄 전환된다.
-   navy·ink(텍스트/다크버튼)는 명암 반전, 브랜드 오렌지는 유지,
-   bg-white 계열 표면은 --color-white 재매핑으로 흡수한다.
+   배경은 온전한 오닉스(#0A0A0A), 헤드라인은 알라바스터(#E5E4E2),
+   브랜드 블루슬레이트는 다크에서 살짝 밝게. bg-white 계열 표면은
+   --color-white 재매핑으로 흡수한다.
    ─────────────────────────────────────────────────────────────── */
 html {
   color-scheme: light;
@@ -89,69 +91,69 @@ html {
 html.dark {
   color-scheme: dark;
 
-  /* 표면 · 그라운드 */
-  --color-paper: #0e1218;
-  --color-paper2: #141926;
-  --color-line: #262d3b;
-  --color-hairline: #1c2230;
+  /* 표면 · 그라운드 — Onyx */
+  --color-paper: #0a0a0a;
+  --color-paper2: #131517;
+  --color-line: #24272b;
+  --color-hairline: #1a1d20;
 
-  /* navy* — 명암 반전: 다크버튼/헤드라인이 밝은 면으로 */
-  --color-navy-950: #f2f5f9;
-  --color-navy-900: #e9edf4;
-  --color-navy-700: #c4cbd8;
-  --color-navy-600: #a4adbe;
-  --color-navy-500: #8a94a6;
-  --color-navy-400: #8a94a6;
-  --color-navy-300: #4a5468;
-  --color-navy-100: #222938;
+  /* navy* — 명암 반전: 다크버튼/헤드라인이 알라바스터 면으로 */
+  --color-navy-950: #f4f3f1;
+  --color-navy-900: #e5e4e2; /* Alabaster Grey */
+  --color-navy-700: #c2c6cb;
+  --color-navy-600: #a0a7ae;
+  --color-navy-500: #848d96;
+  --color-navy-400: #848d96;
+  --color-navy-300: #454c55;
+  --color-navy-100: #1e2226;
 
-  /* amber* — 브랜드 오렌지: 다크에서 살짝 밝게 */
-  --color-amber-500: #f0a12b;
-  --color-amber-400: #f7b04a;
-  --color-amber-300: #a8721c;
-  --color-amber-50: #2a2214;
-  --color-amber-700: #e8b25c;
-  --color-amber-800: #f2c67e;
-  --color-amber-900: #f8dba8;
+  /* amber* — 브랜드 블루슬레이트: 다크에서 살짝 밝게 */
+  --color-amber-500: #7e95a6;
+  --color-amber-400: #8fa5b5;
+  --color-amber-300: #55697a;
+  --color-amber-50: #171c21;
+  --color-amber-700: #a4b7c6;
+  --color-amber-800: #bccbd7;
+  --color-amber-900: #d6e0e8;
 
   /* indigo* — 블루(하락) */
-  --color-indigo-500: #5d8cf2;
-  --color-indigo-300: #33507e;
-  --color-indigo-700: #7fa5f5;
+  --color-indigo-500: #6b93c4;
+  --color-indigo-300: #2f4763;
+  --color-indigo-700: #8badd6;
 
   /* ink* — 텍스트 위계 반전 */
-  --color-ink-900: #e9edf4;
-  --color-ink-700: #c4cbd8;
-  --color-ink-500: #8a94a6;
-  --color-ink-400: #69738a;
-  --color-ink-300: #4a5468;
+  --color-ink-900: #e5e4e2;
+  --color-ink-700: #c2c6cb;
+  --color-ink-500: #848d96;
+  --color-ink-400: #646d77;
+  --color-ink-300: #454c55;
 
   /* ── 시맨틱 토큰 ── */
-  --color-brand: #f0a12b;
-  --color-brand-ink: #e8b25c;
-  --color-brand-weak: #2a2214;
-  --color-on-brand: #171c26;
+  --color-brand: #7e95a6;
+  --color-brand-ink: #a4b7c6;
+  --color-brand-weak: #171c21;
+  --color-on-brand: #101315;
 
-  --color-surface: #161b26;
-  --color-surface-2: #1a2030;
-  --color-surface-3: #222938;
-  --color-border-strong: #39435a;
+  --color-surface: #121416;
+  --color-surface-2: #17191c;
+  --color-surface-3: #1e2226;
+  --color-border-strong: #383e45;
 
-  --color-up: #f0565b;
-  --color-down: #5d8cf2;
-  --color-neutral: #8a94a6;
+  --color-up: #e1595e;
+  --color-down: #6b93c4;
+  --color-neutral: #848d96;
   --color-good: #2eb182;
   --color-live: #2eb182;
-  --color-warn: #e8b25c;
-  --color-info: #7fa5f5;
-  --color-up-bg: #2c181b;
-  --color-down-bg: #161f36;
-  --color-warn-bg: #2a2214;
-  --color-info-bg: #161f36;
-  --color-good-bg: #12291f;
+  --color-warn: #c7a05e;
+  --color-info: #8badd6;
+  --color-up-bg: #291416;
+  --color-down-bg: #131b25;
+  --color-warn-bg: #241d10;
+  --color-info-bg: #131b25;
+  --color-good-bg: #10261c;
 
   /* bg-white/text-white — 흰 표면을 다크 표면으로 흡수(버튼 텍스트는 반전 배경과 짝) */
-  --color-white: #161b26;
+  --color-white: #121416;
 
   --shadow-pop: 0 10px 30px rgba(0, 0, 0, 0.55);
 }
@@ -169,9 +171,9 @@ body {
   letter-spacing: -0.01em;
 }
 
-/* 브랜드 오렌지 셀렉션 */
+/* 브랜드 블루슬레이트 셀렉션 */
 ::selection {
-  background: #e8930c;
+  background: #536878;
   color: #ffffff;
 }
 
@@ -190,7 +192,25 @@ body {
   color: var(--color-ink-500);
 }
 
-/* 아이브로우 — 섹션 라벨 (Cobak: 브랜드 잉크 그린) */
+/* 옵시디언 크롬 헤더 — 오닉스 바탕 + 우상단 슬레이트 글로우.
+   타이틀 밴드보다 어둡고 조용하게(위계), 라이트·다크 공통 고정색. */
+.header-chrome {
+  background: radial-gradient(120% 200% at 85% 0%, #2b3a46 0%, #141a20 48%, #0b0d0f 100%);
+}
+/* 헤더 하단 1px 크롬 헤어라인 — 슬레이트가 스치는 시그니처 라인 */
+.header-chrome-edge {
+  background: linear-gradient(90deg, #1c2229 0%, #536878 55%, #1c2229 100%);
+}
+
+/* 옵시디언 크롬 타이틀 밴드 — 페이지/섹션 타이틀 강조 배경.
+   팔레트 원본 컬러칩의 그라데이션을 그대로 살린 다크 밴드라
+   라이트·다크 모드 공통 고정색을 쓴다(내부 텍스트도 고정 밝은 색으로). */
+.title-band {
+  border-color: #2b333c;
+  background: linear-gradient(115deg, #0b0d0f 0%, #16202a 45%, #3c4e5d 82%, #5c7383 112%);
+}
+
+/* 아이브로우 — 섹션 라벨 (브랜드 잉크 슬레이트) */
 .eyebrow {
   font-family: var(--font-mono);
   font-size: 11px;
@@ -198,6 +218,33 @@ body {
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--color-brand-ink);
+}
+
+/* 가자가자 로더 — 브랜드 셰브런이 뒤→앞 순차 점등("가자, 가자") */
+@keyframes gaja-step {
+  0%,
+  100% {
+    opacity: 0.22;
+  }
+  25% {
+    opacity: 1;
+  }
+  55% {
+    opacity: 0.22;
+  }
+}
+.gaja-step1 {
+  animation: gaja-step 1.2s ease-in-out infinite;
+}
+.gaja-step2 {
+  animation: gaja-step 1.2s ease-in-out 0.3s infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .gaja-step1,
+  .gaja-step2 {
+    animation: none;
+    opacity: 0.8;
+  }
 }
 
 @keyframes ticker-scroll {

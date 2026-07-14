@@ -34,6 +34,7 @@ export type TelegramFeed = {
 export type TgRankedPost = TgPost & {
   channel: string; // 핸들 (@ 제외)
   channelName: string;
+  channelPhoto: string | null; // 채널 프로필 이미지 (t.me 프리뷰의 telesco.pe CDN, 없으면 null)
   viewCount: number; // views 표기를 숫자화 ("1.2K" → 1200)
   score: number; // 랭킹 점수 — 조회수·반응 혼합 (아래 rankScore 참조)
 };
@@ -43,7 +44,7 @@ export type TelegramPopular = {
   updatedAt: string;
 };
 
-const POPULAR_KEY = "telegramPopular:v1";
+const POPULAR_KEY = "telegramPopular:v2"; // v2: channelPhoto 추가
 const POPULAR_TTL_MS = 15 * 60_000; // 15분 — 30채널 × 96사이클/일 ≈ 2,900요청으로 차단 리스크 억제
 const POPULAR_TOP = 12;
 const POPULAR_WINDOW_MS = 24 * 3600_000; // 1차 랭킹 윈도우 — 부족하면 72h로 확장
@@ -315,8 +316,14 @@ async function fetchChannelPosts(ch: { handle: string; name: string }): Promise<
       headers: { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)" },
     });
     if (!res.ok) return null;
+    const html = await res.text();
     // 프리뷰 페이지는 최근 ~20개를 담는다 — 랭킹 후보로 전부 수집
-    const posts = parseTelegramPreview(await res.text(), ch.handle, 20);
+    const posts = parseTelegramPreview(html, ch.handle, 20);
+    // 채널 프로필 이미지 — 같은 HTML의 채널 헤더(우선) 또는 메시지 프로필에서 추출(추가 요청 없음)
+    const photoMatch =
+      html.match(/tgme_(?:page_photo_image|channel_info_header_photo|header_link)[^>]*>\s*<img[^>]+src="([^"]+)"/) ??
+      html.match(/tgme_widget_message_user_photo[^>]*>\s*<img[^>]+src="([^"]+)"/);
+    const channelPhoto = photoMatch ? decodeEntities(photoMatch[1]) : null;
     const reactionsOff = posts.every((p) => p.reactions === 0); // 채널이 반응 기능을 껐다고 간주
     return posts.map((p) => {
       const viewCount = viewsToNumber(p.views);
@@ -324,6 +331,7 @@ async function fetchChannelPosts(ch: { handle: string; name: string }): Promise<
         ...p,
         channel: ch.handle,
         channelName: ch.name,
+        channelPhoto,
         viewCount,
         score: rankScore(viewCount, reactionsOff ? Math.round(viewCount * NEUTRAL_REACTION_RATE) : p.reactions),
       };

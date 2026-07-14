@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getTickers } from "@/lib/ticker";
 import { auth } from "@/lib/auth";
 import { formatKrw, formatPercent, formatPostDate } from "@/lib/format";
+import PageTitle from "@/components/PageTitle";
 
 export const dynamic = "force-dynamic";
 
@@ -34,23 +35,21 @@ export default async function AnalysisPage() {
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <p className="eyebrow">Official Market Analysis</p>
-          <h1 className="text-lg font-semibold text-navy-900">시장 분석</h1>
-          <p className="text-xs text-ink-500">
-            운영진이 작성하는 공식 분석입니다. 작성 시점 가격이 자동 기록되어 현재가와 비교됩니다.
-          </p>
-        </div>
-        {canWrite && (
-          <Link
-            href="/analysis/write"
-            className="bg-amber-500 px-4 py-1.5 text-sm font-semibold text-navy-950 hover:bg-amber-400"
-          >
-            분석 작성
-          </Link>
-        )}
-      </div>
+      <PageTitle
+        eyebrow="Official Market Analysis"
+        title="시장 분석"
+        description="운영진이 작성하는 공식 분석입니다. 작성 시점 가격이 자동 기록되어 현재가와 비교됩니다."
+        actions={
+          canWrite && (
+            <Link
+              href="/analysis/write"
+              className="bg-brand px-4 py-1.5 text-sm font-semibold text-on-brand hover:bg-amber-400"
+            >
+              분석 작성
+            </Link>
+          )
+        }
+      />
 
       {posts.length === 0 ? (
         <p className="border border-line bg-white py-12 text-center text-sm text-ink-500">

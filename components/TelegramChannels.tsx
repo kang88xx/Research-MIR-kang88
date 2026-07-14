@@ -12,6 +12,7 @@ const MAX_POSTS = 12;
 
 type Post = {
   channel: string; // 채널명
+  avatar: string | null; // 채널 프로필 이미지 URL (없으면 이니셜 뱃지)
   time: string; // 게시 시각 표기
   title: string; // 게시글 제목
   views: string; // 조회수
@@ -34,9 +35,9 @@ function compact(n: number): string {
 
 // 샘플 데이터 — 피드 수신 실패/최초 수집 전 폴백
 const SAMPLE_POSTS: Post[] = [
-  { channel: "우리는 트윗충", time: "2시간 전", title: "비트코인 5.8만달러 지지 확인, 단기 반등 시나리오 점검", views: "12.4K", reactions: 231, postUrl: "https://t.me/twitchoong" },
-  { channel: "캔들의 신 관점", time: "5시간 전", title: "USDT 김프 -1.8% 진입, 역프 확대 주의", views: "15.2K", reactions: 468, postUrl: "https://t.me/godofcandle" },
-  { channel: "해달의 투자 정보", time: "8시간 전", title: "바이낸스 신규 상장 공지: 신규 토큰 현물 마켓 추가", views: "21.7K", reactions: 152, postUrl: "https://t.me/seaotterbtc" },
+  { channel: "우리는 트윗충", avatar: null, time: "2시간 전", title: "비트코인 5.8만달러 지지 확인, 단기 반등 시나리오 점검", views: "12.4K", reactions: 231, postUrl: "https://t.me/twitchoong" },
+  { channel: "캔들의 신 관점", avatar: null, time: "5시간 전", title: "USDT 김프 -1.8% 진입, 역프 확대 주의", views: "15.2K", reactions: 468, postUrl: "https://t.me/godofcandle" },
+  { channel: "해달의 투자 정보", avatar: null, time: "8시간 전", title: "바이낸스 신규 상장 공지: 신규 토큰 현물 마켓 추가", views: "21.7K", reactions: 152, postUrl: "https://t.me/seaotterbtc" },
 ];
 
 export default function TelegramChannels({ popular }: { popular?: TelegramPopular | null }) {
@@ -47,6 +48,7 @@ export default function TelegramChannels({ popular }: { popular?: TelegramPopula
   const posts: Post[] = (live
     ? popular.posts.map((p) => ({
         channel: p.channelName,
+        avatar: p.channelPhoto ?? null,
         time: kstTimeLabel(p.dateIso),
         title: p.title,
         views: p.views,
@@ -62,29 +64,29 @@ export default function TelegramChannels({ popular }: { popular?: TelegramPopula
   };
 
   return (
-    <section className="overflow-hidden rounded-[14px] border border-line bg-white px-5 py-4">
-      <header className="flex items-center gap-2">
-        <h2 className="text-[15.5px] font-extrabold tracking-[-0.3px] text-navy-900">
+    <section className="overflow-hidden rounded-[14px] border border-line bg-white">
+      <header className="title-band flex items-center gap-2 border-b px-5 py-3">
+        <h2 className="text-[15.5px] font-extrabold tracking-[-0.3px] text-[#e5e4e2]">
           텔레그램 인기 포스팅
         </h2>
         {!live && (
-          <span className="rounded-[5px] bg-brand-weak px-1.5 py-0.5 text-[10px] font-bold text-brand-ink">
+          <span className="rounded-[5px] bg-[#ffffff1a] px-1.5 py-0.5 text-[10px] font-bold text-[#c2ccd4]">
             샘플
           </span>
         )}
-        <span className="text-[10.5px] font-medium text-ink-400">24시간 · 인기순</span>
+        <span className="text-[10.5px] font-medium text-[#93a5b2]">24시간 · 인기순</span>
         <div className="ml-auto flex gap-1">
           <button
             onClick={() => slide(-1)}
             aria-label="이전 포스팅"
-            className="grid h-6 w-6 place-items-center rounded-[6px] border border-line text-[11px] text-ink-500 hover:bg-paper2 hover:text-navy-900"
+            className="grid h-6 w-6 place-items-center rounded-[6px] border border-[#3a4653] text-[11px] text-[#aeb9c2] hover:bg-[#ffffff14] hover:text-[#e5e4e2]"
           >
             ‹
           </button>
           <button
             onClick={() => slide(1)}
             aria-label="다음 포스팅"
-            className="grid h-6 w-6 place-items-center rounded-[6px] border border-line text-[11px] text-ink-500 hover:bg-paper2 hover:text-navy-900"
+            className="grid h-6 w-6 place-items-center rounded-[6px] border border-[#3a4653] text-[11px] text-[#aeb9c2] hover:bg-[#ffffff14] hover:text-[#e5e4e2]"
           >
             ›
           </button>
@@ -93,18 +95,33 @@ export default function TelegramChannels({ popular }: { popular?: TelegramPopula
 
       <ul
         ref={railRef}
-        className="mt-3 flex snap-x snap-mandatory gap-2.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex snap-x snap-mandatory gap-2.5 overflow-x-auto px-5 pb-4 pt-3.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {posts.map((p, i) => (
           <li
             key={p.postUrl}
             className="w-[264px] shrink-0 snap-start rounded-[10px] border border-hairline bg-white px-3.5 py-3 hover:border-line"
           >
-            <div className="flex items-baseline gap-1.5 text-[11px] text-ink-400">
+            <div className="flex items-center gap-1.5 text-[11px] text-ink-400">
               <span
                 className={`shrink-0 font-mono font-bold ${i < 3 ? "text-brand-ink" : "text-ink-400"}`}
               >
                 {i + 1}
+              </span>
+              {/* 채널 아바타 — 이니셜 뱃지 위에 프로필 이미지를 겹쳐, 로드 실패 시 뱃지가 남는다 */}
+              <span className="relative grid h-[18px] w-[18px] shrink-0 place-items-center overflow-hidden rounded-full bg-navy-100 text-[9px] font-bold text-ink-500">
+                {p.channel.slice(0, 1)}
+                {p.avatar && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={p.avatar}
+                    alt=""
+                    className="absolute inset-0 h-full w-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                    }}
+                  />
+                )}
               </span>
               <b className="truncate font-bold text-navy-600">{p.channel}</b>
               <span className="ml-auto shrink-0">{p.time}</span>

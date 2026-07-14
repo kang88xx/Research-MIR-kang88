@@ -25,12 +25,12 @@ export default function LiveViewers() {
   if (n === 0) return null;
 
   return (
-    <span className="flex items-center gap-1.5 text-[11px] text-ink-500">
+    <span className="flex items-center gap-1.5 text-[11px] text-[#8b98a3]">
       <span className="relative flex h-1.5 w-1.5">
         <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-60" />
         <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
       </span>
-      동시접속 <span className="font-mono font-semibold text-navy-900">{n.toLocaleString()}</span>
+      동시접속 <span className="font-mono font-semibold text-[#e5e4e2]">{n.toLocaleString()}</span>
     </span>
   );
 }

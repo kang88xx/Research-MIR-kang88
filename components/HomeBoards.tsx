@@ -23,11 +23,11 @@ export default async function HomeBoards() {
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
       <section className="overflow-hidden rounded-[14px] border border-line bg-white">
-        <header className="flex items-baseline justify-between border-b border-hairline px-5 py-3.5">
-          <h2 className="text-[15.5px] font-extrabold tracking-[-0.3px] text-navy-900">
+        <header className="title-band flex items-baseline justify-between border-b px-5 py-3">
+          <h2 className="text-[15.5px] font-extrabold tracking-[-0.3px] text-[#e5e4e2]">
             자유게시판 최신글
           </h2>
-          <Link href="/free" className="text-xs font-bold text-brand-ink hover:underline">
+          <Link href="/free" className="text-xs font-bold text-[#93a5b2] hover:text-[#e5e4e2] hover:underline">
             더보기 →
           </Link>
         </header>
@@ -63,9 +63,9 @@ export default async function HomeBoards() {
 
       <aside className="flex flex-col gap-6">
         <section className="overflow-hidden rounded-[14px] border border-line bg-white">
-          <header className="flex items-baseline justify-between border-b border-hairline px-5 py-3.5">
-            <h2 className="text-[15.5px] font-extrabold tracking-[-0.3px] text-navy-900">시장 분석</h2>
-            <Link href="/analysis" className="text-xs font-bold text-brand-ink hover:underline">
+          <header className="title-band flex items-baseline justify-between border-b px-5 py-3">
+            <h2 className="text-[15.5px] font-extrabold tracking-[-0.3px] text-[#e5e4e2]">시장 분석</h2>
+            <Link href="/analysis" className="text-xs font-bold text-[#93a5b2] hover:text-[#e5e4e2] hover:underline">
               더보기 →
             </Link>
           </header>

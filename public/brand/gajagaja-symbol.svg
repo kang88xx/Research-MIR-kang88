@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <!-- 가자가자 더블 셰브런 — 뒤(딥 슬레이트)·앞(크롬 그라데이션)·선단 알라바스터 점 -->
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#a9bcc9"/>
+      <stop offset="0.55" stop-color="#7e95a6"/>
+      <stop offset="1" stop-color="#46596a"/>
+    </linearGradient>
+  </defs>
+  <path d="M26 26 L58 60 L26 94" fill="none" stroke="#3c4e5d" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M60 26 L92 60 L60 94" fill="none" stroke="url(#g)" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="92" cy="60" r="5" fill="#e5e4e2"/>
+</svg>

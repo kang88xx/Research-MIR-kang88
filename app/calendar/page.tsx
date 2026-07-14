@@ -6,8 +6,7 @@ export default function CalendarPage() {
   const now = new Date();
   return (
     <div>
-      <p className="eyebrow">Crypto Calendar</p>
-      <h1 className="mb-4 text-lg font-semibold text-navy-900">크립토 캘린더</h1>
+      {/* 타이틀은 캘린더 카드의 밴드 헤더가 담당 — 중복 배너 없음 */}
       <CryptoCalendar initialYear={now.getFullYear()} initialMonth={now.getMonth() + 1} />
     </div>
   );

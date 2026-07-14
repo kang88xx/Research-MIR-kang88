@@ -14,7 +14,7 @@ export default function RefreshButton() {
       disabled={pending}
       aria-label="시세 업데이트"
       title="시세 강제 업데이트 (캐시 비우고 새로 받아옴)"
-      className="flex shrink-0 items-center gap-1.5 border border-navy-300 px-2.5 py-1 text-[11px] font-medium text-ink-500 hover:border-navy-900 hover:text-navy-900 disabled:opacity-60"
+      className="flex shrink-0 items-center gap-1.5 border border-[#3a4653] px-2.5 py-1 text-[11px] font-medium text-[#aeb9c2] hover:border-[#93a5b2] hover:text-[#e5e4e2] disabled:opacity-60"
     >
       <svg
         className={`h-3.5 w-3.5 ${pending ? "animate-spin" : ""}`}

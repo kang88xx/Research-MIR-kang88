@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { formatPostDate } from "@/lib/format";
+import PageTitle from "@/components/PageTitle";
 
 export const dynamic = "force-dynamic";
 
@@ -37,18 +38,18 @@ export default async function FreeBoardPage({
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <p className="eyebrow">Community · Free Board</p>
-          <h1 className="text-lg font-semibold text-navy-900">{board.name}</h1>
-        </div>
-        <Link
-          href="/free/write"
-          className="bg-amber-500 px-4 py-1.5 text-sm font-semibold text-navy-950 hover:bg-amber-400"
-        >
-          글쓰기
-        </Link>
-      </div>
+      <PageTitle
+        eyebrow="Community · Free Board"
+        title={board.name}
+        actions={
+          <Link
+            href="/free/write"
+            className="bg-brand px-4 py-1.5 text-sm font-semibold text-on-brand hover:bg-amber-400"
+          >
+            글쓰기
+          </Link>
+        }
+      />
 
       <div className="overflow-hidden border border-line bg-white">
         <table className="w-full text-sm">

@@ -1,3 +1,5 @@
+import GajaLoader from "@/components/GajaLoader";
+
 export default function Sparkline({
   values,
   width = 280,
@@ -16,12 +18,14 @@ export default function Sparkline({
   pulse?: boolean; // 끝점 진행중 펄스 모션 (장중일 때만 true)
 }) {
   if (values.length < 2) {
+    // 자리가 좁아(76×26) 텍스트 대신 브랜드 로더만 — 의미는 title로 보존
     return (
       <div
-        className="flex items-center justify-center text-[11px] text-ink-500"
+        className="flex items-center justify-center"
         style={{ width, height }}
+        title="데이터 수집 중"
       >
-        데이터 수집 중...
+        <GajaLoader size={Math.min(16, height - 8)} />
       </div>
     );
   }
@@ -51,12 +55,14 @@ export default function Sparkline({
           x2={width - pad}
           y1={y(baseline)}
           y2={y(baseline)}
-          stroke="#A0A6BB"
+          style={{ stroke: "var(--color-navy-300)" }}
           strokeWidth="1"
           strokeDasharray="3 3"
         />
       )}
-      <polyline points={points} fill="none" stroke={stroke} strokeWidth={accentRing ? 1.4 : 1.2} />
+      {/* stroke는 style로 — SVG 속성과 달리 CSS 변수(var(--color-up) 등)를 받을 수 있어
+          다크 모드에서 등락 색이 자동 전환된다 (hex 문자열도 그대로 동작) */}
+      <polyline points={points} fill="none" style={{ stroke }} strokeWidth={accentRing ? 1.4 : 1.2} />
       {accentRing && (
         <>
           {/* 정적 링 (항상 보이는 노란 강조) */}
@@ -65,7 +71,7 @@ export default function Sparkline({
             cy={y(values[values.length - 1])}
             r="5"
             fill="none"
-            stroke={accentRing}
+            style={{ stroke: accentRing }}
             strokeWidth="1.6"
             opacity="0.55"
           />
@@ -75,7 +81,7 @@ export default function Sparkline({
             cy={y(values[values.length - 1])}
             r="5"
             fill="none"
-            stroke={accentRing}
+            style={{ stroke: accentRing }}
             strokeWidth="1.8"
           >
             <animate attributeName="r" values="4;11" dur="1.6s" repeatCount="indefinite" />
@@ -90,7 +96,7 @@ export default function Sparkline({
           cy={y(values[values.length - 1])}
           r="2.5"
           fill="none"
-          stroke={stroke}
+          style={{ stroke }}
           strokeWidth="1.4"
         >
           <animate attributeName="r" values="2.5;9" dur="1.6s" repeatCount="indefinite" />
@@ -101,7 +107,7 @@ export default function Sparkline({
         cx={x(values.length - 1)}
         cy={y(values[values.length - 1])}
         r={accentRing ? "3" : "2.5"}
-        fill={accentRing ?? stroke}
+        style={{ fill: accentRing ?? stroke }}
       />
     </svg>
   );

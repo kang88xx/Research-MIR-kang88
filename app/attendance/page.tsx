@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import AttendanceButton from "@/components/AttendanceButton";
+import PageTitle from "@/components/PageTitle";
 
 export const dynamic = "force-dynamic";
 
@@ -30,11 +31,11 @@ export default async function AttendancePage() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <p className="eyebrow">Daily Check-in</p>
-      <h1 className="mb-1 text-lg font-semibold text-navy-900">출석체크</h1>
-      <p className="mb-4 text-xs text-ink-500">
-        매일 출석하면 10포인트가 적립됩니다. (KST 기준 {today})
-      </p>
+      <PageTitle
+        eyebrow="Daily Check-in"
+        title="출석체크"
+        description={`매일 출석하면 10포인트가 적립됩니다. (KST 기준 ${today})`}
+      />
 
       <section className="border border-line bg-white px-5 py-8 text-center">
         {!session?.user ? (

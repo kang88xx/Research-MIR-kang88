@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { TickerSnapshot } from "@/lib/ticker";
 import { formatKrw, formatPercent, formatVolume } from "@/lib/format";
+import GajaLoader from "@/components/GajaLoader";
 
 function changeColor(n: number | null): string {
   if (n == null) return "text-ink-500";
@@ -87,7 +88,10 @@ export default function TickerTable() {
           ) : snapshot == null ? (
             <tr>
               <td colSpan={4} className="px-4 py-6 text-center text-ink-500">
-                시세 불러오는 중...
+                <span className="inline-flex items-center gap-2">
+                  <GajaLoader size={15} />
+                  시세 불러오는 중…
+                </span>
               </td>
             </tr>
           ) : (

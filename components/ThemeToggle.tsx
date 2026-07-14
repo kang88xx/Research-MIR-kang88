@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 // 다크 모드 토글 — html.dark 클래스 + localStorage("theme") 저장.
-// 첫 방문 기본값은 시스템 설정(layout의 인라인 스크립트가 페인트 전에 적용).
+// 첫 방문 기본값은 다크(layout의 인라인 스크립트가 페인트 전에 적용).
 export default function ThemeToggle() {
   const [dark, setDark] = useState<boolean | null>(null);
 
@@ -28,7 +28,7 @@ export default function ThemeToggle() {
       onClick={toggle}
       aria-label={dark ? "라이트 모드로 전환" : "다크 모드로 전환"}
       title={dark ? "라이트 모드" : "다크 모드"}
-      className="grid h-7 w-7 place-items-center rounded-[7px] text-ink-500 hover:bg-navy-100 hover:text-navy-900"
+      className="grid h-7 w-7 place-items-center rounded-[7px] text-[#aeb9c2] hover:bg-[#ffffff14] hover:text-[#e5e4e2]"
     >
       {dark ? (
         /* 해 — 라이트로 전환 */

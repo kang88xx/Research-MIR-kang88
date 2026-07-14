@@ -56,15 +56,15 @@ export default async function Home() {
 
         {/* 버블맵은 옆의 랭킹 테이블 높이에 맞춰 늘어난다 (ResizeObserver가 부모 크기 추적) */}
         <section className="flex min-w-0 flex-col overflow-hidden rounded-[14px] border border-line bg-white">
-          <header className="flex items-baseline gap-2 px-4 pt-4 pb-3 sm:px-6">
-            <h2 className="text-[17px] font-extrabold tracking-[-0.3px] text-navy-900">
+          <header className="title-band flex items-baseline gap-2 border-b px-4 py-3 sm:px-6">
+            <h2 className="text-[17px] font-extrabold tracking-[-0.3px] text-[#e5e4e2]">
               시총 상위 버블맵
             </h2>
-            <span className="ml-auto font-mono text-[11px] font-medium tracking-[0.7px] text-ink-400">
+            <span className="ml-auto font-mono text-[11px] font-medium tracking-[0.7px] text-[#93a5b2]">
               BUBBLE MAP
             </span>
           </header>
-          <div className="flex-1 px-3 pb-3">
+          <div className="flex-1 px-3 py-3">
             <div className="h-[340px] lg:h-full lg:min-h-[420px]">
               <BubbleMap />
             </div>

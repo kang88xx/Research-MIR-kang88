@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useEffect } from "react";
+import EventIcon from "@/components/EventIcon";
 import type { RadarCoin } from "@/lib/ticker";
 import type { Signal } from "@/lib/signals";
 import { toneClass } from "@/lib/signals";
@@ -44,7 +45,8 @@ export default function CoinDrawer({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-baseline justify-between">
-          <h3 className="flex items-baseline gap-2 text-xl font-bold text-navy-900">
+          <h3 className="flex items-center gap-2 text-xl font-bold text-navy-900">
+            <EventIcon ticker={coin.symbol} size={26} upbitLogo />
             {coin.nameKo}
             <span className="font-mono text-xs font-medium tracking-wide text-ink-400">{coin.symbol}</span>
           </h3>

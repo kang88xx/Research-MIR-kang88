@@ -9,6 +9,7 @@ import KimchiTable from "@/components/KimchiTable";
 import ExchangeSpread from "@/components/ExchangeSpread";
 import PortfolioForm from "@/components/PortfolioForm";
 import PortfolioRow from "@/components/PortfolioRow";
+import PageTitle from "@/components/PageTitle";
 
 export const dynamic = "force-dynamic";
 
@@ -55,8 +56,7 @@ export default async function DashboardPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <p className="eyebrow">Data Dashboard</p>
-        <h1 className="mb-4 text-lg font-semibold text-navy-900">데이터 대시보드</h1>
+        <PageTitle eyebrow="Data Dashboard" title="데이터 대시보드" />
         <MarketCards />
       </div>
 

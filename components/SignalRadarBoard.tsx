@@ -32,9 +32,9 @@ export default function SignalRadarBoard({
 
   return (
     <section className="overflow-hidden rounded-[14px] border border-line bg-white">
-      <header className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 pt-4 pb-3 sm:px-6">
-        <h2 className="text-[17px] font-extrabold tracking-[-0.3px] text-navy-900">지금 주목할 코인</h2>
-        <span className="font-mono text-[11px] font-medium text-ink-400">{freshness}</span>
+      <header className="title-band flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-3 sm:px-6">
+        <h2 className="text-[17px] font-extrabold tracking-[-0.3px] text-[#e5e4e2]">지금 주목할 코인</h2>
+        <span className="font-mono text-[11px] font-medium text-[#93a5b2]">{freshness}</span>
         {breadth && (
           <span
             className={`ml-auto rounded-[7px] px-2.5 py-1 text-[11.5px] font-bold ${toneClass(
@@ -70,7 +70,7 @@ export default function SignalRadarBoard({
               >
                 <span className="font-mono text-xs font-medium text-ink-400">{idx + 1}</span>
                 <span className="flex min-w-0 items-center gap-2.5">
-                  <EventIcon ticker={coin.symbol} size={24} />
+                  <EventIcon ticker={coin.symbol} size={24} upbitLogo />
                   <b className="truncate text-[13.5px] font-bold text-navy-900">{coin.nameKo}</b>
                   <span className="hidden shrink-0 font-mono text-[11px] font-medium text-ink-400 md:inline">
                     {coin.symbol}

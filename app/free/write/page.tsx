@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { createPost } from "@/lib/actions";
 import SubmitButton from "@/components/SubmitButton";
+import PageTitle from "@/components/PageTitle";
 
 export default async function WritePage() {
   const session = await auth();
@@ -9,8 +10,7 @@ export default async function WritePage() {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <p className="eyebrow">Write</p>
-      <h1 className="mb-4 text-lg font-semibold text-navy-900">글쓰기 — 자유게시판</h1>
+      <PageTitle eyebrow="Write" title="글쓰기 — 자유게시판" />
       <form action={createPost} className="flex flex-col gap-3">
         <input type="hidden" name="board" value="free" />
         <input

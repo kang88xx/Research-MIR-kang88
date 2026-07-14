@@ -12,7 +12,7 @@ const NAV: [string, string][] = [
   ["/box", "랜덤박스"],
 ];
 
-// 헤더 네비 — 활성 탭은 잉크 700 + 브랜드 오렌지 인셋 언더라인 (2a 파이낸스 그레이드)
+// 헤더 네비 — 옵시디언 크롬 다크 헤더 위: 활성 탭은 알라바스터 + 라이트 슬레이트 인셋 언더라인
 export default function NavLinks() {
   const pathname = usePathname();
   const isActive = (href: string) =>
@@ -28,8 +28,8 @@ export default function NavLinks() {
             href={href}
             className={`shrink-0 px-3 py-2.5 transition-colors md:py-[18px] ${
               active
-                ? "font-bold text-navy-900 shadow-[inset_0_-2px_0_var(--color-brand)]"
-                : "font-medium text-ink-500 hover:text-navy-900"
+                ? "font-bold text-[#f4f3f1] shadow-[inset_0_-2px_0_#8fa5b5]"
+                : "font-medium text-[#8b98a3] hover:text-[#e5e4e2]"
             }`}
           >
             {label}

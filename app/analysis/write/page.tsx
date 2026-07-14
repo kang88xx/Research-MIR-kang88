@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createPost } from "@/lib/actions";
 import SubmitButton from "@/components/SubmitButton";
+import PageTitle from "@/components/PageTitle";
 
 const EDITOR_MIN_LEVEL = 10;
 const SYMBOLS = ["BTC", "ETH", "XRP", "SOL", "TRX"];
@@ -30,11 +31,11 @@ export default async function AnalysisWritePage() {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <p className="eyebrow">Write</p>
-      <h1 className="mb-1 text-lg font-semibold text-navy-900">분석 작성 — 시장 분석</h1>
-      <p className="mb-4 text-xs text-ink-500">
-        등록 시 선택한 코인의 현재가가 자동 기록되며, 이후 실제 가격과 비교되어 표시됩니다.
-      </p>
+      <PageTitle
+        eyebrow="Write"
+        title="분석 작성 — 시장 분석"
+        description="등록 시 선택한 코인의 현재가가 자동 기록되며, 이후 실제 가격과 비교되어 표시됩니다."
+      />
       <form action={createPost} className="flex flex-col gap-3">
         <input type="hidden" name="board" value="analysis" />
         <div className="flex gap-3">

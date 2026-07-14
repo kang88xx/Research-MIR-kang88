@@ -34,9 +34,19 @@ function badgeColor(ticker: string): string {
   return BADGE_COLORS[hash % BADGE_COLORS.length];
 }
 
-// 코인/종목 아이콘: 이모지 → 수집한 로컬 로고(public/logos/coins) → 이니셜 뱃지 순서로 폴백
-export default function EventIcon({ ticker, size = 13 }: { ticker: string; size?: number }) {
-  const [imgFailed, setImgFailed] = useState(false);
+// 코인/종목 아이콘: 이모지 → 수집한 로컬 로고(public/logos/coins) → (옵션) 업비트 로고 CDN
+// → 이니셜 뱃지 순서로 폴백. upbitLogo는 업비트 KRW 마켓 심볼이 확실한 곳(시그널 레이더)에서만
+// 켠다 — 캘린더처럼 주식 티커가 섞이는 곳에서 켜면 동명 코인 로고가 잘못 붙을 수 있다.
+export default function EventIcon({
+  ticker,
+  size = 13,
+  upbitLogo = false,
+}: {
+  ticker: string;
+  size?: number;
+  upbitLogo?: boolean;
+}) {
+  const [failCount, setFailCount] = useState(0);
   const T = ticker.toUpperCase();
   const emoji = EMOJI_ICON[T];
 
@@ -47,16 +57,23 @@ export default function EventIcon({ ticker, size = 13 }: { ticker: string; size?
       </span>
     );
   }
-  if (COIN_LOGOS.has(T) && !imgFailed) {
+
+  const sources: string[] = [];
+  if (COIN_LOGOS.has(T)) sources.push(`/logos/coins/${T}.png`);
+  if (upbitLogo) sources.push(`https://static.upbit.com/logos/${T}.png`);
+  const src = sources[failCount];
+
+  if (src) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
-        src={`/logos/coins/${T}.png`}
+        key={src} // src가 바뀌면 엘리먼트를 새로 만들어 onError 상태를 리셋
+        src={src}
         width={size}
         height={size}
         alt=""
         className="shrink-0 rounded-full object-contain"
-        onError={() => setImgFailed(true)}
+        onError={() => setFailCount((n) => n + 1)}
       />
     );
   }

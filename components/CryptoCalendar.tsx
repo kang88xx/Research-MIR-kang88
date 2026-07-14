@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import EventIcon from "@/components/EventIcon";
+import GajaLoader from "@/components/GajaLoader";
 
 type EventSource = {
   name: string;
@@ -317,14 +318,14 @@ export default function CryptoCalendar({
 
   return (
     <section className="overflow-hidden rounded-[14px] border border-line bg-white">
-      <header className="flex flex-wrap items-center gap-x-3.5 gap-y-2 px-4 pt-4 pb-3 sm:px-6">
-        <h2 className="text-[17px] font-extrabold tracking-[-0.3px] text-navy-900">
+      <header className="title-band flex flex-wrap items-center gap-x-3.5 gap-y-2 border-b px-4 py-3 sm:px-6">
+        <h2 className="text-[17px] font-extrabold tracking-[-0.3px] text-[#e5e4e2]">
           크립토 캘린더
         </h2>
-        <div className="flex shrink-0 items-center gap-2.5 font-mono text-[13.5px] font-semibold text-navy-600">
+        <div className="flex shrink-0 items-center gap-2.5 font-mono text-[13.5px] font-semibold text-[#c2c6cb]">
           <button
             onClick={() => moveMonth(-1)}
-            className="px-1 text-ink-300 hover:text-navy-900"
+            className="px-1 text-[#8fa0ad] hover:text-[#e5e4e2]"
             aria-label="이전 달"
           >
             ‹
@@ -334,15 +335,19 @@ export default function CryptoCalendar({
           </span>
           <button
             onClick={() => moveMonth(1)}
-            className="px-1 text-ink-300 hover:text-navy-900"
+            className="px-1 text-[#8fa0ad] hover:text-[#e5e4e2]"
             aria-label="다음 달"
           >
             ›
           </button>
         </div>
+        <span className="ml-auto hidden text-[11.5px] text-[#93a5b2] lg:inline">
+          이벤트를 누르면 개별 출처를 확인할 수 있습니다
+        </span>
+      </header>
 
-        {/* 그룹 필터 칩 — 전체(다크 채움) + 카테고리 틴트 칩 */}
-        <div className="flex flex-wrap items-center gap-1.5">
+      {/* 그룹 필터 칩 — 전체(다크 채움) + 카테고리 틴트 칩 (밴드 아래 별도 행) */}
+      <div className="flex flex-wrap items-center gap-1.5 px-4 pt-3 sm:px-6">
           <button
             onClick={() => setExcluded(new Set())}
             aria-pressed={excluded.size === 0}
@@ -373,11 +378,7 @@ export default function CryptoCalendar({
               </button>
             );
           })}
-        </div>
-        <span className="ml-auto hidden text-[11.5px] text-ink-400 lg:inline">
-          이벤트를 누르면 개별 출처를 확인할 수 있습니다
-        </span>
-      </header>
+      </div>
 
       {/* 소분류 필터 — 보조 위계, 활성 그룹만 노출 */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line px-4 py-2">
@@ -422,7 +423,10 @@ export default function CryptoCalendar({
       </div>
 
       {loading ? (
-        <p className="py-16 text-center text-sm text-ink-500">캘린더 불러오는 중...</p>
+        <p className="flex items-center justify-center gap-2 py-16 text-center text-sm text-ink-500">
+          <GajaLoader size={17} />
+          캘린더 불러오는 중…
+        </p>
       ) : error ? (
         <div className="flex flex-col items-center gap-2 py-16 text-center">
           <p className="text-sm text-ink-500">일정을 불러오지 못했습니다.</p>
@@ -443,7 +447,7 @@ export default function CryptoCalendar({
               key={i}
               className={`relative min-h-20 border-b border-r border-hairline p-[7px] sm:min-h-[132px] [&:nth-child(7n)]:border-r-0 ${
                 day == null ? "bg-paper2" : ""
-              } ${isToday ? "z-10 bg-[#fffaf0] shadow-[inset_0_0_0_2px_var(--color-brand)] dark:bg-[#231d10]" : ""}`}
+              } ${isToday ? "z-10 bg-brand-weak shadow-[inset_0_0_0_2px_var(--color-brand)]" : ""}`}
             >
               {day != null && (
                 <>

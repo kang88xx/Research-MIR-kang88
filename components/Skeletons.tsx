@@ -30,15 +30,16 @@ function SectionShell({ minBody }: { minBody: string }) {
 // ── 레이아웃: 상단 헤더 ──
 export function HeaderSkeleton() {
   return (
-    <header className="border-b border-line bg-white">
-      <div className="mx-auto flex h-[58px] max-w-6xl items-center gap-3 px-4">
-        <div className="h-7 w-28 animate-pulse rounded bg-paper2" />
+    <header className="header-chrome relative">
+      <div className="mx-auto flex h-[60px] max-w-6xl items-center gap-3 px-4">
+        <div className="h-7 w-28 animate-pulse rounded bg-[#ffffff14]" />
         <div className="ml-auto hidden gap-4 sm:flex">
-          <Bar className="h-4 w-12 animate-pulse" />
-          <Bar className="h-4 w-12 animate-pulse" />
-          <Bar className="h-4 w-12 animate-pulse" />
+          <div className="h-4 w-12 animate-pulse rounded bg-[#ffffff14]" />
+          <div className="h-4 w-12 animate-pulse rounded bg-[#ffffff14]" />
+          <div className="h-4 w-12 animate-pulse rounded bg-[#ffffff14]" />
         </div>
       </div>
+      <div className="header-chrome-edge absolute inset-x-0 bottom-0 h-px" aria-hidden />
     </header>
   );
 }

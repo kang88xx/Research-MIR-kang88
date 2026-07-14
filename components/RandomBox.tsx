@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { openRandomBox } from "@/lib/actions";
+import { rarityMeta as rarityOf } from "@/lib/box";
 
 export type PrizeLite = {
   id: number;
@@ -12,47 +13,36 @@ export type PrizeLite = {
   rarity: string;
 };
 
-// 등급별 색·라벨 — globals 토큰과 동일 팔레트
-const RARITY: Record<string, { label: string; color: string }> = {
-  common: { label: "커먼", color: "#a0a6bb" }, // navy-300
-  rare: { label: "레어", color: "#636ddb" }, // indigo-500
-  epic: { label: "에픽", color: "#efc540" }, // amber-500
-  legendary: { label: "레전더리", color: "#dc2626" }, // red
-};
-function rarityOf(r: string) {
-  return RARITY[r] ?? RARITY.common;
-}
-
-const ITEM = 112; // 셀 1칸 폭(px): w-24(96) + gap-4(16)
+const ITEM = 128; // 셀 1칸 폭(px): w-28(112) + gap-4(16)
 const STRIP = 64; // 릴 길이
 const WIN_INDEX = 56; // 당첨 셀이 놓이는 위치 (끝부분에서 감속하며 정지)
 const SPIN_MS = 4800; // 약 5초 모션
 
 type Phase = "idle" | "rolling" | "result";
 
+// 셀 — 실사 이미지가 카드 상단을 꽉 채우는 풀블리드 레이아웃
 function Cell({ prize, dim }: { prize: PrizeLite; dim?: boolean }) {
   const { color } = rarityOf(prize.rarity);
   return (
     <div
-      className="flex h-28 w-24 shrink-0 flex-col items-center justify-center gap-1 border bg-white px-1 text-center"
+      className="flex h-40 w-28 shrink-0 flex-col overflow-hidden border bg-white text-center"
       style={{ borderColor: color, opacity: dim ? 0.55 : 1 }}
     >
-      <div
-        className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full"
-        style={{ background: `${color}22` }}
-      >
+      <div className="h-28 w-full shrink-0 overflow-hidden" style={{ background: `${color}22` }}>
         {prize.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={prize.imageUrl} alt="" className="h-full w-full object-cover" />
         ) : (
-          <span className="text-lg font-bold" style={{ color }}>
+          <span className="flex h-full items-center justify-center text-3xl font-bold" style={{ color }}>
             {prize.name.slice(0, 1)}
           </span>
         )}
       </div>
-      <span className="line-clamp-2 text-[11px] font-semibold leading-tight text-navy-900">
-        {prize.name}
-      </span>
+      <div className="flex flex-1 items-center justify-center px-1">
+        <span className="line-clamp-2 text-[11px] font-semibold leading-tight text-navy-900">
+          {prize.name}
+        </span>
+      </div>
     </div>
   );
 }
@@ -143,7 +133,7 @@ export default function RandomBox({
       {/* 릴 뷰포트 */}
       <div
         ref={viewportRef}
-        className="relative h-32 overflow-hidden border border-line bg-paper2"
+        className="relative h-44 overflow-hidden border border-line bg-paper2"
       >
         {/* 중앙 포인터 */}
         <div className="pointer-events-none absolute left-1/2 top-0 z-10 h-full w-px -translate-x-1/2 bg-amber-500" />
@@ -190,27 +180,28 @@ export default function RandomBox({
       {phase === "result" && result && won && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-950/60 p-4" onClick={reset}>
           <div
-            className="w-full max-w-xs border-2 bg-white px-6 py-7 text-center"
+            className="w-full max-w-sm border-2 bg-white px-6 py-7 text-center"
             style={{ borderColor: won.color, boxShadow: `0 0 40px ${won.color}66` }}
             onClick={(e) => e.stopPropagation()}
           >
             <p className="eyebrow" style={{ color: won.color }}>
               {won.label} 당첨
             </p>
+            {/* 당첨 실사 — 모달 폭을 거의 채우는 대형 스퀘어 */}
             <div
-              className="mx-auto my-3 flex h-24 w-24 items-center justify-center overflow-hidden rounded-full"
+              className="mx-auto my-4 flex aspect-square w-full max-w-[264px] items-center justify-center overflow-hidden rounded-xl"
               style={{ background: `${won.color}22`, boxShadow: `0 0 24px ${won.color}55` }}
             >
               {result.imageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={result.imageUrl} alt="" className="h-full w-full object-cover" />
               ) : (
-                <span className="text-3xl font-bold" style={{ color: won.color }}>
+                <span className="text-6xl font-bold" style={{ color: won.color }}>
                   {result.name.slice(0, 1)}
                 </span>
               )}
             </div>
-            <h3 className="text-lg font-bold text-navy-900">{result.name}</h3>
+            <h3 className="text-xl font-bold text-navy-900">{result.name}</h3>
             {result.description && (
               <p className="mt-1 text-xs text-ink-500">{result.description}</p>
             )}

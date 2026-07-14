@@ -1,5 +1,6 @@
 import { getMarketBar, type BarTile } from "@/lib/marketbar";
 import { formatPercent } from "@/lib/format";
+import GajaLoader from "@/components/GajaLoader";
 import Sparkline from "@/components/Sparkline";
 import LiveSparkline from "@/components/LiveSparkline";
 import MarketStatus, { type Mkt } from "@/components/MarketStatus";
@@ -8,19 +9,20 @@ import MarketStatus, { type Mkt } from "@/components/MarketStatus";
 const CARD = "rounded-[14px] border border-line bg-white px-3 py-2";
 // 제목행 — 캘린더 칩 기준 11.5px semibold
 const TITLE = "flex items-center gap-[7px] text-[11.5px] font-semibold text-navy-900";
-// 값행 숫자 — mono 15~16px medium (캘린더 톤에 맞춰 축소)
-const VAL = "font-mono text-[15px] font-medium leading-none tracking-[-0.3px] tabular-nums text-navy-900";
-const VAL_LG = "font-mono text-[16px] font-medium leading-none tabular-nums";
+// 값행 숫자 — mono 16px semibold 단일 스케일 (codex 교차검증 2026-07-14: 15/16 혼용은
+// 같은 그리드에서 리듬만 깨고 의미 없음 → 16px 통일, 모노 숫자에 음수 자간 제거)
+const VAL = "font-mono text-[16px] font-semibold leading-none tabular-nums text-navy-900";
+const VAL_LG = "font-mono text-[16px] font-semibold leading-none tabular-nums";
 // 변동률 — mono 11px
 const CHG = "font-mono text-[11px] font-medium tabular-nums whitespace-nowrap";
-// 서브행 — 상단 헤어라인 + 10px, 줄바꿈 없이 가로 1줄 고정 (라벨만 말줄임)
-const SUB = "mt-1 flex flex-nowrap items-baseline justify-between gap-x-1.5 overflow-hidden border-t border-hairline pt-1 text-[9px] text-ink-500";
+// 서브행 — 상단 헤어라인 + 9.5px(9px는 가독 한계 아래, 10px는 대표종목 라벨이 잘림), 가로 1줄 고정
+const SUB = "mt-1 flex flex-nowrap items-baseline justify-between gap-x-1.5 overflow-hidden border-t border-hairline pt-1 text-[9.5px] text-ink-500";
 
-// 등락 색: 한국식 (상승=빨강, 하락=파랑)
+// 등락 색: 한국식 (상승=빨강, 하락=파랑). 스파크라인 stroke는 CSS 변수로 — 다크 모드 자동 전환
 function dir(n: number | null): { text: string; stroke: string } {
-  if (n != null && n > 0) return { text: "text-up", stroke: "#e5484d" }; // 상승 — 레드
-  if (n != null && n < 0) return { text: "text-down", stroke: "#2f6bea" }; // 하락 — 블루
-  return { text: "text-neutral", stroke: "#98a2b3" };
+  if (n != null && n > 0) return { text: "text-up", stroke: "var(--color-up)" }; // 상승 — 레드
+  if (n != null && n < 0) return { text: "text-down", stroke: "var(--color-down)" }; // 하락 — 블루
+  return { text: "text-neutral", stroke: "var(--color-neutral)" };
 }
 
 // 타일 키 → 시장 구분 (장중/장마감 판별용). 2행 타일은 tile.market을 우선 사용.
@@ -32,13 +34,14 @@ function marketOf(t: BarTile): Mkt | null {
   return null;
 }
 
-// 공포·탐욕 지수 색 — 공포=레드, 중립=그레이, 탐욕=그린
+// 공포·탐욕 지수 색 — 공포=레드, 중립=그레이, 탐욕=그린 (지수 시맨틱 스케일은 유지하되
+// 토큰 참조로 바꿔 팔레트·다크 모드와 동기화)
 function fngColor(v: number): string {
-  if (v < 25) return "#e5484d"; // 극단적 공포
-  if (v < 45) return "#e8930c"; // 공포
-  if (v < 55) return "#667085"; // 중립
-  if (v < 75) return "#17a673"; // 탐욕
-  return "#12805c"; // 극단적 탐욕
+  if (v < 25) return "var(--color-up)"; // 극단적 공포 — 레드
+  if (v < 45) return "var(--color-warn)"; // 공포 — 오커
+  if (v < 55) return "var(--color-neutral)"; // 중립
+  if (v < 75) return "var(--color-live)"; // 탐욕
+  return "var(--color-good)"; // 극단적 탐욕
 }
 
 // 공포·탐욕 지수 — 큰 수치 + 등급(800) + 그라디언트 바(레드→오렌지→그린) 위 다크 마커
@@ -59,7 +62,7 @@ function FngTile({ t }: { t: BarTile }) {
       </div>
       <div
         className="relative mt-[7px] h-[7px] rounded-[4px]"
-        style={{ background: "linear-gradient(90deg,#e5484d,#e8930c,#17a673)" }}
+        style={{ background: "linear-gradient(90deg,var(--color-up),var(--color-warn),var(--color-good))" }}
       >
         <span
           className="absolute -top-1 h-[15px] w-[3px] -translate-x-1/2 rounded-[2px] bg-navy-900"
@@ -135,6 +138,7 @@ function MiningTile({ t }: { t: BarTile }) {
     <div className={CARD}>
       <div className="flex items-baseline text-[11.5px] font-semibold text-navy-900">
         <span className="min-w-0 truncate">{t.label}</span>
+        {/* 업데이트 타임스탬프 — 비필수 마이크로카피만 9px 유지 (codex 합의) */}
         {t.sub && (
           <span className="ml-auto shrink-0 pl-2 font-mono text-[9px] font-medium text-ink-500">
             {t.sub}
@@ -149,9 +153,9 @@ function MiningTile({ t }: { t: BarTile }) {
           </span>
         )}
       </div>
-      <div className="mt-1 flex items-baseline border-t border-hairline pt-1 text-[9px] text-ink-500">
+      <div className="mt-1 flex items-baseline border-t border-hairline pt-1 text-[9.5px] text-ink-500">
         손익분기 대비 현재가
-        <b className="ml-auto font-mono text-[9px] font-semibold tabular-nums" style={{ color: col }}>
+        <b className="ml-auto font-mono text-[9.5px] font-semibold tabular-nums" style={{ color: col }}>
           {m.pricePct != null ? formatPercent(m.pricePct) : "-"}
         </b>
       </div>
@@ -173,7 +177,7 @@ function FxTile({ t }: { t: BarTile }) {
       </div>
       {/* 최근 영업일 — "1D(1일 전)·2D…" 상대 날짜 + 값, 들어가는 만큼(최신 5일)만 한 줄 */}
       {fx6.length > 1 && (
-        <div className="mt-1 flex flex-nowrap justify-between gap-x-1 overflow-hidden border-t border-hairline pt-1 font-mono text-[9px] font-medium text-ink-400">
+        <div className="mt-1 flex flex-nowrap justify-between gap-x-1 overflow-hidden border-t border-hairline pt-1 font-mono text-[9.5px] font-medium text-ink-400">
           {fx6
             .map((d, i) => {
               const prev = i > 0 ? fx6[i - 1].rate : null;
@@ -213,7 +217,8 @@ function Tile({ t }: { t: BarTile }) {
     return (
       <div className={`${CARD} border-dashed bg-white/60`}>
         {t.label && <div className={TITLE}>{t.label}</div>}
-        <div className="flex min-h-12 items-center justify-center text-[11px] text-ink-300">
+        <div className="flex min-h-12 items-center justify-center gap-1.5 text-[11px] text-ink-300">
+          <GajaLoader size={14} />
           {t.note ?? "데이터 수집 중…"}
         </div>
       </div>
@@ -264,9 +269,9 @@ function Tile({ t }: { t: BarTile }) {
             return (
               <span key={i} className="flex min-w-0 items-baseline gap-[3px]">
                 <span className="truncate">{s.label}</span>
-                <b className="shrink-0 font-mono text-[9px] font-semibold tabular-nums text-navy-900">{s.value}</b>
+                <b className="shrink-0 font-mono text-[9.5px] font-semibold tabular-nums text-navy-900">{s.value}</b>
                 {s.changePct != null && (
-                  <span className={`shrink-0 font-mono text-[9px] font-semibold tabular-nums ${sc.text}`}>
+                  <span className={`shrink-0 font-mono text-[9.5px] font-semibold tabular-nums ${sc.text}`}>
                     {formatPercent(s.changePct)}
                   </span>
                 )}
@@ -281,14 +286,14 @@ function Tile({ t }: { t: BarTile }) {
         <div className={SUB}>
           <span className="flex shrink-0 items-baseline gap-[3px]">
             보유
-            <b className="font-mono text-[9px] font-semibold tabular-nums text-navy-900">
+            <b className="font-mono text-[9.5px] font-semibold tabular-nums text-navy-900">
               {Math.round(t.treasury.holdings).toLocaleString()} BTC
             </b>
           </span>
           <span className="flex min-w-0 items-baseline gap-[3px]">
             변동
             <b
-              className={`truncate font-mono text-[9px] font-semibold tabular-nums ${
+              className={`truncate font-mono text-[9.5px] font-semibold tabular-nums ${
                 t.treasury.holdingsDelta !== 0 ? dir(t.treasury.holdingsDelta).text : "text-ink-400"
               }`}
             >
@@ -301,10 +306,10 @@ function Tile({ t }: { t: BarTile }) {
           </span>
           <span className="flex shrink-0 items-baseline gap-[3px]">
             평단
-            <b className="font-mono text-[9px] font-semibold tabular-nums text-navy-900">
+            <b className="font-mono text-[9.5px] font-semibold tabular-nums text-navy-900">
               ${Math.round(t.treasury.avgPriceUsd).toLocaleString()}
             </b>
-            <span className={`font-mono text-[9px] font-semibold tabular-nums ${dir(t.treasury.returnPct).text}`}>
+            <span className={`font-mono text-[9.5px] font-semibold tabular-nums ${dir(t.treasury.returnPct).text}`}>
               {formatPercent(t.treasury.returnPct)}
             </span>
           </span>
@@ -343,7 +348,10 @@ export default async function MarketBar() {
     <div className="bg-paper">
       <div className="mx-auto max-w-6xl px-4 pt-[12px]">
         {tiles.length === 0 ? (
-          <p className="rail py-2 text-center">마켓 데이터 불러오는 중…</p>
+          <p className="rail flex items-center justify-center gap-2 py-2 text-center">
+            <GajaLoader size={15} />
+            마켓 데이터 불러오는 중…
+          </p>
         ) : (
           <div className="grid auto-rows-fr grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
             {tiles.map((t) => (

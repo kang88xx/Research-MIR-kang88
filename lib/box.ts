@@ -6,12 +6,12 @@ export const BOX_COST = 100;
 export const RARITIES = ["common", "rare", "epic", "legendary"] as const;
 export type Rarity = (typeof RARITIES)[number];
 
-// 등급별 색·라벨 (globals 토큰 팔레트)
+// 등급별 색·라벨 — 옵시디언 크롬 톤에 맞춘 등급 액센트
 export const RARITY_META: Record<string, { label: string; color: string }> = {
-  common: { label: "커먼", color: "#a0a6bb" }, // navy-300
-  rare: { label: "레어", color: "#636ddb" }, // indigo-500
-  epic: { label: "에픽", color: "#efc540" }, // amber-500
-  legendary: { label: "레전더리", color: "#dc2626" }, // red
+  common: { label: "커먼", color: "#98a1aa" }, // ink-400
+  rare: { label: "레어", color: "#3b6fb0" }, // indigo-500
+  epic: { label: "에픽", color: "#b98a1d" }, // 골드
+  legendary: { label: "레전더리", color: "#d24b50" }, // 레드
 };
 
 export function rarityMeta(r: string) {

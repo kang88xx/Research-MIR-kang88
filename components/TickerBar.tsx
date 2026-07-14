@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { TickerSnapshot } from "@/lib/ticker";
 import { formatKrw, formatPercent } from "@/lib/format";
+import GajaLoader from "@/components/GajaLoader";
 
 function changeColor(n: number | null): string {
   if (n == null) return "text-ink-300";
@@ -55,7 +56,10 @@ export default function TickerBar() {
         {error ? (
           <span className="px-4 font-mono text-xs font-medium text-up">시세 불러오기 실패</span>
         ) : items.length === 0 ? (
-          <span className="px-4 font-mono text-xs font-medium text-ink-400">LOADING MARKET DATA...</span>
+          <span className="flex items-center gap-2 px-4 font-mono text-xs font-medium text-ink-400">
+            <GajaLoader size={14} />
+            마켓 데이터 불러오는 중…
+          </span>
         ) : (
           <div className="ticker-track flex w-max">
             {[0, 1].map((copy) => (
