@@ -1,25 +1,34 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
+
+// html.dark 클래스 변경 구독 — 클래스가 바뀌면 재렌더를 트리거한다.
+function subscribeThemeClass(onChange: () => void) {
+  const observer = new MutationObserver(onChange);
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+  return () => observer.disconnect();
+}
 
 // 다크 모드 토글 — html.dark 클래스 + localStorage("theme") 저장.
 // 첫 방문 기본값은 다크(layout의 인라인 스크립트가 페인트 전에 적용).
+// html.dark 클래스를 단일 진실로 useSyncExternalStore로 구독한다 — SSR 스냅샷(false)으로
+// 하이드레이션한 뒤 실제 값으로 동기화되므로 effect 내 setState가 필요 없다.
 export default function ThemeToggle() {
-  const [dark, setDark] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    setDark(document.documentElement.classList.contains("dark"));
-  }, []);
+  const dark = useSyncExternalStore(
+    subscribeThemeClass,
+    () => document.documentElement.classList.contains("dark"),
+    () => false
+  );
 
   function toggle() {
     const next = !document.documentElement.classList.contains("dark");
+    // MutationObserver 구독이 클래스 변경을 감지해 재렌더한다.
     document.documentElement.classList.toggle("dark", next);
     try {
       localStorage.setItem("theme", next ? "dark" : "light");
     } catch {
       /* 사생활 보호 모드 등 저장 불가 시 세션 내 전환만 유지 */
     }
-    setDark(next);
   }
 
   return (

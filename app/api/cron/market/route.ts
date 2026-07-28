@@ -20,9 +20,11 @@ export const maxDuration = 60;
 const KIMP_INTERVAL_MS = 5 * 60_000;
 const MARKET_INTERVAL_MS = 15 * 60_000;
 
-// Vercel Cron 호출(무료플랜은 하루 1회). 만료된 캐시 키를 한 번에 데우고, 김프/도미넌스
+// Vercel Cron 호출(Pro 플랜, 시간당 1회). 만료된 캐시 키를 한 번에 데우고, 김프/도미넌스
 // 스냅샷을 요청 경로와 분리해 적재한다. 실시간 시세 신선도는 캐시 TTL + 첫 방문자 inline
 // 갱신(cache.ts)이 담당하므로, 이 크론이 자주 못 돌아도 데이터 자체는 갱신된다.
+// 주기를 5분→1시간으로 완화한 이유: 5분 간격이면 Neon(무료) DB가 절전에 못 들어가
+// 월 컴퓨트 한도(~190h)를 소진하고, 한도 초과 시 DB 정지 → 사이트 500으로 이어진다.
 export async function GET(req: Request) {
   const secret = process.env.CRON_SECRET;
   const authed = secret ? req.headers.get("authorization") === `Bearer ${secret}` : false;
