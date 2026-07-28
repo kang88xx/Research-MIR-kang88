@@ -33,9 +33,10 @@ export default async function Home() {
   const calYear = now.getUTCFullYear();
   const calMonth = now.getUTCMonth() + 1;
   // 현재 달 이벤트를 SSR로 미리 넘겨 초기 스피너·재요청을 없앤다(LCP·SEO 개선).
-  // DB(Neon)가 절전에서 깨어나는 동안 연결이 실패해도 홈 전체가 500으로 죽지 않도록
-  // 빈 배열로 폴백 — 캘린더는 클라이언트에서 /api/events로 재시도할 수 있다.
-  const initialEvents = await getMonthEvents(calYear, calMonth).catch(() => []);
+  // DB 연결 실패 시 undefined 폴백 — 빈 배열을 넘기면 "일정 없는 달"로 보이므로,
+  // initialEvents를 생략해 클라이언트가 /api/events 로드를 시도하고 실패 시
+  // 캘린더 자체의 에러 UI("일정을 불러오지 못했습니다"+재시도)가 뜨게 한다.
+  const initialEvents = await getMonthEvents(calYear, calMonth).catch(() => undefined);
   return (
     <div className="flex flex-col gap-[22px]">
       {/* 신규 상장·상폐 정보 — 맨 위. 스켈레톤이 풀리면 .reveal로 부드럽게 등장 */}
