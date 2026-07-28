@@ -27,20 +27,36 @@ function SectionShell({ minBody }: { minBody: string }) {
   );
 }
 
-// ── 레이아웃: 상단 헤더 ──
+// ── 레이아웃: 모바일 헤더 (콘솔 라이트, lg 미만) ──
 export function HeaderSkeleton() {
   return (
-    <header className="header-chrome relative">
-      <div className="mx-auto flex h-[60px] max-w-6xl items-center gap-3 px-4">
-        <div className="h-7 w-28 animate-pulse rounded bg-[#ffffff14]" />
+    <header className="border-b border-hairline bg-surface lg:hidden">
+      <div className="flex h-[88px] items-center gap-3 px-4">
+        <div className="h-7 w-28 animate-pulse rounded bg-paper2" />
         <div className="ml-auto hidden gap-4 sm:flex">
-          <div className="h-4 w-12 animate-pulse rounded bg-[#ffffff14]" />
-          <div className="h-4 w-12 animate-pulse rounded bg-[#ffffff14]" />
-          <div className="h-4 w-12 animate-pulse rounded bg-[#ffffff14]" />
+          <div className="h-4 w-12 animate-pulse rounded bg-paper2" />
+          <div className="h-4 w-12 animate-pulse rounded bg-paper2" />
+          <div className="h-4 w-12 animate-pulse rounded bg-paper2" />
         </div>
       </div>
-      <div className="header-chrome-edge absolute inset-x-0 bottom-0 h-px" aria-hidden />
     </header>
+  );
+}
+
+// ── 레이아웃: 데스크톱 사이드바 (lg+) ──
+export function SidebarAccountSkeleton() {
+  return (
+    <aside className="console-side sticky top-0 hidden h-screen w-[228px] shrink-0 flex-col lg:flex">
+      <div className="flex items-center gap-2.5 border-b border-hairline px-4 py-4">
+        <div className="h-8 w-8 animate-pulse rounded-[4px] bg-paper2" />
+        <div className="h-5 w-20 animate-pulse rounded bg-paper2" />
+      </div>
+      <div className="flex flex-col gap-3 px-4 py-5">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="h-8 animate-pulse rounded bg-paper2" />
+        ))}
+      </div>
+    </aside>
   );
 }
 

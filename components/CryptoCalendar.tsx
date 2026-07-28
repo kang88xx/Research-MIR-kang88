@@ -128,8 +128,6 @@ function kstHm(d: Date): string {
   return `${String(k.getUTCHours()).padStart(2, "0")}:${String(k.getUTCMinutes()).padStart(2, "0")}`;
 }
 
-const WEEKDAYS = ["월", "화", "수", "목", "금", "토", "일"];
-
 export default function CryptoCalendar({
   initialYear,
   initialMonth,
@@ -317,47 +315,41 @@ export default function CryptoCalendar({
   while (cells.length % 7 !== 0) cells.push(null);
 
   return (
-    <section className="overflow-hidden rounded-[14px] border border-line bg-white">
-      <header className="title-band flex flex-wrap items-center gap-x-3.5 gap-y-2 border-b px-4 py-3 sm:px-6">
-        <h2 className="text-[17px] font-extrabold tracking-[-0.3px] text-[#e5e4e2]">
-          크립토 캘린더
-        </h2>
-        <div className="flex shrink-0 items-center gap-2.5 font-mono text-[13.5px] font-semibold text-[#c2c6cb]">
-          <button
-            onClick={() => moveMonth(-1)}
-            className="px-1 text-[#8fa0ad] hover:text-[#e5e4e2]"
-            aria-label="이전 달"
-          >
-            ‹
-          </button>
+    <section className="overflow-hidden rounded-[4px] border border-hairline bg-white">
+      {/* 콘솔 헤더 — 좌: 타이틀·월 내비 / 우: 그룹 필터 필 */}
+      <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-hairline px-4 py-3 sm:px-6">
+        <h2 className="text-[15px] font-bold tracking-tight text-ink-900">크립토 캘린더</h2>
+        <div className="flex shrink-0 items-center gap-1.5 text-[15px] font-semibold text-ink-900">
           <span className="tabular-nums">
             {year}년 {month}월
           </span>
           <button
+            onClick={() => moveMonth(-1)}
+            className="ml-1 flex h-6 w-6 items-center justify-center rounded-[3px] border border-hairline font-mono text-ink-500 hover:border-border-strong hover:text-ink-900"
+            aria-label="이전 달"
+          >
+            ‹
+          </button>
+          <button
             onClick={() => moveMonth(1)}
-            className="px-1 text-[#8fa0ad] hover:text-[#e5e4e2]"
+            className="flex h-6 w-6 items-center justify-center rounded-[3px] border border-hairline font-mono text-ink-500 hover:border-border-strong hover:text-ink-900"
             aria-label="다음 달"
           >
             ›
           </button>
         </div>
-        <span className="ml-auto hidden text-[11.5px] text-[#93a5b2] lg:inline">
-          이벤트를 누르면 개별 출처를 확인할 수 있습니다
-        </span>
-      </header>
-
-      {/* 그룹 필터 칩 — 전체(다크 채움) + 카테고리 틴트 칩 (밴드 아래 별도 행) */}
-      <div className="flex flex-wrap items-center gap-1.5 px-4 pt-3 sm:px-6">
+        {/* 그룹 필터 필 — 전체(네이비 채움) + 카테고리(헤어라인 필, 카테고리 색 텍스트) */}
+        <div className="ml-auto flex flex-wrap items-center gap-1.5">
           <button
             onClick={() => setExcluded(new Set())}
             aria-pressed={excluded.size === 0}
-            className={`rounded-[7px] px-[11px] py-[5px] text-[11.5px] font-bold transition-colors ${
+            className={`rounded-[3px] px-2.5 py-[5px] text-[11.5px] font-bold transition-colors ${
               excluded.size === 0
-                ? "bg-navy-900 text-white"
-                : "bg-navy-100 text-ink-500 hover:text-navy-900"
+                ? "bg-brand text-on-brand"
+                : "border border-hairline bg-white text-ink-500 hover:text-ink-900"
             }`}
           >
-            전체 <span className="tabular-nums">{events.length}</span>
+            전체 <span className="font-mono text-[10px] tabular-nums opacity-80">{events.length}</span>
           </button>
           {[...groups.keys()].map((g) => {
             const on = isGroupOn(g);
@@ -368,27 +360,28 @@ export default function CryptoCalendar({
                 key={g}
                 onClick={() => toggleGroup(g)}
                 aria-pressed={on}
-                className={`rounded-[7px] border px-2.5 py-1 text-[11.5px] font-bold transition-colors ${
+                className={`rounded-[3px] border px-2.5 py-[5px] text-[11.5px] font-bold transition-colors ${
                   on
-                    ? c.filterChip
-                    : "border-transparent bg-navy-100 text-ink-400 line-through hover:text-navy-900"
+                    ? `border-hairline bg-white ${c.text}`
+                    : "border-transparent bg-paper2 text-ink-400 line-through hover:text-ink-900"
                 }`}
               >
-                {g} <span className="tabular-nums opacity-70">{count}</span>
+                {g} <span className="font-mono text-[10px] tabular-nums opacity-70">{count}</span>
               </button>
             );
           })}
-      </div>
+        </div>
+      </header>
 
       {/* 소분류 필터 — 보조 위계, 활성 그룹만 노출 */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line px-4 py-2">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-hairline px-4 py-2 sm:px-6">
         {[...groups.entries()]
           .filter(([g]) => isGroupOn(g))
           .map(([g, subs]) => {
             const c = groupColor(g);
             return (
               <span key={g} className="flex flex-wrap items-center gap-1.5">
-                <span className={`font-mono text-[10px] tracking-wider uppercase ${c.text}`}>{g}</span>
+                <span className={`font-mono text-[9.5px] tracking-[0.12em] uppercase ${c.text}`}>{g}</span>
                 {subs.map((s) => {
                   const off = excluded.has(filterKey(g, s));
                   return (
@@ -396,10 +389,10 @@ export default function CryptoCalendar({
                       key={filterKey(g, s)}
                       onClick={() => toggleSub(g, s)}
                       aria-pressed={!off}
-                      className={`rounded border px-2 py-0.5 text-[11px] font-medium transition-colors ${
+                      className={`rounded-[3px] border px-2 py-0.5 text-[11px] font-medium transition-colors ${
                         off
                           ? "border-transparent bg-paper2 text-navy-300 line-through hover:text-ink-500"
-                          : c.chip
+                          : "border-hairline bg-white text-ink-700"
                       }`}
                     >
                       {s}
@@ -411,11 +404,12 @@ export default function CryptoCalendar({
           })}
       </div>
 
-      <div className="grid grid-cols-7 border-t border-b border-line bg-paper2 text-center text-xs font-bold text-ink-500">
-        {WEEKDAYS.map((d, i) => (
+      {/* 요일 헤더 — 모노 마이크로 라벨 (시안: MON…SUN, 토=블루·일=레드 관례 유지) */}
+      <div className="grid grid-cols-7 border-b border-hairline bg-surface-2 text-left font-mono text-[9.5px] font-medium tracking-[0.16em] text-ink-500 uppercase">
+        {["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"].map((d, i) => (
           <div
             key={d}
-            className={`py-[9px] ${i === 5 ? "text-down" : ""} ${i === 6 ? "text-up" : ""}`}
+            className={`px-[9px] py-[8px] ${i === 5 ? "text-down" : ""} ${i === 6 ? "text-up" : ""}`}
           >
             {d}
           </div>
@@ -445,27 +439,29 @@ export default function CryptoCalendar({
             return (
             <div
               key={i}
-              className={`relative min-h-20 border-b border-r border-hairline p-[7px] sm:min-h-[132px] [&:nth-child(7n)]:border-r-0 ${
-                day == null ? "bg-paper2" : ""
-              } ${isToday ? "z-10 bg-brand-weak shadow-[inset_0_0_0_2px_var(--color-brand)]" : ""}`}
+              className={`relative min-h-20 border-b border-r border-hairline p-[8px] sm:min-h-[132px] [&:nth-child(7n)]:border-r-0 ${
+                day == null ? "bg-surface-2" : ""
+              } ${isToday ? "z-10 bg-brand-weak shadow-[inset_0_0_0_1.5px_var(--color-brand)]" : ""}`}
             >
               {day != null && (
                 <>
-                  <div className="mb-1 flex items-center justify-end gap-1.5 font-mono text-xs font-semibold">
+                  {/* 날짜 — 시안: 좌상단 모노 숫자, 주말은 관례색(토=블루·일=레드) */}
+                  <div className="mb-1.5 flex items-center gap-1.5 font-mono text-[11.5px] font-semibold tabular-nums">
                     {isToday ? (
                       <>
-                        <span className="font-sans text-[9.5px] font-bold text-brand-ink">오늘</span>
-                        <span className="inline-block rounded-[5px] bg-brand px-1.5 py-px text-white">
+                        <span className="inline-block rounded-[3px] bg-brand px-1.5 py-px text-white">
                           {day}
                         </span>
+                        <span className="font-sans text-[9.5px] font-bold text-brand-ink">오늘</span>
                       </>
                     ) : (
-                      <span className={wd === 5 ? "text-down" : wd === 6 ? "text-up" : "text-ink-400"}>
+                      <span className={wd === 5 ? "text-down" : wd === 6 ? "text-up" : "text-ink-500"}>
                         {day}
                       </span>
                     )}
                   </div>
-                  <div className="flex flex-col gap-1">
+                  {/* 이벤트 — 시안: 좌측 2px 컬러 바 + 모노 티커 + 제목 (칩 박스 없음) */}
+                  <div className="flex flex-col gap-[5px]">
                     {(byDay.get(day) ?? []).map((ev) => {
                       const t = eventTime(ev);
                       const imminent =
@@ -475,15 +471,20 @@ export default function CryptoCalendar({
                       <button
                         key={ev.id}
                         onClick={() => setSelected(ev)}
-                        className={`flex items-center gap-1.5 rounded-[6px] border px-[7px] py-1 text-left text-[11px] leading-tight hover:brightness-[0.97] ${
-                          c.chip
-                        } ${imminent ? "event-imminent" : ""}`}
+                        className={`flex items-center gap-1.5 py-px text-left text-[10.5px] leading-[1.35] hover:bg-surface-2 ${
+                          imminent ? "event-imminent border bg-white pr-1" : ""
+                        }`}
                         title={`${ev.ticker} ${ev.title}${t ? ` · ${kstHm(t)} KST` : ""}`}
                       >
-                        <EventIcon ticker={ev.ticker} size={13} />
-                        <span className="min-w-0 flex-1 truncate">
-                          <b className={`font-mono text-[10px] font-bold ${c.tick}`}>{ev.ticker}</b>{" "}
-                          {t && <span className="font-mono text-[10px] font-semibold">{kstHm(t)}</span>}{" "}
+                        <span className={`h-3 w-[2px] shrink-0 self-center ${c.dot}`} aria-hidden />
+                        <EventIcon ticker={ev.ticker} size={12} />
+                        <span className="min-w-0 flex-1 truncate text-ink-700">
+                          <b className={`font-mono text-[9.5px] font-bold ${c.tick}`}>{ev.ticker}</b>{" "}
+                          {t && (
+                            <span className="font-mono text-[9.5px] font-medium text-ink-500">
+                              {kstHm(t)}
+                            </span>
+                          )}{" "}
                           {ev.title}
                         </span>
                       </button>
@@ -500,18 +501,19 @@ export default function CryptoCalendar({
 
       {tbaEvents.length > 0 && (
         <div className="border-t border-hairline px-4 pt-4 pb-4 sm:px-6">
-          <p className="mb-2 font-mono text-xs font-bold tracking-[2px] text-navy-600">
+          <p className="mb-2 font-mono text-[9.5px] font-medium tracking-[0.16em] text-ink-500 uppercase">
             TBA — {month}월 중 일정 미정
           </p>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5">
             {tbaEvents.map((ev) => {
               const c = groupColor(ev.groupMain);
               return (
                 <button
                   key={ev.id}
                   onClick={() => setSelected(ev)}
-                  className={`flex items-center gap-1.5 rounded-[6px] border px-[9px] py-[5px] text-[11.5px] hover:brightness-[0.97] ${c.chip}`}
+                  className="flex items-center gap-1.5 rounded-[3px] border border-hairline bg-white px-[9px] py-[5px] text-[11.5px] text-ink-700 hover:bg-surface-2"
                 >
+                  <span className={`h-3 w-[2px] shrink-0 ${c.dot}`} aria-hidden />
                   <EventIcon ticker={ev.ticker} size={13} />
                   <span>
                     <b className={`font-mono text-[10px] font-bold ${c.tick}`}>{ev.ticker}</b>{" "}
@@ -524,12 +526,12 @@ export default function CryptoCalendar({
         </div>
       )}
 
-      <div className="flex items-center border-t border-hairline px-4 py-[13px] sm:px-6">
-        <span className="font-mono text-[11px] font-semibold tracking-[2px] text-ink-400 uppercase">
+      <div className="flex items-center border-t border-hairline px-4 py-[11px] sm:px-6">
+        <span className="font-mono text-[10px] font-medium tracking-[0.14em] text-ink-500 uppercase">
           Showing {visibleEvents.length} / {events.length} events
         </span>
-        <span className="ml-auto text-[11.5px] text-ink-400">
-          날짜 통상(UTC) 기준 · 시각은 KST
+        <span className="ml-auto text-[11px] text-ink-400">
+          이벤트를 누르면 개별 출처 확인 · 날짜 통상(UTC) 기준, 시각은 KST
         </span>
       </div>
 
@@ -542,7 +544,7 @@ export default function CryptoCalendar({
             role="dialog"
             aria-modal="true"
             aria-label={`${selected.ticker} ${selected.title}`}
-            className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-xl border border-line bg-white p-6 shadow-pop"
+            className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-[6px] border border-hairline bg-white p-6 shadow-pop"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-2 flex items-center gap-2">

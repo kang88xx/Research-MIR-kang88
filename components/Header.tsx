@@ -10,6 +10,7 @@ import NavLinks from "@/components/NavLinks";
 
 const ADMIN_MIN_LEVEL = 10;
 
+// 모바일 헤더 — 콘솔 라이트(흰 표면 + 헤어라인). 데스크톱(lg+)은 좌측 사이드바가 대신한다.
 export default async function Header() {
   const session = await auth();
   const me = session?.user?.id
@@ -20,60 +21,58 @@ export default async function Header() {
     : null;
 
   return (
-    <header className="header-chrome relative">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-y-0 px-4 md:h-[60px] md:flex-nowrap">
-        <div className="flex shrink-0 items-center gap-3 py-2.5 md:py-0 md:flex-1">
-          <Link href="/" className="flex items-center gap-2.5">
-            {/* 가자가자 더블 셰브런 — 뒤(딥 슬레이트)·앞(라이트 슬레이트)·선단 알라바스터 점 */}
-            <svg width="22" height="22" viewBox="0 0 120 120" aria-hidden className="shrink-0">
-              <path d="M26 26 L58 60 L26 94" fill="none" stroke="#3c4e5d" strokeWidth="17" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M60 26 L92 60 L60 94" fill="none" stroke="#8fa5b5" strokeWidth="17" strokeLinecap="round" strokeLinejoin="round" />
-              <circle cx="92" cy="60" r="6" fill="#e5e4e2" />
-            </svg>
-            <span className="whitespace-nowrap text-lg font-extrabold tracking-tight text-[#f4f3f1]">
+    <header className="border-b border-hairline bg-surface lg:hidden">
+      <div className="flex flex-wrap items-center gap-y-0 px-4">
+        <div className="flex shrink-0 items-center gap-3 py-2.5">
+          <Link href="/" className="flex items-center gap-2">
+            {/* 가자가자 더블 셰브런 — 콘솔 톤(골드 블록 + 네이비) */}
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[4px] bg-gold">
+              <svg width="16" height="16" viewBox="0 0 120 120" aria-hidden>
+                <path d="M26 26 L58 60 L26 94" fill="none" stroke="#091955" strokeWidth="17" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M60 26 L92 60 L60 94" fill="none" stroke="#0f1320" strokeWidth="17" strokeLinecap="round" strokeLinejoin="round" opacity="0.55" />
+              </svg>
+            </span>
+            <span className="whitespace-nowrap text-[17px] font-extrabold tracking-tight text-navy-900">
               가자가자
             </span>
           </Link>
           <RefreshButton />
         </div>
 
-        {/* 가운데 메뉴 — 모바일에서는 둘째 줄 가로 스크롤, 데스크톱에서는 페이지 정중앙 */}
-        <NavLinks />
-
         {/* 우측 — 회원 · 출석체크(로그인 시) */}
-        <div className="ml-auto flex min-w-0 shrink-0 flex-wrap items-center justify-end gap-x-3 gap-y-1.5 text-sm md:ml-0 md:flex-1">
+        <div className="ml-auto flex min-w-0 shrink-0 flex-wrap items-center justify-end gap-x-3 gap-y-1.5 text-sm">
           {session?.user ? (
             <>
               {me && me.level >= ADMIN_MIN_LEVEL && (
                 <Link
                   href="/admin/prizes"
-                  className="border-b-2 border-transparent py-1.5 font-semibold text-[#9db2c2] hover:border-[#9db2c2] hover:text-[#e5e4e2]"
+                  className="py-1.5 font-semibold text-ink-500 hover:text-brand-ink"
                 >
                   어드민
                 </Link>
               )}
               <Link
                 href="/attendance"
-                className="border-b-2 border-transparent py-1.5 font-medium text-[#8b98a3] hover:border-[#7e95a6] hover:text-[#e5e4e2]"
+                className="py-1.5 font-medium text-ink-500 hover:text-brand-ink"
               >
                 출석체크
               </Link>
-              <Link href="/box" className="font-mono text-xs font-semibold text-[#c2ccd4] hover:text-[#f4f3f1]">
+              <Link href="/box" className="font-mono text-xs font-semibold text-brand-ink">
                 {(me?.points ?? 0).toLocaleString()}P
               </Link>
               {me && !me.nicknameConfirmed && (
                 <Link
                   href="/settings"
-                  className="rounded-md border border-[#7e95a6] bg-[#ffffff0d] px-2 py-1 text-xs font-semibold text-[#c9d6df] hover:bg-[#536878] hover:text-white"
+                  className="rounded-[4px] border border-brand bg-brand-weak px-2 py-1 text-xs font-semibold text-brand-ink hover:bg-brand hover:text-on-brand"
                 >
                   닉네임 설정
                 </Link>
               )}
-              <Link href="/settings" className="text-[#8b98a3] hover:text-[#e5e4e2]" title="내 설정">
-                <b className="font-semibold text-[#e5e4e2]">{me?.nickname ?? session.user.name}</b> 님
+              <Link href="/settings" className="text-ink-500 hover:text-ink-900" title="내 설정">
+                <b className="font-semibold text-ink-900">{me?.nickname ?? session.user.name}</b> 님
               </Link>
               <form action={logout}>
-                <button className="rounded-[9px] border border-[#3a4653] px-3 py-1 text-[#aeb9c2] hover:border-[#93a5b2] hover:text-[#e5e4e2]">
+                <button className="rounded-[4px] border border-hairline px-3 py-1 text-ink-500 hover:border-border-strong hover:text-ink-900">
                   로그아웃
                 </button>
               </form>
@@ -82,30 +81,31 @@ export default async function Header() {
             <>
               <Link
                 href="/login"
-                className="px-2 py-1.5 text-[13.5px] font-semibold text-[#aeb9c2] hover:text-[#e5e4e2]"
+                className="px-2 py-1.5 text-[13.5px] font-semibold text-ink-500 hover:text-ink-900"
               >
                 로그인
               </Link>
-              {/* 알라바스터 블록 CTA — 컬러칩의 밝은 면을 그대로 버튼으로 */}
+              {/* 딥네이비 블록 CTA — 콘솔 포인트 컬러 */}
               <Link
                 href="/register"
-                className="rounded-[9px] bg-[#e5e4e2] px-4 py-1.5 text-[13.5px] font-bold text-[#16181b] hover:bg-white"
+                className="rounded-[4px] bg-brand px-4 py-1.5 text-[13.5px] font-bold text-on-brand hover:bg-amber-400"
               >
                 회원가입
               </Link>
             </>
           )}
 
-          {/* 동시접속 · 다크모드 · 언어 — 회원가입(로그아웃) 오른쪽 */}
-          <span className="flex items-center gap-3 border-l border-[#333d47] pl-3">
+          {/* 동시접속 · 다크모드 · 언어 */}
+          <span className="flex items-center gap-3 border-l border-hairline pl-3">
             <LiveViewers />
             <ThemeToggle />
             <LangToggle />
           </span>
         </div>
+
+        {/* 하단 줄 — 가로 스크롤 네비 */}
+        <NavLinks />
       </div>
-      {/* 하단 크롬 헤어라인 — 슬레이트가 스치는 시그니처 라인 */}
-      <div className="header-chrome-edge absolute inset-x-0 bottom-0 h-px" aria-hidden />
     </header>
   );
 }
