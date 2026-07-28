@@ -9,6 +9,12 @@ async function main() {
     create: { slug: "free", name: "자유게시판", sortOrder: 1 },
   });
   console.log("Seeded: 자유게시판 (free)");
+  await prisma.board.upsert({
+    where: { slug: "analysis" },
+    update: {},
+    create: { slug: "analysis", name: "시장 분석", type: "info", sortOrder: 2 },
+  });
+  console.log("Seeded: 시장 분석 (analysis)");
 }
 
 main()

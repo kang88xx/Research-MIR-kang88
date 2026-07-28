@@ -3,8 +3,10 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // Supabase: DATABASE_URL은 트랜잭션 풀러(6543, pgbouncer), db push/스키마 작업은 세션 풀러(5432)로 직접 연결
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
