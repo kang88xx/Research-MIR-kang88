@@ -5,19 +5,24 @@ import { formatPostDate } from "@/lib/format";
 // 홈 하단 게시판 영역 — 자유게시판 최신글 + 시장 분석.
 // 페이지에서 분리해 자체 Suspense 경계로 독립 스트리밍되게 한다(상단 시장 카드와 병렬).
 export default async function HomeBoards() {
+  // DB 정지(Neon 한도 초과 등) 시 홈 전체가 에러 화면으로 대체되지 않도록 빈 목록으로 폴백.
   const [recentPosts, analysisPosts] = await Promise.all([
-    prisma.post.findMany({
-      where: { board: { slug: "free" } },
-      orderBy: { createdAt: "desc" },
-      take: 12,
-      include: { author: { select: { nickname: true } } },
-    }),
-    prisma.post.findMany({
-      where: { board: { slug: "analysis" } },
-      orderBy: { createdAt: "desc" },
-      take: 5,
-      select: { id: true, title: true, priceSymbol: true, createdAt: true },
-    }),
+    prisma.post
+      .findMany({
+        where: { board: { slug: "free" } },
+        orderBy: { createdAt: "desc" },
+        take: 12,
+        include: { author: { select: { nickname: true } } },
+      })
+      .catch(() => []),
+    prisma.post
+      .findMany({
+        where: { board: { slug: "analysis" } },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+        select: { id: true, title: true, priceSymbol: true, createdAt: true },
+      })
+      .catch(() => []),
   ]);
 
   return (

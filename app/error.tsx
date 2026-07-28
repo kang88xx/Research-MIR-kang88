@@ -14,7 +14,22 @@ export default function Error({
 }) {
   useEffect(() => {
     console.error("[error-boundary]", error.digest ?? error.message);
-    const id = setTimeout(() => reset(), 4000);
+    // 자동 재시도는 2회까지만 — DB 한도 초과 같은 지속 장애에서 무한 재시도로
+    // 서버리스 호출을 낭비하지 않는다. 60초 지나면 카운터를 새 장애로 보고 리셋.
+    let rec = { n: 0, t: 0 };
+    try {
+      rec = JSON.parse(sessionStorage.getItem("err-auto-retry") ?? "") as typeof rec;
+    } catch {
+      /* 첫 발생 또는 파싱 불가 → 초기값 유지 */
+    }
+    const n = Date.now() - rec.t > 60_000 ? 0 : rec.n;
+    if (n >= 2) return;
+    try {
+      sessionStorage.setItem("err-auto-retry", JSON.stringify({ n: n + 1, t: Date.now() }));
+    } catch {
+      /* 저장 불가 시에도 이번 재시도는 진행 */
+    }
+    const id = setTimeout(() => reset(), 4000 * (n + 1));
     return () => clearTimeout(id);
   }, [error, reset]);
 

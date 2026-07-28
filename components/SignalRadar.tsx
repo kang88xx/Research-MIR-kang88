@@ -49,10 +49,13 @@ export default async function SignalRadar() {
     getSignalRadar(),
     getKrwMarketStats(),
     getTodayListings(),
-    prisma.calendarEvent.findMany({
-      where: { date: { gte: startUtc, lt: endUtc } },
-      select: { ticker: true },
-    }),
+    // DB 정지(Neon 한도 초과 등) 시에도 레이더 자체는 떠야 하므로 일정 칩만 포기한다.
+    prisma.calendarEvent
+      .findMany({
+        where: { date: { gte: startUtc, lt: endUtc } },
+        select: { ticker: true },
+      })
+      .catch(() => []),
     getTrendLabels(),
     getExchangeListingSets(),
   ]);
