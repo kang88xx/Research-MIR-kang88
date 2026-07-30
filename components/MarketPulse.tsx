@@ -20,8 +20,8 @@ export default async function MarketPulse() {
 
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-[320px_1fr]">
-      {/* 시장 폭 */}
-      <section className="flex flex-col border border-line bg-white p-5">
+      {/* 시장 폭 — 내용 높이만큼만 (옆 리스트 높이에 맞춰 늘어나며 생기는 하단 여백 방지) */}
+      <section className="flex flex-col self-start border border-line bg-white p-5">
         <div className="flex items-center justify-between">
           <h2 className="eyebrow">KRW Market Breadth</h2>
           <span className="text-[10px] text-navy-300">
@@ -55,7 +55,7 @@ export default async function MarketPulse() {
               <span className="text-ink-500">보합 {stats.flat}</span>
               <span className="text-indigo-700">하락 {stats.down}</span>
             </div>
-            <p className="mt-auto border-t border-line pt-3">
+            <p className="mt-4 border-t border-line pt-3">
               <span className="rail">거래대금 1억원 이상 {stats.total}종목 기준</span>
             </p>
           </>
