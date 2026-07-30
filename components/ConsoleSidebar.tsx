@@ -46,8 +46,8 @@ export default async function ConsoleSidebar() {
         {session?.user ? (
           <div className="mt-2 flex flex-col gap-2 text-[12.5px]">
             <div className="flex items-baseline justify-between">
-              <Link href="/settings" className="font-bold text-ink-900 hover:text-brand-ink" title="내 설정">
-                {me?.nickname ?? session.user.name} 님
+              <Link href="/settings" className="font-bold text-ink-900 hover:text-brand-ink" title="Settings">
+                {me?.nickname ?? session.user.name}
               </Link>
             </div>
             {me && !me.nicknameConfirmed && (
@@ -55,18 +55,18 @@ export default async function ConsoleSidebar() {
                 href="/settings"
                 className="rounded-[4px] border border-brand bg-brand-weak px-2 py-1 text-center text-[11.5px] font-semibold text-brand-ink hover:bg-brand hover:text-on-brand"
               >
-                닉네임 설정
+                Set nickname
               </Link>
             )}
             <div className="flex items-center gap-3 text-[12px]">
               {me && me.level >= ADMIN_MIN_LEVEL && (
                 <Link href="/admin" className="font-semibold text-ink-500 hover:text-brand-ink">
-                  어드민
+                  Admin
                 </Link>
               )}
               <form action={logout} className="ml-auto">
                 <button className="rounded-[4px] border border-hairline px-2.5 py-1 text-[11.5px] text-ink-500 hover:border-border-strong hover:text-ink-900">
-                  로그아웃
+                  Logout
                 </button>
               </form>
             </div>
@@ -77,13 +77,13 @@ export default async function ConsoleSidebar() {
               href="/login"
               className="rounded-[4px] border border-border-strong px-3 py-1.5 text-center text-[12.5px] font-semibold text-ink-700 hover:border-brand hover:text-brand-ink"
             >
-              로그인
+              Login
             </Link>
             <Link
               href="/register"
               className="rounded-[4px] bg-brand px-3 py-1.5 text-center text-[12.5px] font-bold text-on-brand hover:bg-amber-400"
             >
-              회원가입
+              Sign up
             </Link>
           </div>
         )}
