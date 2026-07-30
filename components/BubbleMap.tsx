@@ -465,7 +465,7 @@ export default function BubbleMap() {
         {hovered && (
           <div
             ref={tipRef}
-            className="pointer-events-none absolute z-10 rounded-lg bg-navy-950/90 px-2 py-1.5 text-[11px] text-white shadow-pop"
+            className="pointer-events-none absolute z-10 rounded-[5px] bg-navy-950/90 px-2 py-1.5 text-[11px] text-white shadow-pop"
             style={{
               // 호버한 버블 근처에 띄우되 컨테이너 밖으로 안 나가게 클램핑
               // (이후에는 시뮬레이션 틱이 버블을 따라 위치를 갱신)

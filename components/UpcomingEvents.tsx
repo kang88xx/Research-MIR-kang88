@@ -45,7 +45,7 @@ export default async function UpcomingEvents() {
   }
 
   return (
-    <section className="rounded-[14px] border border-line bg-white px-5 py-[18px]">
+    <section className="rounded-[6px] border border-line bg-white px-5 py-[18px]">
       <header className="flex items-baseline gap-2.5">
         <h2 className="text-[15.5px] font-extrabold tracking-[-0.3px] text-navy-900">
           다가오는 일정

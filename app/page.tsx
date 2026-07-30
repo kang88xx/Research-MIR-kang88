@@ -49,7 +49,7 @@ export default async function Home() {
         {/* 버블맵은 옆의 랭킹 테이블 높이에 맞춰 늘어난다 (ResizeObserver가 부모 크기 추적) */}
         <section
           id="bubblemap"
-          className="flex min-w-0 scroll-mt-4 flex-col overflow-hidden rounded-[14px] border border-line bg-white"
+          className="flex min-w-0 scroll-mt-4 flex-col overflow-hidden rounded-[6px] border border-line bg-white"
         >
           <header className="title-band flex items-baseline gap-2 border-b px-4 py-3 sm:px-6">
             <h2 className="text-[17px] font-extrabold tracking-[-0.3px] text-[#e5e4e2]">

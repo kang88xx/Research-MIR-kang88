@@ -23,7 +23,7 @@ export default function InAppBrowserNotice() {
   const isIos = /iphone|ipad|ipod/i.test(ua);
 
   return (
-    <div className="mb-4 rounded-xl border border-warn bg-warn-bg p-3 text-xs">
+    <div className="mb-4 rounded-[6px] border border-warn bg-warn-bg p-3 text-xs">
       <p className="font-semibold text-warn">⚠ 인앱 브라우저에서는 구글 로그인이 안 됩니다</p>
       <p className="mt-1 text-ink-700">
         카카오톡·네이버 등 앱 안의 브라우저는 구글 정책상 로그인이 차단됩니다. 아래 버튼으로
@@ -32,7 +32,7 @@ export default function InAppBrowserNotice() {
       <button
         type="button"
         onClick={openExternalBrowser}
-        className="mt-2 w-full rounded-lg bg-warn py-2 font-semibold text-white hover:brightness-95"
+        className="mt-2 w-full rounded-[5px] bg-warn py-2 font-semibold text-white hover:brightness-95"
       >
         외부 브라우저로 열기
       </button>

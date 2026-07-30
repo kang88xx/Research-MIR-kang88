@@ -31,13 +31,13 @@ export default function SignalRadarBoard({
   const [selected, setSelected] = useState<DrawerCoin | null>(null);
 
   return (
-    <section className="overflow-hidden rounded-[14px] border border-line bg-white">
+    <section className="overflow-hidden rounded-[6px] border border-line bg-white">
       <header className="title-band flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-3 sm:px-6">
         <h2 className="text-[17px] font-extrabold tracking-[-0.3px] text-[#e5e4e2]">지금 주목할 코인</h2>
         <span className="font-mono text-[11px] font-medium text-[#93a5b2]">{freshness}</span>
         {breadth && (
           <span
-            className={`ml-auto rounded-[7px] px-2.5 py-1 text-[11.5px] font-bold ${toneClass(
+            className={`ml-auto rounded-[5px] px-2.5 py-1 text-[11.5px] font-bold ${toneClass(
               breadth.signal.tone
             )}`}
           >

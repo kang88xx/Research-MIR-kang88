@@ -12,13 +12,13 @@ export default function Loading() {
     <div className="flex flex-col gap-6">
       <ListingsStripSkeleton />
       {/* 크립토 캘린더 자리(6주 그리드) */}
-      <div className="animate-pulse overflow-hidden rounded-xl border border-line bg-white shadow-card">
+      <div className="animate-pulse overflow-hidden rounded-[6px] border border-line bg-white shadow-card">
         <div className="h-12 border-b border-line bg-paper" />
         <div className="h-[460px] bg-white" />
       </div>
       <SignalRadarSkeleton />
       {/* 텔레그램 인기 포스팅 슬라이드 자리 */}
-      <div className="h-[150px] animate-pulse rounded-xl border border-line bg-white shadow-card" />
+      <div className="h-[150px] animate-pulse rounded-[6px] border border-line bg-white shadow-card" />
       <HomeBoardsSkeleton />
     </div>
   );

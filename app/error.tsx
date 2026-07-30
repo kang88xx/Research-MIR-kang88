@@ -35,7 +35,7 @@ export default function Error({
 
   return (
     <div className="flex min-h-[60vh] items-center justify-center px-4">
-      <div className="w-full max-w-[420px] rounded-[14px] border border-line bg-white p-8 text-center">
+      <div className="w-full max-w-[420px] rounded-[6px] border border-line bg-white p-8 text-center">
         <div className="font-mono text-[11px] font-medium tracking-[0.7px] text-amber-300">
           SERVER WAKING UP
         </div>
@@ -49,7 +49,7 @@ export default function Error({
         </p>
         <button
           onClick={() => reset()}
-          className="mt-5 rounded-[10px] bg-navy-900 px-5 py-2.5 text-[13px] font-bold text-white transition-opacity hover:opacity-85"
+          className="mt-5 rounded-[5px] bg-navy-900 px-5 py-2.5 text-[13px] font-bold text-white transition-opacity hover:opacity-85"
         >
           지금 다시 시도
         </button>

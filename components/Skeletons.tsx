@@ -10,7 +10,7 @@ function Bar({ className = "" }: { className?: string }) {
 // 섹션 공통 셸(라이트 헤더 + 흰 본문) — SignalRadar·ListingsStrip·UpcomingEvents 공용
 function SectionShell({ minBody }: { minBody: string }) {
   return (
-    <section className="rounded-xl border border-line bg-white shadow-card overflow-hidden">
+    <section className="rounded-[6px] border border-line bg-white shadow-card overflow-hidden">
       <header className="flex items-center justify-between border-b border-line bg-white px-4 py-3">
         <div className="h-4 w-32 rounded bg-line" />
         <div className="h-3 w-16 rounded bg-line" />

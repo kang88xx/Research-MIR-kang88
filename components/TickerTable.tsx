@@ -46,7 +46,7 @@ export default function TickerTable() {
   }, []);
 
   return (
-    <section className="rounded-xl border border-line bg-white shadow-card overflow-hidden transition-shadow hover:shadow-pop">
+    <section className="rounded-[6px] border border-line bg-white shadow-card overflow-hidden transition-shadow hover:shadow-pop">
       <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-white px-4 py-3">
         <h2 className="flex items-center gap-2 text-sm font-semibold text-ink-900"><span className="h-1.5 w-1.5 rounded-full bg-brand" aria-hidden />실시간 시세</h2>
         <span className="font-mono text-[10px] tracking-[0.12em] text-ink-500 uppercase">

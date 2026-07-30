@@ -76,7 +76,7 @@ export default async function MarketCards() {
       <TickerTable />
 
       {/* 02 · BTC DOMINANCE(압축) + 환율 USD/KRW */}
-      <section className="flex flex-col rounded-xl border border-line bg-white shadow-card transition-shadow hover:shadow-pop overflow-hidden">
+      <section className="flex flex-col rounded-[6px] border border-line bg-white shadow-card transition-shadow hover:shadow-pop overflow-hidden">
         <CardHead title="BTC Dominance" meta={`${formatRelativeTime(overview.updatedAt)} · CoinGecko`} />
 
         <div className="flex flex-1 flex-col p-5">
@@ -170,7 +170,7 @@ export default async function MarketCards() {
       </section>
 
       {/* 03 · FEAR & GREED */}
-      <section className="flex flex-col rounded-xl border border-line bg-white shadow-card transition-shadow hover:shadow-pop overflow-hidden">
+      <section className="flex flex-col rounded-[6px] border border-line bg-white shadow-card transition-shadow hover:shadow-pop overflow-hidden">
         <CardHead title="Fear &amp; Greed" meta="Daily" />
         <div className="flex flex-1 flex-col p-5">
         {latestFng ? (

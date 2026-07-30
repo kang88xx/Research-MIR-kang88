@@ -37,7 +37,7 @@ export default function ThemeToggle() {
       onClick={toggle}
       aria-label={dark ? "라이트 모드로 전환" : "다크 모드로 전환"}
       title={dark ? "라이트 모드" : "다크 모드"}
-      className="grid h-7 w-7 place-items-center rounded-[7px] text-[#aeb9c2] hover:bg-[#ffffff14] hover:text-[#e5e4e2]"
+      className="grid h-7 w-7 place-items-center rounded-[5px] text-[#aeb9c2] hover:bg-[#ffffff14] hover:text-[#e5e4e2]"
     >
       {dark ? (
         /* 해 — 라이트로 전환 */

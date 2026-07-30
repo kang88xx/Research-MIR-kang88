@@ -64,7 +64,7 @@ export default function TelegramChannels({ popular }: { popular?: TelegramPopula
   };
 
   return (
-    <section className="overflow-hidden rounded-[14px] border border-line bg-white">
+    <section className="overflow-hidden rounded-[6px] border border-line bg-white">
       <header className="title-band flex items-center gap-2 border-b px-5 py-3">
         <h2 className="text-[15.5px] font-extrabold tracking-[-0.3px] text-[#e5e4e2]">
           텔레그램 인기 포스팅
@@ -100,7 +100,7 @@ export default function TelegramChannels({ popular }: { popular?: TelegramPopula
         {posts.map((p, i) => (
           <li
             key={p.postUrl}
-            className="w-[264px] shrink-0 snap-start rounded-[10px] border border-hairline bg-white px-3.5 py-3 hover:border-line"
+            className="w-[264px] shrink-0 snap-start rounded-[5px] border border-hairline bg-white px-3.5 py-3 hover:border-line"
           >
             <div className="flex items-center gap-1.5 text-[11px] text-ink-400">
               <span

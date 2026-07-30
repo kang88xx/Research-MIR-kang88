@@ -6,7 +6,7 @@ import LiveSparkline from "@/components/LiveSparkline";
 import MarketStatus, { type Mkt } from "@/components/MarketStatus";
 
 // 2a 파이낸스 그레이드 — 12개 지표 카드 공통 셸 (radius 14 · 보더 기반 · 그림자 없음)
-const CARD = "rounded-[14px] border border-line bg-white px-3 py-2";
+const CARD = "rounded-[6px] border border-line bg-white px-3 py-2";
 // 제목행 — 캘린더 칩 기준 11.5px semibold
 const TITLE = "flex items-center gap-[7px] text-[11.5px] font-semibold text-navy-900";
 // 값행 숫자 — mono 16px semibold 단일 스케일 (codex 교차검증 2026-07-14: 15/16 혼용은

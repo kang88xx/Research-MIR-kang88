@@ -16,7 +16,7 @@ export default async function HomeBoards() {
     .catch(() => []);
 
   return (
-    <section className="overflow-hidden rounded-[14px] border border-line bg-white">
+    <section className="overflow-hidden rounded-[6px] border border-line bg-white">
       <header className="title-band flex items-baseline justify-between border-b px-5 py-3">
         <h2 className="text-[15.5px] font-extrabold tracking-[-0.3px] text-[#e5e4e2]">시장 분석</h2>
         <Link href="/analysis" className="text-xs font-bold text-[#93a5b2] hover:text-[#e5e4e2] hover:underline">
