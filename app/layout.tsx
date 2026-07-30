@@ -6,6 +6,7 @@ import Header from "@/components/Header";
 import ConsoleSidebar from "@/components/ConsoleSidebar";
 import MarketBar from "@/components/MarketBar";
 import ListingsStrip from "@/components/ListingsStrip";
+import RouteGate from "@/components/RouteGate";
 import VisitTracker from "@/components/VisitTracker";
 import {
   HeaderSkeleton,
@@ -74,16 +75,18 @@ export default function RootLayout({
             <Suspense fallback={<HeaderSkeleton />}>
               <Header />
             </Suspense>
-            {/* 마켓바 — 상장 스트립 아래 (크립토·주가지수·코인 미니차트 + 동시접속·언어) */}
-            <Suspense fallback={<MarketBarSkeleton />}>
-              <div className="reveal">
-                <MarketBar />
-              </div>
-            </Suspense>
-            <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">{children}</main>
+            {/* 마켓바 — 홈·대시보드에서만 노출 (크립토·주가지수·코인 미니차트) */}
+            <RouteGate show={["/", "/dashboard"]}>
+              <Suspense fallback={<MarketBarSkeleton />}>
+                <div className="reveal">
+                  <MarketBar />
+                </div>
+              </Suspense>
+            </RouteGate>
+            <main className="w-full flex-1 px-5 py-8">{children}</main>
             {/* 푸터 — 투명 배경 한 줄: 워드마크 · 출처 · 면책 */}
             <footer>
-              <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-4 text-[11.5px] text-ink-400">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4 text-[11.5px] text-ink-400">
                 <span className="text-xs font-bold text-navy-600">KMIR</span>
                 <span>시세 출처: 업비트 · 바이낸스 · Yahoo(환율)</span>
                 <span>투자 판단의 책임은 본인에게 있습니다.</span>

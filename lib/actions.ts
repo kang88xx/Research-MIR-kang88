@@ -84,42 +84,6 @@ export async function createComment(postId: number, formData: FormData) {
   revalidatePath(`${basePath}/${postId}`);
 }
 
-// 코인·주식·해외 종목 자유 입력 (티커에 있는 심볼은 현재가 자동 평가)
-function parsePortfolioInput(formData: FormData) {
-  const symbol = String(formData.get("symbol") ?? "").toUpperCase().trim();
-  const quantity = parseFloat(String(formData.get("quantity") ?? ""));
-  const buyPrice = parseFloat(String(formData.get("buyPrice") ?? ""));
-  const currency = formData.get("currency") === "USD" ? "USD" : "KRW";
-
-  if (!/^[A-Z0-9.\-]{1,12}$/.test(symbol)) {
-    throw new Error("종목 심볼은 영문/숫자 1~12자로 입력해 주세요. (예: BTC, AAPL)");
-  }
-  if (!Number.isFinite(quantity) || quantity <= 0) throw new Error("수량을 올바르게 입력해 주세요.");
-  if (!Number.isFinite(buyPrice) || buyPrice <= 0) throw new Error("단가를 올바르게 입력해 주세요.");
-
-  return { symbol, quantity, buyPrice, currency };
-}
-
-export async function addPortfolioItem(formData: FormData) {
-  const userId = await requireUserId();
-  const data = parsePortfolioInput(formData);
-  await prisma.portfolioItem.create({ data: { userId, ...data } });
-  revalidatePath("/dashboard");
-}
-
-export async function updatePortfolioItem(id: number, formData: FormData) {
-  const userId = await requireUserId();
-  const data = parsePortfolioInput(formData);
-  await prisma.portfolioItem.updateMany({ where: { id, userId }, data });
-  revalidatePath("/dashboard");
-}
-
-export async function deletePortfolioItem(id: number) {
-  const userId = await requireUserId();
-  await prisma.portfolioItem.deleteMany({ where: { id, userId } });
-  revalidatePath("/dashboard");
-}
-
 export async function votePost(postId: number, value: 1 | -1) {
   const userId = await requireUserId();
 

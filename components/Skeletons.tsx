@@ -66,7 +66,7 @@ export function SidebarAccountSkeleton() {
 export function MarketBarSkeleton() {
   return (
     <div className="border-b border-line bg-paper">
-      <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-2">
+      <div className="flex flex-col gap-2 px-5 py-2">
         {Array.from({ length: 3 }).map((_, row) => (
           <div key={row} className="flex flex-wrap justify-between gap-y-2">
             {Array.from({ length: 4 }).map((_, i) => (

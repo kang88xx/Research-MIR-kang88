@@ -22,20 +22,6 @@ model User {
   posts        Post[]
   comments     Comment[]
   votes        Vote[]
-  portfolio    PortfolioItem[]
-}
-
-model PortfolioItem {
-  id        Int      @id @default(autoincrement())
-  user      User     @relation(fields: [userId], references: [id])
-  userId    String
-  symbol    String
-  quantity  Float
-  buyPrice  Float // 매수 단가 (currency 기준)
-  currency  String   @default("KRW") // KRW | USD
-  createdAt DateTime @default(now())
-
-  @@index([userId])
 }
 
 // 외부 API 응답 공유 캐시 — 요청 시점 외부 호출 제거(서버리스 인스턴스 간 공유)

@@ -346,7 +346,7 @@ export default async function MarketBar() {
 
   return (
     <div className="bg-paper">
-      <div className="mx-auto max-w-6xl px-4 pt-[12px]">
+      <div className="px-5 pt-[12px]">
         {tiles.length === 0 ? (
           <p className="rail flex items-center justify-center gap-2 py-2 text-center">
             <GajaLoader size={15} />
