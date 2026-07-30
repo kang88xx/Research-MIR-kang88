@@ -108,14 +108,7 @@ export function UpcomingEventsSkeleton() {
   return <SectionShell minBody="min-h-[200px]" />;
 }
 
-// ── 홈: 하단 게시판 영역(자유게시판 + 시장 분석) ──
+// ── 홈: 하단 게시판 영역(시장 분석) ──
 export function HomeBoardsSkeleton() {
-  return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
-      <SectionShell minBody="min-h-[360px]" />
-      <div className="flex flex-col gap-6">
-        <SectionShell minBody="min-h-[160px]" />
-      </div>
-    </div>
-  );
+  return <SectionShell minBody="min-h-[300px]" />;
 }

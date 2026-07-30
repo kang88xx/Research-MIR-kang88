@@ -4,19 +4,26 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const NAV: [string, string][] = [
-  ["/", "홈"],
-  ["/dashboard", "대시보드"],
-  ["/free", "자유게시판"],
-  ["/analysis", "시장분석"],
-  ["/calendar", "캘린더"],
-  ["/box", "랜덤박스"],
+  ["/", "🏠 홈"],
+  ["/dashboard", "📊 대시보드"],
+  ["/dashboard#indicators", "📈 각종 지표"],
+  ["/calendar", "📅 캘린더"],
+  ["/dashboard#kimchi", "🌶️ 김치 프리미엄"],
+  ["/#bubblemap", "🫧 버블맵"],
+  ["/#telegram", "✈️ 텔레그램"],
+  ["/analysis", "🔍 시장분석"],
 ];
 
 // 모바일 헤더 네비 — 콘솔 라이트: 활성 탭은 딥네이비 볼드 + 네이비 인셋 언더라인
 export default function NavLinks() {
   const pathname = usePathname();
+  // 앵커 링크는 활성 표시하지 않는다 (본 메뉴와 이중 하이라이트 방지)
   const isActive = (href: string) =>
-    href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
+    href.includes("#")
+      ? false
+      : href === "/"
+        ? pathname === "/"
+        : pathname === href || pathname.startsWith(`${href}/`);
 
   return (
     <nav className="order-3 -mx-4 flex w-full min-w-0 items-center overflow-x-auto px-4 text-sm whitespace-nowrap">

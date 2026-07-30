@@ -4,12 +4,6 @@ const prisma = new PrismaClient();
 
 async function main() {
   await prisma.board.upsert({
-    where: { slug: "free" },
-    update: {},
-    create: { slug: "free", name: "자유게시판", sortOrder: 1 },
-  });
-  console.log("Seeded: 자유게시판 (free)");
-  await prisma.board.upsert({
     where: { slug: "analysis" },
     update: {},
     create: { slug: "analysis", name: "시장 분석", type: "info", sortOrder: 2 },

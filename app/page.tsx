@@ -58,7 +58,10 @@ export default async function Home() {
         </Suspense>
 
         {/* 버블맵은 옆의 랭킹 테이블 높이에 맞춰 늘어난다 (ResizeObserver가 부모 크기 추적) */}
-        <section className="flex min-w-0 flex-col overflow-hidden rounded-[14px] border border-line bg-white">
+        <section
+          id="bubblemap"
+          className="flex min-w-0 scroll-mt-4 flex-col overflow-hidden rounded-[14px] border border-line bg-white"
+        >
           <header className="title-band flex items-baseline gap-2 border-b px-4 py-3 sm:px-6">
             <h2 className="text-[17px] font-extrabold tracking-[-0.3px] text-[#e5e4e2]">
               시총 상위 버블맵
@@ -76,13 +79,15 @@ export default async function Home() {
       </div>
 
       {/* 텔레그램 인기 포스팅 — 가로 슬라이드 스트립 */}
-      <Suspense fallback={<TelegramChannels />}>
-        <div className="reveal min-w-0">
-          <TelegramSection />
-        </div>
-      </Suspense>
+      <div id="telegram" className="scroll-mt-4">
+        <Suspense fallback={<TelegramChannels />}>
+          <div className="reveal min-w-0">
+            <TelegramSection />
+          </div>
+        </Suspense>
+      </div>
 
-      {/* 커뮤니티 — 자유게시판 최신글 / 시장 분석 */}
+      {/* 리서치 — 시장 분석 최신글 */}
       <Suspense fallback={<HomeBoardsSkeleton />}>
         <div className="reveal">
           <HomeBoards />

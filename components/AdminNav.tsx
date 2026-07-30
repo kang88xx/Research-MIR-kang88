@@ -4,10 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const TABS = [
-  { href: "/admin", label: "대시보드" },
-  { href: "/admin/members", label: "회원" },
-  { href: "/admin/prizes", label: "상품" },
-  { href: "/admin/events", label: "이벤트" },
+  { href: "/admin", label: "📊 대시보드" },
+  { href: "/admin/members", label: "👥 회원" },
+  { href: "/admin/events", label: "📅 이벤트" },
 ];
 
 export default function AdminNav() {

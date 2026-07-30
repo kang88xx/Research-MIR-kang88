@@ -1,5 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
-  <!-- 파비콘 축약형 — 16px에서 획을 지키기 위해 앞 셰브런 하나만 -->
-  <rect width="120" height="120" rx="26" fill="#0d1013"/>
-  <path d="M44 28 L82 60 L44 92" fill="none" stroke="#9db2c2" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
-</svg>

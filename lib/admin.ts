@@ -7,9 +7,6 @@ export type AdminStats = {
   totalUsers: number;
   totalPosts: number;
   totalComments: number;
-  totalBoxOpens: number;
-  totalPrizeWins: number;
-  circulatingPoints: number; // 전 회원 보유 포인트 합(유통량)
   todaySignups: number;
   todayVisitors: number;
   todayPosts: number;
@@ -23,9 +20,6 @@ export async function getAdminStats(): Promise<AdminStats> {
     totalUsers,
     totalPosts,
     totalComments,
-    totalBoxOpens,
-    totalPrizeWins,
-    pointsAgg,
     todaySignups,
     todayPosts,
     todayComments,
@@ -34,9 +28,6 @@ export async function getAdminStats(): Promise<AdminStats> {
     prisma.user.count(),
     prisma.post.count(),
     prisma.comment.count(),
-    prisma.pointLog.count({ where: { action: "box" } }),
-    prisma.prizeWin.count(),
-    prisma.user.aggregate({ _sum: { points: true } }),
     prisma.user.count({ where: { createdAt: { gte: todayStart } } }),
     prisma.post.count({ where: { createdAt: { gte: todayStart } } }),
     prisma.comment.count({ where: { createdAt: { gte: todayStart } } }),
@@ -47,9 +38,6 @@ export async function getAdminStats(): Promise<AdminStats> {
     totalUsers,
     totalPosts,
     totalComments,
-    totalBoxOpens,
-    totalPrizeWins,
-    circulatingPoints: pointsAgg._sum.points ?? 0,
     todaySignups,
     todayVisitors: todayVisitRow?.count ?? 0,
     todayPosts,
@@ -63,7 +51,6 @@ export type DailyRow = {
   signups: number;
   posts: number;
   comments: number;
-  boxOpens: number;
 };
 
 // 최근 days일(KST) 일자별 집계 — 최신일 먼저. createdAt은 JS에서 KST일로 버킷팅(raw SQL 회피).
@@ -72,15 +59,11 @@ export async function getDailySeries(days = 14): Promise<DailyRow[]> {
   const startUtc = new Date(todayStart.getTime() - (days - 1) * 86400_000);
   const startDay = kstDay(startUtc);
 
-  const [visitStats, users, posts, comments, boxes] = await Promise.all([
+  const [visitStats, users, posts, comments] = await Promise.all([
     prisma.visitStat.findMany({ where: { day: { gte: startDay } }, select: { day: true, count: true } }),
     prisma.user.findMany({ where: { createdAt: { gte: startUtc } }, select: { createdAt: true } }),
     prisma.post.findMany({ where: { createdAt: { gte: startUtc } }, select: { createdAt: true } }),
     prisma.comment.findMany({ where: { createdAt: { gte: startUtc } }, select: { createdAt: true } }),
-    prisma.pointLog.findMany({
-      where: { action: "box", createdAt: { gte: startUtc } },
-      select: { createdAt: true },
-    }),
   ]);
 
   const bucket = (items: { createdAt: Date }[]): Map<string, number> => {
@@ -92,7 +75,6 @@ export async function getDailySeries(days = 14): Promise<DailyRow[]> {
   const su = bucket(users);
   const po = bucket(posts);
   const co = bucket(comments);
-  const bo = bucket(boxes);
 
   // 최신일 → 과거 순
   const rows: DailyRow[] = [];
@@ -104,13 +86,12 @@ export async function getDailySeries(days = 14): Promise<DailyRow[]> {
       signups: su.get(day) ?? 0,
       posts: po.get(day) ?? 0,
       comments: co.get(day) ?? 0,
-      boxOpens: bo.get(day) ?? 0,
     });
   }
   return rows;
 }
 
-export type MemberSort = "recent" | "points" | "level";
+export type MemberSort = "recent" | "level";
 export const MEMBERS_PAGE_SIZE = 20;
 
 export type MemberRow = {
@@ -118,9 +99,8 @@ export type MemberRow = {
   nickname: string;
   email: string;
   level: number;
-  points: number;
   createdAt: Date;
-  _count: { posts: number; comments: number; prizeWins: number };
+  _count: { posts: number; comments: number };
 };
 
 // 회원 목록 — 닉/이메일 검색, 정렬, 페이지네이션.
@@ -140,11 +120,9 @@ export async function getMembers(opts: {
       }
     : {};
   const orderBy =
-    opts.sort === "points"
-      ? [{ points: "desc" as const }]
-      : opts.sort === "level"
-        ? [{ level: "desc" as const }, { points: "desc" as const }]
-        : [{ createdAt: "desc" as const }];
+    opts.sort === "level"
+      ? [{ level: "desc" as const }, { createdAt: "desc" as const }]
+      : [{ createdAt: "desc" as const }];
 
   const [rows, total] = await Promise.all([
     prisma.user.findMany({
@@ -157,9 +135,8 @@ export async function getMembers(opts: {
         nickname: true,
         email: true,
         level: true,
-        points: true,
         createdAt: true,
-        _count: { select: { posts: true, comments: true, prizeWins: true } },
+        _count: { select: { posts: true, comments: true } },
       },
     }),
     prisma.user.count({ where }),

@@ -5,7 +5,7 @@ import { NICK_MAX_CHANGES } from "@/lib/nickname";
 import NicknameForm from "@/components/NicknameForm";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "내 설정 · 가자가자" };
+export const metadata = { title: "내 설정 · KMIR" };
 
 export default async function SettingsPage() {
   const session = await auth();
@@ -13,7 +13,7 @@ export default async function SettingsPage() {
 
   const me = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { nickname: true, nicknameChanges: true, nicknameConfirmed: true, level: true, points: true },
+    select: { nickname: true, nicknameChanges: true, nicknameConfirmed: true, level: true },
   });
   if (!me) redirect("/login");
 
@@ -22,9 +22,7 @@ export default async function SettingsPage() {
   return (
     <div className="mx-auto max-w-md px-4 py-8">
       <h1 className="mb-1 text-xl font-semibold text-navy-900">내 설정</h1>
-      <p className="mb-6 text-sm text-ink-500">
-        Lv{me.level} · {me.points.toLocaleString()}P
-      </p>
+      <p className="mb-6 text-sm text-ink-500">Lv{me.level}</p>
 
       <section className="border border-line bg-white p-5">
         <h2 className="mb-3 text-sm font-semibold text-navy-900">

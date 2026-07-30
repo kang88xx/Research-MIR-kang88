@@ -10,9 +10,6 @@ export default async function AdminHomePage() {
     { label: "총 회원", value: stats.totalUsers },
     { label: "총 게시글", value: stats.totalPosts },
     { label: "총 댓글", value: stats.totalComments },
-    { label: "박스 오픈", value: stats.totalBoxOpens },
-    { label: "당첨 건수", value: stats.totalPrizeWins },
-    { label: "유통 포인트", value: stats.circulatingPoints },
   ];
   const today = [
     { label: "오늘 방문", value: stats.todayVisitors },
@@ -67,7 +64,6 @@ export default async function AdminHomePage() {
                 <th className="px-3 py-2 text-right font-normal">가입</th>
                 <th className="px-3 py-2 text-right font-normal">글</th>
                 <th className="px-3 py-2 text-right font-normal">댓글</th>
-                <th className="px-3 py-2 text-right font-normal">박스</th>
               </tr>
             </thead>
             <tbody>
@@ -80,7 +76,6 @@ export default async function AdminHomePage() {
                   <td className="px-3 py-2 text-right font-mono text-ink-900">{d.signups}</td>
                   <td className="px-3 py-2 text-right font-mono text-ink-900">{d.posts}</td>
                   <td className="px-3 py-2 text-right font-mono text-ink-900">{d.comments}</td>
-                  <td className="px-3 py-2 text-right font-mono text-ink-900">{d.boxOpens}</td>
                 </tr>
               ))}
             </tbody>

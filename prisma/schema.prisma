@@ -14,7 +14,6 @@ model User {
   email        String    @unique
   nickname     String    @unique
   passwordHash String? // 소셜 로그인 계정은 비밀번호 없음
-  points       Int       @default(0)
   level        Int       @default(1)
   // 닉네임: 가입 후 총 3회까지 변경. nicknameConfirmed=false(구글 신규)면 최초 1회 설정은 무료.
   nicknameChanges   Int     @default(0)
@@ -23,41 +22,7 @@ model User {
   posts        Post[]
   comments     Comment[]
   votes        Vote[]
-  pointLogs    PointLog[]
   portfolio    PortfolioItem[]
-  prizeWins    PrizeWin[]
-}
-
-// 랜덤박스 상품 — 어드민(운영진 Lv10+)이 등록/관리
-model Prize {
-  id          Int        @id @default(autoincrement())
-  name        String
-  description String?
-  imageUrl    String?
-  rarity      String     @default("common") // common | rare | epic | legendary (색·연출 등급)
-  weight      Int        @default(100) // 추첨 가중치 — 클수록 자주 당첨
-  stock       Int? // null=무제한, 숫자=남은 수량 (0이면 소진)
-  active      Boolean    @default(true)
-  sortOrder   Int        @default(0)
-  createdAt   DateTime   @default(now())
-  wins        PrizeWin[]
-
-  @@index([active])
-}
-
-// 랜덤박스 당첨 내역
-model PrizeWin {
-  id        Int      @id @default(autoincrement())
-  user      User     @relation(fields: [userId], references: [id])
-  userId    String
-  prize     Prize    @relation(fields: [prizeId], references: [id])
-  prizeId   Int
-  cost      Int // 소모 포인트
-  createdAt DateTime @default(now())
-
-  @@index([userId, createdAt(sort: Desc)])
-  @@index([prizeId])
-  @@index([createdAt(sort: Desc)])
 }
 
 model PortfolioItem {
@@ -95,19 +60,6 @@ model MarketSnapshot {
   createdAt    DateTime @default(now())
 
   @@index([createdAt])
-}
-
-model PointLog {
-  id        Int      @id @default(autoincrement())
-  user      User     @relation(fields: [userId], references: [id])
-  userId    String
-  action    String // post | comment | attendance
-  delta     Int
-  day       String? // 출석체크용 KST 날짜 (YYYY-MM-DD)
-  createdAt DateTime @default(now())
-
-  @@unique([userId, action, day])
-  @@index([action, day])
 }
 
 model Board {

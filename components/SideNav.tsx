@@ -3,39 +3,47 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-type Item = { href: string; num: string; ko: string; en: string };
+type Item = { href: string; emoji: string; ko: string; en: string };
 type Group = { label: string; items: Item[] };
 
-// 콘솔 사이드바 네비 — 번호형 항목 + 모노 영문 서브라벨, 그룹 마이크로 라벨
+// 콘솔 사이드바 네비 — 이모지 + 모노 영문 서브라벨, 그룹 마이크로 라벨
+// 페이지 없는 항목(각종 지표·김프·버블맵·텔레그램)은 해당 섹션 앵커로 이동
 const GROUPS: Group[] = [
   {
     label: "MARKET · 시세",
     items: [
-      { href: "/", num: "01", ko: "홈", en: "HOME" },
-      { href: "/dashboard", num: "02", ko: "대시보드", en: "DASHBOARD" },
-    ],
-  },
-  {
-    label: "COMMUNITY · 커뮤니티",
-    items: [
-      { href: "/free", num: "03", ko: "자유게시판", en: "FORUM" },
-      { href: "/analysis", num: "04", ko: "시장분석", en: "RESEARCH" },
+      { href: "/", emoji: "🏠", ko: "홈", en: "HOME" },
+      { href: "/dashboard", emoji: "📊", ko: "대시보드", en: "DASHBOARD" },
+      { href: "/dashboard#indicators", emoji: "📈", ko: "각종 지표", en: "INDICATORS" },
     ],
   },
   {
     label: "SCHEDULE · 일정",
-    items: [{ href: "/calendar", num: "05", ko: "캘린더", en: "CALENDAR" }],
+    items: [{ href: "/calendar", emoji: "📅", ko: "캘린더", en: "CALENDAR" }],
   },
   {
-    label: "REWARD · 리워드",
-    items: [{ href: "/box", num: "06", ko: "랜덤박스", en: "RANDOM BOX" }],
+    label: "DATA · 데이터",
+    items: [
+      { href: "/dashboard#kimchi", emoji: "🌶️", ko: "김치 프리미엄", en: "KIMCHI PREMIUM" },
+      { href: "/#bubblemap", emoji: "🫧", ko: "버블맵", en: "BUBBLE MAP" },
+      { href: "/#telegram", emoji: "✈️", ko: "텔레그램 포스팅", en: "TELEGRAM" },
+    ],
+  },
+  {
+    label: "RESEARCH · 리서치",
+    items: [{ href: "/analysis", emoji: "🔍", ko: "시장분석", en: "RESEARCH" }],
   },
 ];
 
 export default function SideNav() {
   const pathname = usePathname();
+  // 앵커 링크는 활성 표시하지 않는다 (같은 경로의 본 메뉴와 이중 하이라이트 방지)
   const isActive = (href: string) =>
-    href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
+    href.includes("#")
+      ? false
+      : href === "/"
+        ? pathname === "/"
+        : pathname === href || pathname.startsWith(`${href}/`);
 
   return (
     <nav className="flex flex-col gap-4">
@@ -57,10 +65,8 @@ export default function SideNav() {
                         : "border-transparent hover:bg-surface-2"
                     }`}
                   >
-                    <span
-                      className={`font-mono text-[10px] ${active ? "font-semibold text-brand-ink" : "text-ink-400"}`}
-                    >
-                      {it.num}
+                    <span className="w-5 shrink-0 text-center text-[14px] leading-none" aria-hidden>
+                      {it.emoji}
                     </span>
                     <span className="flex min-w-0 flex-col">
                       <span

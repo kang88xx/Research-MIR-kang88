@@ -16,7 +16,7 @@ export default async function Header() {
   const me = session?.user?.id
     ? await prisma.user.findUnique({
         where: { id: session.user.id },
-        select: { points: true, level: true, nickname: true, nicknameConfirmed: true },
+        select: { level: true, nickname: true, nicknameConfirmed: true },
       })
     : null;
 
@@ -24,16 +24,9 @@ export default async function Header() {
     <header className="border-b border-hairline bg-surface lg:hidden">
       <div className="flex flex-wrap items-center gap-y-0 px-4">
         <div className="flex shrink-0 items-center gap-3 py-2.5">
-          <Link href="/" className="flex items-center gap-2">
-            {/* 가자가자 더블 셰브런 — 콘솔 톤(골드 블록 + 네이비) */}
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[4px] bg-gold">
-              <svg width="16" height="16" viewBox="0 0 120 120" aria-hidden>
-                <path d="M26 26 L58 60 L26 94" fill="none" stroke="#091955" strokeWidth="17" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M60 26 L92 60 L60 94" fill="none" stroke="#0f1320" strokeWidth="17" strokeLinecap="round" strokeLinejoin="round" opacity="0.55" />
-              </svg>
-            </span>
-            <span className="whitespace-nowrap text-[17px] font-extrabold tracking-tight text-navy-900">
-              가자가자
+          <Link href="/" className="min-w-0">
+            <span className="block text-[13px] leading-snug font-extrabold tracking-tight text-navy-900 uppercase">
+              Kang Market Intelligence &amp; Research
             </span>
           </Link>
           <RefreshButton />
@@ -45,21 +38,12 @@ export default async function Header() {
             <>
               {me && me.level >= ADMIN_MIN_LEVEL && (
                 <Link
-                  href="/admin/prizes"
+                  href="/admin"
                   className="py-1.5 font-semibold text-ink-500 hover:text-brand-ink"
                 >
                   어드민
                 </Link>
               )}
-              <Link
-                href="/attendance"
-                className="py-1.5 font-medium text-ink-500 hover:text-brand-ink"
-              >
-                출석체크
-              </Link>
-              <Link href="/box" className="font-mono text-xs font-semibold text-brand-ink">
-                {(me?.points ?? 0).toLocaleString()}P
-              </Link>
               {me && !me.nicknameConfirmed && (
                 <Link
                   href="/settings"

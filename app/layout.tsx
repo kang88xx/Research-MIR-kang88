@@ -6,7 +6,6 @@ import Header from "@/components/Header";
 import ConsoleSidebar from "@/components/ConsoleSidebar";
 import TickerBar from "@/components/TickerBar";
 import MarketBar from "@/components/MarketBar";
-import AppPromo from "@/components/AppPromo";
 import VisitTracker from "@/components/VisitTracker";
 import { HeaderSkeleton, MarketBarSkeleton, SidebarAccountSkeleton } from "@/components/Skeletons";
 
@@ -24,8 +23,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "가자가자 - 크립토 커뮤니티",
-  description: "실시간 시세와 김치프리미엄, 크립토 커뮤니티 가자가자",
+  title: "KMIR — Kang Market Intelligence & Research",
+  description: "Kang의 투자 리서치 종합 지표 콘솔 — 실시간 시세·김치프리미엄·시장 분석·일정",
 };
 
 export default function RootLayout({
@@ -53,12 +52,6 @@ export default function RootLayout({
           }}
         />
         <VisitTracker />
-        {/* 콘솔 상단 스트립 — 얇은 모노 시스템 바 */}
-        <div className="console-strip flex items-center justify-between px-4 py-[7px]">
-          <span>V2.0 — DATA CONSOLE</span>
-          <span className="hidden sm:block">가자가자 · CRYPTO RESEARCH DESK</span>
-          <span>COINOM.KANG88.IO</span>
-        </div>
         <div className="flex min-h-0 flex-1 items-stretch">
           {/* 좌측 사이드바 — 데스크톱 전용 (로고 · 번호형 네비 · 계정) */}
           <Suspense fallback={<SidebarAccountSkeleton />}>
@@ -78,22 +71,12 @@ export default function RootLayout({
               </div>
             </Suspense>
             <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">{children}</main>
-            <AppPromo />
-            {/* 푸터 — 투명 배경 한 줄: 워드마크 · 출처 · 면책 + 우측 앱 심사 칩 */}
+            {/* 푸터 — 투명 배경 한 줄: 워드마크 · 출처 · 면책 */}
             <footer>
               <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-4 text-[11.5px] text-ink-400">
-                <span className="text-xs font-bold text-navy-600">가자가자</span>
+                <span className="text-xs font-bold text-navy-600">KMIR</span>
                 <span>시세 출처: 업비트 · 바이낸스 · Yahoo(환율)</span>
                 <span>투자 판단의 책임은 본인에게 있습니다.</span>
-                <span className="ml-auto flex items-center gap-2">
-                  <span className="rounded-[5px] bg-navy-100 px-2 py-0.5 text-[10.5px] font-bold text-ink-500">
-                    iOS 심사중
-                  </span>
-                  <span className="rounded-[5px] bg-navy-100 px-2 py-0.5 text-[10.5px] font-bold text-ink-500">
-                    Android 심사중
-                  </span>
-                  모바일 앱 출시 예정
-                </span>
               </div>
             </footer>
           </div>

@@ -55,14 +55,14 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
+      <div id="indicators" className="scroll-mt-4">
         <PageTitle eyebrow="Data Dashboard" title="데이터 대시보드" />
         <MarketCards />
       </div>
 
       <MarketPulse />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div id="kimchi" className="grid grid-cols-1 gap-6 scroll-mt-4 lg:grid-cols-2">
         <KimchiTable />
         <ExchangeSpread />
       </div>

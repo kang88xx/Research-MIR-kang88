@@ -6,7 +6,6 @@ export const dynamic = "force-dynamic";
 
 const SORTS: { key: MemberSort; label: string }[] = [
   { key: "recent", label: "최신 가입" },
-  { key: "points", label: "포인트순" },
   { key: "level", label: "레벨순" },
 ];
 
@@ -18,7 +17,7 @@ export default async function AdminMembersPage({
 }) {
   const sp = await searchParams;
   const q = sp.q?.trim() ?? "";
-  const sort: MemberSort = sp.sort === "points" || sp.sort === "level" ? sp.sort : "recent";
+  const sort: MemberSort = sp.sort === "level" ? sp.sort : "recent";
   const page = Math.max(1, parseInt(sp.page ?? "1", 10) || 1);
 
   const { rows, total, totalPages } = await getMembers({ q, sort, page });
@@ -82,17 +81,15 @@ export default async function AdminMembersPage({
             <tr className="bg-navy-900 text-xs font-light text-white">
               <th className="px-3 py-2 text-left font-normal">회원</th>
               <th className="px-3 py-2 text-left font-normal">이메일</th>
-              <th className="px-3 py-2 text-right font-normal">포인트</th>
               <th className="px-3 py-2 text-right font-normal">글</th>
               <th className="px-3 py-2 text-right font-normal">댓글</th>
-              <th className="px-3 py-2 text-right font-normal">박스</th>
               <th className="px-3 py-2 text-right font-normal">가입일</th>
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-12 text-center text-ink-500">
+                <td colSpan={5} className="px-4 py-12 text-center text-ink-500">
                   {q ? "검색 결과가 없습니다." : "회원이 없습니다."}
                 </td>
               </tr>
@@ -106,12 +103,8 @@ export default async function AdminMembersPage({
                     <span className="text-ink-900">{m.nickname}</span>
                   </td>
                   <td className="px-3 py-2 text-xs text-ink-500">{m.email}</td>
-                  <td className="px-3 py-2 text-right font-mono font-semibold text-navy-900">
-                    {m.points.toLocaleString()}
-                  </td>
                   <td className="px-3 py-2 text-right font-mono text-ink-500">{m._count.posts}</td>
                   <td className="px-3 py-2 text-right font-mono text-ink-500">{m._count.comments}</td>
-                  <td className="px-3 py-2 text-right font-mono text-ink-500">{m._count.prizeWins}</td>
                   <td className="whitespace-nowrap px-3 py-2 text-right text-xs text-ink-500">
                     {formatPostDate(m.createdAt)}
                   </td>
