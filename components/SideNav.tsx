@@ -4,18 +4,17 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import NavIcon, { type IconName } from "@/components/NavIcon";
 
-type Item = { href: string; icon: IconName; en: string; parent?: string };
+type Item = { href: string; icon: IconName; en: string };
 
 // 콘솔 사이드바 네비 — Pharos 라인 글리프 + 모노 영문 라벨(영문 전용, 그룹 라벨 없음)
-// parent가 있는 항목은 섹션 앵커 — 해당 페이지에 있을 때만 노출 (홈·대시보드 등 페이지 항목은 항상 노출)
+// 항목은 항상 동일하게 고정 노출 (페이지별 필터링 없음 — 메뉴 흔들림 방지)
 const ITEMS: Item[] = [
-  { href: "/", icon: "home", en: "HOME" },
   { href: "/dashboard", icon: "dashboard", en: "DASHBOARD" },
-  { href: "/dashboard#indicators", icon: "indicators", en: "INDICATORS", parent: "/dashboard" },
+  { href: "/dashboard#indicators", icon: "indicators", en: "INDICATORS" },
   { href: "/calendar", icon: "calendar", en: "CALENDAR" },
-  { href: "/dashboard#kimchi", icon: "kimchi", en: "KIMCHI PREMIUM", parent: "/dashboard" },
-  { href: "/#bubblemap", icon: "bubble", en: "BUBBLE MAP", parent: "/" },
-  { href: "/#telegram", icon: "telegram", en: "TELEGRAM", parent: "/" },
+  { href: "/dashboard#kimchi", icon: "kimchi", en: "KIMCHI PREMIUM" },
+  { href: "/bubble", icon: "bubble", en: "BUBBLE MAP" },
+  { href: "/#telegram", icon: "telegram", en: "TELEGRAM" },
   { href: "/analysis", icon: "research", en: "RESEARCH" },
 ];
 
@@ -29,12 +28,10 @@ export default function SideNav() {
         ? pathname === "/"
         : pathname === href || pathname.startsWith(`${href}/`);
 
-  const visible = ITEMS.filter((it) => !it.parent || it.parent === pathname);
-
   return (
     <nav>
       <ul className="flex flex-col">
-        {visible.map((it) => {
+        {ITEMS.map((it) => {
           const active = isActive(it.href);
           return (
             <li key={it.href}>
