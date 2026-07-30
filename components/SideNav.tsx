@@ -10,7 +10,7 @@ type Item = { href: string; icon: IconName; en: string };
 // 항목은 항상 동일하게 고정 노출 (페이지별 필터링 없음 — 메뉴 흔들림 방지)
 const ITEMS: Item[] = [
   { href: "/dashboard", icon: "dashboard", en: "DASHBOARD" },
-  { href: "/dashboard#indicators", icon: "indicators", en: "INDICATORS" },
+  { href: "/indicators", icon: "indicators", en: "INDICATORS" },
   { href: "/calendar", icon: "calendar", en: "CALENDAR" },
   { href: "/kimchi", icon: "kimchi", en: "KIMCHI PREMIUM" },
   { href: "/bubble", icon: "bubble", en: "BUBBLE MAP" },
