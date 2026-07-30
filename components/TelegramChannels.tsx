@@ -75,14 +75,14 @@ export default function TelegramChannels({
     <section className="overflow-hidden rounded-[6px] border border-line bg-white">
       <header className="title-band flex items-center gap-2 border-b px-5 py-3">
         <h2 className="text-[15.5px] font-extrabold tracking-[-0.3px] text-[#e5e4e2]">
-          텔레그램 인기 포스팅
+          트렌딩 포스팅
         </h2>
         {!live && (
           <span className="rounded-[5px] bg-[#ffffff1a] px-1.5 py-0.5 text-[10px] font-bold text-[#c2ccd4]">
             샘플
           </span>
         )}
-        <span className="text-[10.5px] font-medium text-[#93a5b2]">24시간 · 인기순</span>
+        <span className="text-[10.5px] font-medium text-[#93a5b2]">24시간 · 인게이지먼트순</span>
         {!grid && (
           <div className="ml-auto flex gap-1">
             <button
