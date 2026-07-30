@@ -46,7 +46,9 @@ function isImminent(scheduledAt: string | null, now: number): boolean {
   return diff <= DAY_MS && diff >= -2 * 3600_000;
 }
 
-// 금일 신규 상장 예정 피드 — @NewListingsFeed 채널 기반, 캘린더 상단 노출
+// 금일 신규 상장 예정 피드 — @NewListingsFeed 채널 기반.
+// 전 페이지 최상단 고정 스트립(레이아웃에서 sticky) — Pharos 크롬: 사각 불릿 도트 + 모노 마이크로 라벨,
+// 항목은 한 줄 가로 스크롤로 항상 노출.
 export default async function ListingsStrip() {
   const { listings, updatedAt, ok } = await getTodayListings();
   // 서버 컴포넌트(요청마다 1회 렌더) — 상장 임박 판정용 현재시각. SSR이라 순수성 규칙 예외.
@@ -55,25 +57,24 @@ export default async function ListingsStrip() {
   const freshness = ok && updatedAt !== EPOCH ? `${formatRelativeTime(updatedAt)} 수집` : null;
 
   return (
-    <section className="rounded-xl border border-line bg-white shadow-card overflow-hidden transition-shadow hover:shadow-pop">
-      <header className="title-band flex items-center justify-between border-b px-4 py-3">
-        <div className="flex items-baseline gap-2">
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-[#e5e4e2]"><span className="h-1.5 w-1.5 rounded-full bg-[#7e95a6]" aria-hidden />신규 상장·상폐 정보</h2>
-          <span className="text-xs text-[#aeb9c2]">{listings.length}건 · 예정 시각(KST)</span>
-        </div>
-        {freshness && <span className="text-[10px] text-[#93a5b2]">{freshness}</span>}
-      </header>
+    <section className="flex items-center gap-3 overflow-x-auto border-b border-line bg-white px-4 py-2 whitespace-nowrap [scrollbar-width:none]">
+      <span className="flex shrink-0 items-center gap-2" title="금일 신규 상장·상폐 정보 (KST)">
+        <span className="h-2 w-2 bg-brand" aria-hidden />
+        <span className="font-mono text-[10px] font-medium tracking-[0.14em] text-ink-900 uppercase">
+          Listings
+        </span>
+        <span className="text-[11px] font-semibold text-ink-700">신규 상장·상폐</span>
+        <span className="font-mono text-[10px] text-ink-400">{listings.length}건</span>
+      </span>
 
       {!ok ? (
-        <p className="px-4 py-6 text-center text-xs text-ink-500">
+        <p className="shrink-0 text-[11px] text-ink-500">
           상장 정보를 불러오지 못했습니다. 잠시 후 자동으로 다시 시도합니다.
         </p>
       ) : listings.length === 0 ? (
-        <p className="px-4 py-6 text-center text-xs text-ink-500">
-          오늘 신규 상장·상폐 소식이 아직 없습니다.
-        </p>
+        <p className="shrink-0 text-[11px] text-ink-500">오늘 신규 상장·상폐 소식이 아직 없습니다.</p>
       ) : (
-        <ul className="flex flex-wrap gap-x-3 gap-y-2 px-4 py-3">
+        <ul className="flex items-center gap-2">
           {listings.map((l) => {
             const imminent = isImminent(l.scheduledAt, now);
             const exColor = EX_COLOR[l.exchange];
@@ -104,9 +105,7 @@ export default async function ListingsStrip() {
                     ${l.symbol}
                   </span>
                 )}
-                <span className={`min-w-0 flex-1 truncate ${imminent ? "text-red-700" : "text-ink-700"}`}>
-                  {koDetail(l)}
-                </span>
+                <span className={imminent ? "text-red-700" : "text-ink-700"}>{koDetail(l)}</span>
                 {l.scheduledAt ? (
                   <span
                     className={`shrink-0 font-mono text-[10px] font-semibold ${
@@ -126,13 +125,13 @@ export default async function ListingsStrip() {
                 )}
               </>
             );
-            const tileCls = `flex items-center gap-1.5 border px-2 py-1 text-xs min-w-0 max-w-full ${
+            const tileCls = `flex shrink-0 items-center gap-1.5 border px-2 py-0.5 text-xs ${
               imminent
                 ? "border-red-500 bg-red-50"
                 : "border-line bg-paper hover:border-navy-300"
             }`;
             return (
-              <li key={l.id} className="max-w-full">
+              <li key={l.id} className="shrink-0">
                 {l.url ? (
                   <a href={l.url} target="_blank" rel="noopener noreferrer" className={tileCls}>
                     {body}
@@ -144,6 +143,9 @@ export default async function ListingsStrip() {
             );
           })}
         </ul>
+      )}
+      {freshness && (
+        <span className="ml-auto shrink-0 pl-2 font-mono text-[9.5px] text-ink-400">{freshness}</span>
       )}
     </section>
   );

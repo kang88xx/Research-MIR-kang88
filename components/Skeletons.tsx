@@ -87,16 +87,15 @@ export function SignalRadarSkeleton() {
   return <SectionShell minBody="min-h-[180px]" />;
 }
 
-// ── 홈: 오늘 신규 상장 예정(스트립) ──
+// ── 전역 상단: 신규 상장·상폐 고정 스트립 ──
 export function ListingsStripSkeleton() {
   return (
-    <section className="rounded-xl border border-line bg-white shadow-card overflow-hidden">
-      <header className="flex items-center justify-between border-b border-line bg-white px-4 py-3">
-        <div className="h-4 w-40 rounded bg-line" />
-      </header>
-      <div className="flex min-h-[52px] animate-pulse flex-wrap gap-2 px-4 py-3">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="h-7 w-40 rounded bg-paper2" />
+    <section className="flex items-center gap-3 border-b border-line bg-white px-4 py-2">
+      <div className="h-2 w-2 bg-line" />
+      <div className="h-3.5 w-28 animate-pulse rounded bg-line" />
+      <div className="flex animate-pulse items-center gap-2">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="h-6 w-36 rounded bg-paper2" />
         ))}
       </div>
     </section>

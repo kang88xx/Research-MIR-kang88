@@ -4,10 +4,15 @@ import { Noto_Sans_KR, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
 import ConsoleSidebar from "@/components/ConsoleSidebar";
-import TickerBar from "@/components/TickerBar";
 import MarketBar from "@/components/MarketBar";
+import ListingsStrip from "@/components/ListingsStrip";
 import VisitTracker from "@/components/VisitTracker";
-import { HeaderSkeleton, MarketBarSkeleton, SidebarAccountSkeleton } from "@/components/Skeletons";
+import {
+  HeaderSkeleton,
+  ListingsStripSkeleton,
+  MarketBarSkeleton,
+  SidebarAccountSkeleton,
+} from "@/components/Skeletons";
 
 // 데이터 콘솔 — UI/본문: Pretendard(CDN, 폴백 Noto Sans KR) · 숫자/티커/마이크로 라벨: Geist Mono
 const notoSansKr = Noto_Sans_KR({
@@ -59,12 +64,17 @@ export default function RootLayout({
           </Suspense>
           {/* 우측 콘텐츠 컬럼 */}
           <div className="flex min-w-0 flex-1 flex-col">
+            {/* 신규 상장·상폐 정보 — 전 페이지 최상단 고정 스트립 */}
+            <div className="sticky top-0 z-40">
+              <Suspense fallback={<ListingsStripSkeleton />}>
+                <ListingsStrip />
+              </Suspense>
+            </div>
             {/* 모바일 헤더 — lg 미만에서만 (콘솔 라이트) */}
             <Suspense fallback={<HeaderSkeleton />}>
               <Header />
             </Suspense>
-            <TickerBar />
-            {/* 마켓바 — 티커 바 아래 (크립토·주가지수·코인 미니차트 + 동시접속·언어) */}
+            {/* 마켓바 — 상장 스트립 아래 (크립토·주가지수·코인 미니차트 + 동시접속·언어) */}
             <Suspense fallback={<MarketBarSkeleton />}>
               <div className="reveal">
                 <MarketBar />

@@ -2,36 +2,37 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import NavIcon, { type IconName } from "@/components/NavIcon";
 
-type Item = { href: string; emoji: string; ko: string; en: string };
+type Item = { href: string; icon: IconName; ko: string; en: string };
 type Group = { label: string; items: Item[] };
 
-// 콘솔 사이드바 네비 — 이모지 + 모노 영문 서브라벨, 그룹 마이크로 라벨
+// 콘솔 사이드바 네비 — Pharos 라인 글리프 + 모노 영문 서브라벨, 그룹 마이크로 라벨
 // 페이지 없는 항목(각종 지표·김프·버블맵·텔레그램)은 해당 섹션 앵커로 이동
 const GROUPS: Group[] = [
   {
     label: "MARKET · 시세",
     items: [
-      { href: "/", emoji: "🏠", ko: "홈", en: "HOME" },
-      { href: "/dashboard", emoji: "📊", ko: "대시보드", en: "DASHBOARD" },
-      { href: "/dashboard#indicators", emoji: "📈", ko: "각종 지표", en: "INDICATORS" },
+      { href: "/", icon: "home", ko: "홈", en: "HOME" },
+      { href: "/dashboard", icon: "dashboard", ko: "대시보드", en: "DASHBOARD" },
+      { href: "/dashboard#indicators", icon: "indicators", ko: "각종 지표", en: "INDICATORS" },
     ],
   },
   {
     label: "SCHEDULE · 일정",
-    items: [{ href: "/calendar", emoji: "📅", ko: "캘린더", en: "CALENDAR" }],
+    items: [{ href: "/calendar", icon: "calendar", ko: "캘린더", en: "CALENDAR" }],
   },
   {
     label: "DATA · 데이터",
     items: [
-      { href: "/dashboard#kimchi", emoji: "🌶️", ko: "김치 프리미엄", en: "KIMCHI PREMIUM" },
-      { href: "/#bubblemap", emoji: "🫧", ko: "버블맵", en: "BUBBLE MAP" },
-      { href: "/#telegram", emoji: "✈️", ko: "텔레그램 포스팅", en: "TELEGRAM" },
+      { href: "/dashboard#kimchi", icon: "kimchi", ko: "김치 프리미엄", en: "KIMCHI PREMIUM" },
+      { href: "/#bubblemap", icon: "bubble", ko: "버블맵", en: "BUBBLE MAP" },
+      { href: "/#telegram", icon: "telegram", ko: "텔레그램 포스팅", en: "TELEGRAM" },
     ],
   },
   {
     label: "RESEARCH · 리서치",
-    items: [{ href: "/analysis", emoji: "🔍", ko: "시장분석", en: "RESEARCH" }],
+    items: [{ href: "/analysis", icon: "research", ko: "시장분석", en: "RESEARCH" }],
   },
 ];
 
@@ -65,8 +66,11 @@ export default function SideNav() {
                         : "border-transparent hover:bg-surface-2"
                     }`}
                   >
-                    <span className="w-5 shrink-0 text-center text-[14px] leading-none" aria-hidden>
-                      {it.emoji}
+                    <span
+                      className={`w-5 shrink-0 ${active ? "text-brand-ink" : "text-ink-500"}`}
+                      aria-hidden
+                    >
+                      <NavIcon name={it.icon} size={17} className="mx-auto" />
                     </span>
                     <span className="flex min-w-0 flex-col">
                       <span

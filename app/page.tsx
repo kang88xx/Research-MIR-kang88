@@ -1,17 +1,12 @@
 import { Suspense } from "react";
 import SignalRadar from "@/components/SignalRadar";
-import ListingsStrip from "@/components/ListingsStrip";
 import HomeBoards from "@/components/HomeBoards";
 import CryptoCalendar from "@/components/CryptoCalendar";
 import TelegramChannels from "@/components/TelegramChannels";
 import BubbleMap from "@/components/BubbleMap";
 import { getMonthEvents } from "@/lib/calendar";
 import { getTelegramPopular } from "@/lib/telegram";
-import {
-  SignalRadarSkeleton,
-  ListingsStripSkeleton,
-  HomeBoardsSkeleton,
-} from "@/components/Skeletons";
+import { SignalRadarSkeleton, HomeBoardsSkeleton } from "@/components/Skeletons";
 
 export const dynamic = "force-dynamic";
 
@@ -39,14 +34,8 @@ export default async function Home() {
   const initialEvents = await getMonthEvents(calYear, calMonth).catch(() => undefined);
   return (
     <div className="flex flex-col gap-[22px]">
-      {/* 신규 상장·상폐 정보 — 맨 위. 스켈레톤이 풀리면 .reveal로 부드럽게 등장 */}
-      <Suspense fallback={<ListingsStripSkeleton />}>
-        <div className="reveal">
-          <ListingsStrip />
-        </div>
-      </Suspense>
-
-      {/* 크립토 캘린더 — 풀와이드 카드 (제목은 캘린더 자체 헤더 사용) */}
+      {/* 크립토 캘린더 — 풀와이드 카드 (제목은 캘린더 자체 헤더 사용)
+          신규 상장·상폐 정보는 레이아웃 최상단 고정 스트립으로 이동 */}
       <CryptoCalendar initialYear={calYear} initialMonth={calMonth} initialEvents={initialEvents} />
 
       {/* 지금 주목할 코인 + 시총 상위 버블맵 — lg 이상에서 한 열 반반, 미만은 세로 스택 */}
