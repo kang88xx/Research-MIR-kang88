@@ -14,7 +14,7 @@ const ITEMS: Item[] = [
   { href: "/calendar", icon: "calendar", en: "CALENDAR" },
   { href: "/dashboard#kimchi", icon: "kimchi", en: "KIMCHI PREMIUM" },
   { href: "/bubble", icon: "bubble", en: "BUBBLE MAP" },
-  { href: "/#telegram", icon: "telegram", en: "TELEGRAM" },
+  { href: "/telegram", icon: "telegram", en: "TELEGRAM" },
   { href: "/analysis", icon: "research", en: "RESEARCH" },
 ];
 

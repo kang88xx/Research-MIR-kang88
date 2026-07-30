@@ -40,8 +40,16 @@ const SAMPLE_POSTS: Post[] = [
   { channel: "해달의 투자 정보", avatar: null, time: "8시간 전", title: "바이낸스 신규 상장 공지: 신규 토큰 현물 마켓 추가", views: "21.7K", reactions: 152, postUrl: "https://t.me/seaotterbtc" },
 ];
 
-export default function TelegramChannels({ popular }: { popular?: TelegramPopular | null }) {
+export default function TelegramChannels({
+  popular,
+  layout = "strip",
+}: {
+  popular?: TelegramPopular | null;
+  // strip: 홈용 가로 슬라이드 · grid: 전용 페이지용 — 슬라이드 없이 전부 화면에 배치
+  layout?: "strip" | "grid";
+}) {
   const railRef = useRef<HTMLUListElement>(null);
+  const grid = layout === "grid";
 
   // 실데이터(t.me 프리뷰 25채널 랭킹) 우선, 없으면 샘플 폴백
   const live = popular != null && popular.posts.length > 0;
@@ -75,32 +83,40 @@ export default function TelegramChannels({ popular }: { popular?: TelegramPopula
           </span>
         )}
         <span className="text-[10.5px] font-medium text-[#93a5b2]">24시간 · 인기순</span>
-        <div className="ml-auto flex gap-1">
-          <button
-            onClick={() => slide(-1)}
-            aria-label="이전 포스팅"
-            className="grid h-6 w-6 place-items-center rounded-[6px] border border-[#3a4653] text-[11px] text-[#aeb9c2] hover:bg-[#ffffff14] hover:text-[#e5e4e2]"
-          >
-            ‹
-          </button>
-          <button
-            onClick={() => slide(1)}
-            aria-label="다음 포스팅"
-            className="grid h-6 w-6 place-items-center rounded-[6px] border border-[#3a4653] text-[11px] text-[#aeb9c2] hover:bg-[#ffffff14] hover:text-[#e5e4e2]"
-          >
-            ›
-          </button>
-        </div>
+        {!grid && (
+          <div className="ml-auto flex gap-1">
+            <button
+              onClick={() => slide(-1)}
+              aria-label="이전 포스팅"
+              className="grid h-6 w-6 place-items-center rounded-[6px] border border-[#3a4653] text-[11px] text-[#aeb9c2] hover:bg-[#ffffff14] hover:text-[#e5e4e2]"
+            >
+              ‹
+            </button>
+            <button
+              onClick={() => slide(1)}
+              aria-label="다음 포스팅"
+              className="grid h-6 w-6 place-items-center rounded-[6px] border border-[#3a4653] text-[11px] text-[#aeb9c2] hover:bg-[#ffffff14] hover:text-[#e5e4e2]"
+            >
+              ›
+            </button>
+          </div>
+        )}
       </header>
 
       <ul
         ref={railRef}
-        className="flex snap-x snap-mandatory gap-2.5 overflow-x-auto px-5 pb-4 pt-3.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className={
+          grid
+            ? "grid grid-cols-1 gap-2.5 px-5 pb-4 pt-3.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+            : "flex snap-x snap-mandatory gap-2.5 overflow-x-auto px-5 pb-4 pt-3.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        }
       >
         {posts.map((p, i) => (
           <li
             key={p.postUrl}
-            className="w-[264px] shrink-0 snap-start rounded-[5px] border border-hairline bg-white px-3.5 py-3 hover:border-line"
+            className={`rounded-[5px] border border-hairline bg-white px-3.5 py-3 hover:border-line ${
+              grid ? "" : "w-[264px] shrink-0 snap-start"
+            }`}
           >
             <div className="flex items-center gap-1.5 text-[11px] text-ink-400">
               <span

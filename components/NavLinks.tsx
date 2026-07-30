@@ -10,7 +10,7 @@ const NAV: { href: string; icon: IconName; label: string }[] = [
   { href: "/calendar", icon: "calendar", label: "캘린더" },
   { href: "/dashboard#kimchi", icon: "kimchi", label: "김치 프리미엄" },
   { href: "/bubble", icon: "bubble", label: "버블맵" },
-  { href: "/#telegram", icon: "telegram", label: "텔레그램" },
+  { href: "/telegram", icon: "telegram", label: "텔레그램" },
   { href: "/analysis", icon: "research", label: "시장분석" },
 ];
 

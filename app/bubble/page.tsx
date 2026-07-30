@@ -7,7 +7,15 @@ export const metadata = { title: "버블맵 · KMIR" };
 export default function BubblePage() {
   return (
     <div>
-      <PageTitle eyebrow="Bubble Map" title="시총 상위 버블맵" />
+      <PageTitle
+        eyebrow="Bubble Map"
+        title="버블맵"
+        actions={
+          <p className="text-[11px] text-ink-500">
+            시가총액 · 거래량 · 등락률 기준 반영
+          </p>
+        }
+      />
       <section className="overflow-hidden rounded-[6px] border border-line bg-white px-3 py-3">
         <div className="h-[72vh] min-h-[440px]">
           <BubbleMap />

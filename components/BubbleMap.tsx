@@ -317,7 +317,7 @@ export default function BubbleMap() {
         </div>
         {updatedAt && updatedAt !== EPOCH && (
           <span className="shrink-0 text-[10px] text-ink-400">
-            {formatRelativeTime(updatedAt)} · CoinGecko
+            {formatRelativeTime(updatedAt)}
           </span>
         )}
       </div>
