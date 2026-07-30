@@ -12,7 +12,7 @@ const ITEMS: Item[] = [
   { href: "/dashboard", icon: "dashboard", en: "DASHBOARD" },
   { href: "/dashboard#indicators", icon: "indicators", en: "INDICATORS" },
   { href: "/calendar", icon: "calendar", en: "CALENDAR" },
-  { href: "/dashboard#kimchi", icon: "kimchi", en: "KIMCHI PREMIUM" },
+  { href: "/kimchi", icon: "kimchi", en: "KIMCHI PREMIUM" },
   { href: "/bubble", icon: "bubble", en: "BUBBLE MAP" },
   { href: "/telegram", icon: "telegram", en: "TELEGRAM" },
   { href: "/analysis", icon: "research", en: "RESEARCH" },
