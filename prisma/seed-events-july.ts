@@ -15,6 +15,7 @@ const EVENTS: Seed[] = [
   [1, "XCN", "오닉스(XCN) '새로운 시대' 발표", "good", "크립토", "프로젝트", "은행·금융기관용 L1 오닉스가 7월 1일 '$XCN의 새로운 시대'(Onyx Mesh)를 예고했다. (출처: Onyx 공식)", "https://onyx.org/"],
   [1, "DYDX", "dYdX 주요 발표 예고", "good", "크립토", "프로젝트", "dYdX가 7월 1일 중대 발표를 예고하며 시장 기대감이 커졌다. (출처: dYdX 공식 블로그)", "https://www.dydx.xyz/blog"],
   [1, "POL", "폴리곤 zkEVM 메인넷 베타 종료", "bad", "크립토", "프로젝트", "폴리곤이 7월 1일 zkEVM 메인넷 베타 시퀀서를 종료하고 자산 클레임 절차를 시작한다. (출처: Polygon 커뮤니티 포럼)", "https://forum.polygon.technology/t/polygon-zkevm-mainnet-beta-sunset-claim-your-funds/21856"],
+  [2, "SECZ", "시큐리타이즈(SECZ) NYSE 상장", "important", "주식", "상장", "토큰화 플랫폼 시큐리타이즈가 캔터 에쿼티 파트너스 II와의 SPAC 합병을 완료하고 7월 2일 티커 SECZ로 뉴욕증권거래소(NYSE)에 상장했다. 약 4억 달러를 조달했으며 아발란체·솔라나에서 주식을 동시 토큰화했다. (출처: PR Newswire)", "https://www.prnewswire.com/news-releases/securitize-completes-business-combination-with-cantor-equity-partners-ii-302816174.html"],
   [2, "INJ", "인젝티브 INJ 커뮤니티 바이백 재개", "good", "크립토", "프로젝트", "인젝티브가 7월 커뮤니티 바이백을 재개하며 프로토콜 수익으로 INJ를 매입·소각한다. (출처: Injective 공식 블로그)", "https://injective.com/blog/2026-injective-community-buy-back-guide"],
   [2, "LIT", "라이터(LIT) 투자자 콜", "good", "크립토", "프로젝트", "탈중앙 무기한 선물 거래소 라이터가 투자자 콜에서 LIT 소각·스테이킹 목표 등 토크노믹스 업데이트를 공유했다. (출처: Lighter 공식)", "https://lighter.xyz/"],
   [3, "KR", "코스닥 개설 30주년 기념행사", "good", "이벤트", "행사", "한국거래소가 1996년 개설된 코스닥 시장의 30주년을 맞아 기념식과 IR 행사를 7월 1~3일 개최한다. (출처: 한국거래소)", "https://www.krx.co.kr"],
