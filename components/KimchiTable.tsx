@@ -54,7 +54,8 @@ export default async function KimchiTable() {
           {fxIsEstimate ? (
             <span className="text-red-600"> · ⚠ 환율 추정</span>
           ) : (
-            " · 환율 ECB 기준"
+            // 실제 소스 순서: Yahoo 시장환율 우선, ECB(Frankfurter)는 폴백 (lib/ticker fetchUsdKrw)
+            " · 환율 시장환율(Yahoo) 기준"
           )}
         </span>
       </p>
