@@ -3,7 +3,7 @@ import { fetchJson } from "@/lib/http";
 import { prisma } from "@/lib/prisma";
 import { kstDay } from "@/lib/time";
 import { getTickers, getExchangeComparison } from "@/lib/ticker";
-import { getFxHistory } from "@/lib/market";
+import { getFxHistory, getMarketOverview, type MarketOverview } from "@/lib/market";
 
 // 비트코인 평균 채굴원가 (USD) — 폴백 상수. 실제 값은 /api/cron/mining-cost 크론이 6시간마다
 // blockchain.info 해시레이트 기반으로 계산해 marketCache("btcMiningCost")에 적재하고, 아래에서 읽는다.
@@ -246,10 +246,9 @@ async function rollHoldingsBaseline(current: number): Promise<number> {
   return next.today - next.prevDay;
 }
 
-// ── 공포·탐욕 지수 — alternative.me (BTC 기준, 일 단위) ──
-type FngApi = {
-  data?: { value: string; value_classification: string; timestamp: string }[];
-};
+// ── 공포·탐욕 지수 — getMarketOverview(5분 캐시)의 alternative.me 데이터 재사용 ──
+// (과거엔 여기서 alternative.me를 별도 5분 캐시로 한 번 더 호출 — 일 1회 갱신 지표에
+//  중복 288콜/일이라 overview 캐시 1벌로 통합. codex 교차검수 2026-08-03)
 
 // 영문 분류 → 한글
 function fngLabelKo(cls: string, value: number): string {
@@ -267,42 +266,40 @@ function fngLabelKo(cls: string, value: number): string {
   return "극단적 탐욕";
 }
 
-async function fetchFearGreed(): Promise<BarFng | null> {
-  try {
-    const d = await fetchJson<FngApi>("https://api.alternative.me/fng/?limit=7", 7000);
-    const rows = d.data ?? [];
-    if (rows.length === 0) return null;
-    const cur = rows[0];
-    const value = Number(cur.value);
-    if (!Number.isFinite(value)) return null;
-    // rows는 최신순 → 과거→현재로 뒤집어 최근 6일(현재 제외) 히스토리 구성
-    const history: FngDay[] = rows
-      .slice(1, 7)
-      .reverse()
-      .map((r) => {
-        const dt = new Date(Number(r.timestamp) * 1000);
-        return { date: `${dt.getUTCMonth() + 1}/${dt.getUTCDate()}`, value: Number(r.value) };
-      })
-      .filter((d) => Number.isFinite(d.value)); // 잘못된 값(NaN)이 스파크라인/색상에 들어가지 않도록
-    return { value, label: fngLabelKo(cur.value_classification, value), history };
-  } catch {
-    return null;
-  }
+// overview.fearGreed(과거→현재 순 최대 30일)에서 타일 데이터(현재값 + 직전 6일) 구성
+function fngFromOverview(fg: MarketOverview["fearGreed"]): BarFng | null {
+  if (!fg || fg.length === 0) return null;
+  const cur = fg[fg.length - 1];
+  if (!Number.isFinite(cur.value)) return null;
+  const history: FngDay[] = fg
+    .slice(-7, -1) // 현재 제외 직전 6일
+    .map((d) => {
+      const dt = new Date(d.date);
+      return { date: `${dt.getUTCMonth() + 1}/${dt.getUTCDate()}`, value: d.value };
+    })
+    .filter((d) => Number.isFinite(d.value)); // 잘못된 값(NaN)이 스파크라인/색상에 들어가지 않도록
+  return { value: cur.value, label: fngLabelKo(cur.classification, cur.value), history };
 }
 
 // ── 테더(USDT) 김프 6일 변동성 — 업비트 KRW-USDT 일봉 종가 ÷ 환율 ──
 // 업비트 일봉(최신→과거) 종가를 과거→최신 순으로 반환. 실패 시 빈 배열.
-async function fetchUsdtDailyCloses(): Promise<{ date: string; close: number }[]> {
+// marketbar(5분)·kimchiOverview(5분)가 각자 호출하던 것을 DB 캐시 1벌(15분)로 공유 —
+// 일봉 데이터라 15분이면 충분하고 업비트 중복 호출(일 ~576콜)을 절반 이하로 줄인다.
+async function fetchUsdtDailyClosesRaw(): Promise<{ date: string; close: number }[]> {
+  const rows = await fetchJson<{ candle_date_time_kst: string; trade_price: number }[]>(
+    "https://api.upbit.com/v1/candles/days?market=KRW-USDT&count=8",
+    7000
+  );
+  if (!Array.isArray(rows)) throw new Error("upbit USDT candles malformed"); // 캐시 보존
+  return rows
+    .map((r) => ({ date: r.candle_date_time_kst.slice(0, 10), close: r.trade_price }))
+    .filter((d) => Number.isFinite(d.close) && d.close > 0)
+    .reverse();
+}
+
+export async function fetchUsdtDailyCloses(): Promise<{ date: string; close: number }[]> {
   try {
-    const rows = await fetchJson<{ candle_date_time_kst: string; trade_price: number }[]>(
-      "https://api.upbit.com/v1/candles/days?market=KRW-USDT&count=8",
-      7000
-    );
-    if (!Array.isArray(rows)) return [];
-    return rows
-      .map((r) => ({ date: r.candle_date_time_kst.slice(0, 10), close: r.trade_price }))
-      .filter((d) => Number.isFinite(d.close) && d.close > 0)
-      .reverse();
+    return await cachedJson("usdtDaily:v1", 15 * 60_000, fetchUsdtDailyClosesRaw);
   } catch {
     return [];
   }
@@ -393,7 +390,7 @@ async function fetchMarketBar(): Promise<MarketBarData> {
   const [treasury, fng, btcDom, usdtDaily, tickerSnap, exchanges, fxHistory, miningInfo] =
     await Promise.all([
       fetchMstrTreasury(btcUsd),
-      fetchFearGreed(),
+      getMarketOverview().then((o) => fngFromOverview(o.fearGreed)),
       fetchBtcDominanceSeries(), // BTC 도미넌스 현재값 + 6일 추세 (marketSnapshot)
       fetchUsdtDailyCloses(), // 테더(USDT) 일봉 종가 — 김프 6일 변동성용
       getTickers(), // 김치프리미엄(BTC) + 환율 출처
@@ -543,7 +540,9 @@ async function fetchMarketBar(): Promise<MarketBarData> {
 
   // 인덱스(Yahoo)가 전부 실패해도 코인·매크로 타일이 있으면 바를 그린다.
   // 의미 있는(플레이스홀더가 아닌) 타일이 하나도 없을 때만 실패 처리해 캐시를 건너뛴다.
-  if (!tiles.some((t) => !t.placeholder)) {
+  // 주의: btcBreakeven 타일은 폴백 상수 덕에 항상 non-placeholder라 판정에서 제외 —
+  // 안 그러면 전 소스 동시 장애 때도 "성공"으로 처리돼 정상 캐시를 덮어쓴다 (P1 가드 복구).
+  if (!tiles.some((t) => !t.placeholder && t.key !== "btcBreakeven")) {
     throw new Error("market bar unavailable");
   }
 

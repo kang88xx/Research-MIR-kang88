@@ -74,22 +74,32 @@ async function fetchEcbUsdKrw(): Promise<number | null> {
   }
 }
 
+// 동시 호출 합치기 — 콜드 캐시에서 getTickers·getKimchiTable·getSignalRadar·getMarketBar가
+// 한꺼번에 환율을 요구할 때 Yahoo/ECB 중복 호출을 1회로 묶는다.
+let fxInflight: Promise<{ rate: number; source: FxSource }> | null = null;
+
 async function fetchUsdKrw(): Promise<{ rate: number; source: FxSource }> {
   if (fxCache && Date.now() - fxCache.at < FX_TTL_MS) {
     return { rate: fxCache.rate, source: "cached" };
   }
-  // 김프·체감 환율엔 실시간 시장가가 맞다 → Yahoo 우선, 실패 시 ECB 고시환율로 폴백.
-  const rate = (await fetchYahooUsdKrw()) ?? (await fetchEcbUsdKrw());
-  if (rate && rate > 0) {
-    fxCache = { rate, at: Date.now() };
-    return { rate, source: "live" };
-  }
-  // 직전 캐시가 6시간 이내면 사용, 그보다 오래됐으면 고정환율(추정)로 강등.
-  // 출처를 명시(cached/fallback)해 김프가 추정 환율로 계산됐는지 UI가 구분하게 한다.
-  if (fxCache && Date.now() - fxCache.at < FX_STALE_CEILING_MS) {
-    return { rate: fxCache.rate, source: "cached" };
-  }
-  return { rate: FALLBACK_USD_KRW, source: "fallback" };
+  if (fxInflight) return fxInflight;
+  fxInflight = (async () => {
+    // 김프·체감 환율엔 실시간 시장가가 맞다 → Yahoo 우선, 실패 시 ECB 고시환율로 폴백.
+    const rate = (await fetchYahooUsdKrw()) ?? (await fetchEcbUsdKrw());
+    if (rate && rate > 0) {
+      fxCache = { rate, at: Date.now() };
+      return { rate, source: "live" as FxSource };
+    }
+    // 직전 캐시가 6시간 이내면 사용, 그보다 오래됐으면 고정환율(추정)로 강등.
+    // 출처를 명시(cached/fallback)해 김프가 추정 환율로 계산됐는지 UI가 구분하게 한다.
+    if (fxCache && Date.now() - fxCache.at < FX_STALE_CEILING_MS) {
+      return { rate: fxCache.rate, source: "cached" as FxSource };
+    }
+    return { rate: FALLBACK_USD_KRW, source: "fallback" as FxSource };
+  })().finally(() => {
+    fxInflight = null;
+  });
+  return fxInflight;
 }
 
 type UpbitTicker = {
@@ -450,17 +460,31 @@ function attentionScore(
 }
 
 // 거래대금 급증배수 — 오늘 24h 누적(티커) ÷ 직전 7일 평균(일봉). 일봉 8개 미만(신규상장)이면 null.
+// 기준선(직전 7일 평균)은 하루 단위로만 변하므로 마켓별 15분 캐시 — 레이더 60초 TTL마다
+// 캔들 20콜을 쏘던 최대 트래픽원(일 ~2.9만콜)을 ~1/15로 줄인다. null(신규상장)도 캐시.
+const SURGE_BASE_TTL_MS = 15 * 60_000;
+const surgeBaseCache = new Map<string, { base: number | null; at: number }>();
+
 async function fetchVolumeSurge(market: string, todayVolKrw: number): Promise<number | null> {
+  const hit = surgeBaseCache.get(market);
+  if (hit && Date.now() - hit.at < SURGE_BASE_TTL_MS) {
+    return hit.base != null && hit.base > 0 ? todayVolKrw / hit.base : null;
+  }
   try {
     const candles = await fetchJson<{ candle_acc_trade_price: number }[]>(
       `https://api.upbit.com/v1/candles/days?market=${market}&count=8`,
       5000
     );
-    if (candles.length < 8) return null; // [0]=오늘(부분) — 기준선은 이전 7일
+    if (candles.length < 8) {
+      // [0]=오늘(부분) — 기준선은 이전 7일. 신규상장(이력 부족)도 캐시해 재조회 방지.
+      surgeBaseCache.set(market, { base: null, at: Date.now() });
+      return null;
+    }
     const base = candles.slice(1, 8).reduce((a, c) => a + c.candle_acc_trade_price, 0) / 7;
+    surgeBaseCache.set(market, { base, at: Date.now() });
     return base > 0 ? todayVolKrw / base : null;
   } catch {
-    return null;
+    return null; // 네트워크 실패는 캐시하지 않음 — 다음 사이클에 재시도
   }
 }
 
