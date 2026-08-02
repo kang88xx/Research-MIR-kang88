@@ -70,11 +70,12 @@ function colorFor(change: number): string {
   return "#878e97"; // 보합: gray-500
 }
 
-// 텍스트는 살짝 어두운 톤 — 옅은 버블 위에서 가독성 확보
+// 텍스트 색 — 옅은 버블 위 가독용 커스텀 토큰 (globals.css: 라이트=진한 톤 / 다크=밝은 톤).
+// 하드코딩 hex는 다크 표면에서 심볼·퍼센트가 묻히던 문제(P2)로 토큰화.
 function textColorFor(change: number): string {
-  if (change > 0.05) return "#c9362e";
-  if (change < -0.05) return "#2565c4";
-  return "#6b7280";
+  if (change > 0.05) return "var(--bm-text-up)";
+  if (change < -0.05) return "var(--bm-text-down)";
+  return "var(--bm-text-flat)";
 }
 
 function gradFor(change: number): string {
@@ -94,6 +95,10 @@ export default function BubbleMap() {
   const [error, setError] = useState(false);
   const [period, setPeriod] = useState<Period>("24h");
   const [hover, setHover] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
+  // 클릭 커서 위치 (컨테이너 기준) — PC(파인 포인터)에서 링크 카드를 커서 옆에 띄우는 앵커.
+  // null이면(키보드 선택·모바일) 하단 중앙 폴백.
+  const [selPos, setSelPos] = useState<{ x: number; y: number } | null>(null);
   const [renderNodes, setRenderNodes] = useState<Node[]>([]);
   const [size, setSize] = useState({ w: 0, h: 0 });
 
@@ -114,7 +119,11 @@ export default function BubbleMap() {
     if (!el) return;
     const ro = new ResizeObserver(([entry]) => {
       const { width, height } = entry.contentRect;
-      setSize({ w: Math.round(width), h: Math.round(height) });
+      const w = Math.round(width);
+      const h = Math.round(height);
+      // 반올림 결과가 같으면 이전 객체 유지 — 서브픽셀 리사이즈마다 시뮬레이션 전체가
+      // 재구축(노드 scale·born 리셋)되던 문제 방지
+      setSize((prev) => (prev.w === w && prev.h === h ? prev : { w, h }));
     });
     ro.observe(el);
     return () => ro.disconnect();
@@ -152,7 +161,8 @@ export default function BubbleMap() {
       loadBubbles();
     };
     tick();
-    const t = setInterval(tick, 60_000);
+    // 서버 캐시 TTL(5분)과 정렬 — 5분짜리 시총 데이터를 1분마다 폴링할 이유가 없음 (codex 교차검수)
+    const t = setInterval(tick, 5 * 60_000);
     const onVisible = () => {
       if (!document.hidden) loadBubbles();
     };
@@ -291,9 +301,20 @@ export default function BubbleMap() {
     };
   }, [coins, field, size]);
 
+  // 선택 카드 닫기 — ESC
+  useEffect(() => {
+    if (!selected) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setSelected(null);
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [selected]);
+
   const { w: W, h: H } = size;
   const hovered = hover
     ? renderNodes.find((n) => n.coin.id === hover) ?? null
+    : null;
+  const sel = selected
+    ? renderNodes.find((n) => n.coin.id === selected) ?? null
     : null;
 
   return (
@@ -328,7 +349,7 @@ export default function BubbleMap() {
         onMouseLeave={() => setHover(null)}
       >
         {W > 0 && H > 0 && (
-          <svg width={W} height={H} className="block">
+          <svg width={W} height={H} className="block" onClick={() => setSelected(null)}>
             <defs>
               {/* 중심은 옅고 가장자리로 갈수록 진해지는 라디얼 — 유리구슬 느낌 */}
               <radialGradient id="bm-grad-up">
@@ -368,7 +389,30 @@ export default function BubbleMap() {
                   aria-label={`${n.coin.name} (${n.coin.symbol}) ${n.change > 0 ? "+" : ""}${n.change.toFixed(1)}%`}
                   onMouseEnter={() => setHover(n.coin.id)}
                   onFocus={() => setHover(n.coin.id)}
-                  onClick={() => setHover((h) => (h === n.coin.id ? null : n.coin.id))}
+                  // 버블을 벗어나면 즉시 해제 — 컨테이너 mouseleave만으로는 맵 안 빈 공간으로
+                  // 이동했을 때 툴팁·확대가 남던 문제(P2) 방지
+                  onMouseLeave={() => setHover((h) => (h === n.coin.id ? null : h))}
+                  onBlur={() => setHover((h) => (h === n.coin.id ? null : h))}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // PC(파인 포인터)는 커서 위치에 카드 앵커 — 모바일·터치는 하단 폴백
+                    const rect = wrapRef.current?.getBoundingClientRect();
+                    const fine =
+                      typeof window !== "undefined" &&
+                      window.matchMedia?.("(pointer: fine)").matches === true;
+                    setSelPos(
+                      fine && rect ? { x: e.clientX - rect.left, y: e.clientY - rect.top } : null
+                    );
+                    setSelected((s) => (s === n.coin.id ? null : n.coin.id));
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      // 키보드 선택 — 버블 현재 좌표를 앵커로 사용
+                      setSelPos({ x: n.x, y: n.y });
+                      setSelected((s) => (s === n.coin.id ? null : n.coin.id));
+                    }
+                  }}
                 >
                   <circle
                     r={n.r}
@@ -462,7 +506,7 @@ export default function BubbleMap() {
           </div>
         )}
 
-        {hovered && (
+        {hovered && hovered.coin.id !== selected && (
           <div
             ref={tipRef}
             className="pointer-events-none absolute z-10 rounded-[5px] bg-navy-950/90 px-2 py-1.5 text-[11px] text-white shadow-pop"
@@ -487,6 +531,89 @@ export default function BubbleMap() {
             </div>
           </div>
         )}
+
+        {/* 클릭 선택 카드 — 코인게코·거래소 바로가기 (외부 링크만, 추가 API 호출 없음).
+            PC는 클릭한 커서 옆에 앵커(컨테이너 밖으로 안 나가게 클램핑), 모바일·좁은 화면은 하단 중앙. */}
+        {sel &&
+          (() => {
+            const CARD_W = 320;
+            const CARD_H = 140; // 대략 높이 — 하단 클램핑용
+            const anchored = selPos != null && W >= CARD_W + 16;
+            const style = anchored
+              ? {
+                  left: Math.min(Math.max(8, selPos.x + 12), W - CARD_W - 8),
+                  top: Math.min(Math.max(8, selPos.y + 12), Math.max(8, H - CARD_H - 8)),
+                  width: CARD_W,
+                }
+              : undefined;
+            return (
+              <div
+                className={`absolute z-20 rounded-[6px] border border-line bg-white p-3 shadow-pop ${
+                  anchored
+                    ? ""
+                    : "bottom-2 left-1/2 w-[min(320px,calc(100%-16px))] -translate-x-1/2"
+                }`}
+                style={style}
+                onClick={(e) => e.stopPropagation()}
+              >
+            <div className="flex items-center gap-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={sel.coin.image}
+                alt=""
+                width={22}
+                height={22}
+                className="rounded-full"
+              />
+              <b className="truncate text-[13px] font-bold text-navy-900">{sel.coin.name}</b>
+              <span className="font-mono text-[11px] font-medium text-ink-400">{sel.coin.symbol}</span>
+              <button
+                onClick={() => setSelected(null)}
+                aria-label="닫기"
+                className="ml-auto grid h-5 w-5 shrink-0 place-items-center rounded text-[13px] leading-none text-ink-400 hover:bg-paper2 hover:text-navy-900"
+              >
+                ×
+              </button>
+            </div>
+            <div className="mt-1.5 flex items-baseline gap-2 font-mono text-[11.5px] tabular-nums">
+              <span className="font-semibold text-navy-900">
+                ${sel.coin.priceUsd?.toLocaleString(undefined, { maximumFractionDigits: 6 }) ?? "-"}
+              </span>
+              <span style={{ color: sel.change >= 0 ? "var(--bm-text-up)" : "var(--bm-text-down)" }}>
+                {PERIODS.find((p) => p.key === period)!.label} {sel.change > 0 ? "+" : ""}
+                {sel.change.toFixed(2)}%
+              </span>
+              <span className="ml-auto text-[10.5px] text-ink-400">시총 #{sel.coin.marketCapRank ?? "-"}</span>
+            </div>
+            <div className="mt-2 grid grid-cols-3 gap-1.5 text-center text-[11px] font-semibold">
+              <a
+                href={`https://www.coingecko.com/ko/coins/${encodeURIComponent(sel.coin.id)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-[5px] border border-line py-1.5 text-navy-900 hover:border-navy-900"
+              >
+                코인게코 ↗
+              </a>
+              <a
+                href={`https://upbit.com/exchange?code=CRIX.UPBIT.KRW-${encodeURIComponent(sel.coin.symbol.toUpperCase())}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-[5px] border border-line py-1.5 text-navy-900 hover:border-navy-900"
+              >
+                업비트 ↗
+              </a>
+              <a
+                href={`https://www.binance.com/en/trade/${encodeURIComponent(sel.coin.symbol.toUpperCase())}_USDT`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-[5px] border border-line py-1.5 text-navy-900 hover:border-navy-900"
+              >
+                바이낸스 ↗
+              </a>
+            </div>
+          </div>
+            );
+          })()}
       </div>
     </div>
   );

@@ -89,6 +89,11 @@
    ─────────────────────────────────────────────────────────────── */
 html {
   color-scheme: light;
+
+  /* 버블맵 텍스트 — 옅은 버블 위 가독용 (라이트: 진한 톤) */
+  --bm-text-up: #c9362e;
+  --bm-text-down: #2565c4;
+  --bm-text-flat: #6b7280;
 }
 
 html.dark {
@@ -159,6 +164,11 @@ html.dark {
 
   /* bg-white/text-white — 흰 표면을 다크 표면으로 흡수(버튼 텍스트는 반전 배경과 짝) */
   --color-white: #10121c;
+
+  /* 버블맵 텍스트 — 다크 표면 위 밝은 톤 */
+  --bm-text-up: #f0837f;
+  --bm-text-down: #86aede;
+  --bm-text-flat: #9aa1b3;
 
   --shadow-pop: 0 10px 30px rgba(0, 0, 0, 0.55);
 }
