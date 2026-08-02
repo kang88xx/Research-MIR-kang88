@@ -44,9 +44,9 @@ export type TelegramPopular = {
   updatedAt: string;
 };
 
-const POPULAR_KEY = "telegramPopular:v2"; // v2: channelPhoto 추가
+const POPULAR_KEY = "telegramPopular:v4"; // v4: 톱 20 + 차순위 충원 (v2: channelPhoto 추가)
 const POPULAR_TTL_MS = 15 * 60_000; // 15분 — 30채널 × 96사이클/일 ≈ 2,900요청으로 차단 리스크 억제
-const POPULAR_TOP = 12;
+const POPULAR_TOP = 20;
 const POPULAR_WINDOW_MS = 24 * 3600_000; // 1차 랭킹 윈도우 — 부족하면 72h로 확장
 const FETCH_CONCURRENCY = 10;
 
@@ -341,7 +341,7 @@ async function fetchChannelPosts(ch: { handle: string; name: string }): Promise<
   }
 }
 
-// 30채널 병렬 수집(동시성 제한) → 24h 윈도우 조회수 톱12 (부족 시 72h → 전체 최신순 보충).
+// 30채널 병렬 수집(동시성 제한) → 24h 윈도우 조회수 톱20 (부족 시 72h → 전체 최신순 보충).
 // 강프로 찻방(상장·상폐 추출 파이프라인)은 랭킹 풀에 넣지 않고 별도 15분 캐시로 함께 갱신한다.
 export async function collectTelegramPopular(): Promise<TelegramPopular> {
   const results: (TgRankedPost[] | null)[] = [];
@@ -369,16 +369,34 @@ export async function collectTelegramPopular(): Promise<TelegramPopular> {
       if (!cur || p.score > cur.score) bestByChannel.set(p.channel, p);
     }
   };
+  // "24시간 · 인게이지먼트순" 헤더와의 정합: 어떤 경로로도 72h(주말·새벽 완충)를 넘는
+  // 포스트는 목록에 들어오지 않는다. 후보가 부족하면 20개 미만으로 노출한다.
   addBest(all.filter((p) => inWindow(p, POPULAR_WINDOW_MS)));
   if (bestByChannel.size < POPULAR_TOP) {
     addBest(all.filter((p) => inWindow(p, 3 * POPULAR_WINDOW_MS) && !bestByChannel.has(p.channel)));
   }
-  if (bestByChannel.size < POPULAR_TOP) {
-    addBest(all.filter((p) => !bestByChannel.has(p.channel)));
+
+  // 대표작만으로 TOP이 안 차면(포스팅 채널 수 < POPULAR_TOP) 차순위 포스트로 충원.
+  // 채널당 최대 2개까지만 허용해 한 채널이 리스트를 도배하지 않게 한다. (72h 윈도우 동일 적용)
+  const picked = [...bestByChannel.values()];
+  if (picked.length < POPULAR_TOP) {
+    const chosen = new Set(picked.map((p) => p.url));
+    const perChannel = new Map<string, number>();
+    for (const p of picked) perChannel.set(p.channel, 1);
+    const fillers = all
+      .filter((p) => inWindow(p, 3 * POPULAR_WINDOW_MS) && !chosen.has(p.url))
+      .sort(byScore);
+    for (const p of fillers) {
+      if (picked.length >= POPULAR_TOP) break;
+      const cnt = perChannel.get(p.channel) ?? 0;
+      if (cnt >= 2) continue;
+      perChannel.set(p.channel, cnt + 1);
+      picked.push(p);
+    }
   }
 
   return {
-    posts: [...bestByChannel.values()].sort(byScore).slice(0, POPULAR_TOP),
+    posts: picked.sort(byScore).slice(0, POPULAR_TOP),
     channelsOk: ok.length,
     updatedAt: new Date().toISOString(),
   };

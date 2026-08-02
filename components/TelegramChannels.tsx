@@ -2,13 +2,13 @@
 
 // 한국 텔레그램 인기 포스팅 — 가로 슬라이드 스트립 (풀와이드, 낮은 높이).
 // 실데이터: lib/telegram getTelegramPopular(한국 크립토 25채널 t.me 프리뷰, 15분 캐시)
-// 에서 혼합 점수(조회수×반응) 톱12를 받아 카드 슬라이드로 노출. 수신 실패 시 샘플 폴백.
+// 에서 혼합 점수(조회수×반응) 톱20을 받아 카드 슬라이드로 노출. 수신 실패 시 샘플 폴백.
 // 스크롤 스냅 + 좌우 화살표 — 자동재생은 두지 않는다(파이낸스 그레이드, 시선 방해 방지).
 
 import { useRef } from "react";
 import type { TelegramPopular } from "@/lib/telegram";
 
-const MAX_POSTS = 12;
+const MAX_POSTS = 20;
 
 type Post = {
   channel: string; // 채널명
@@ -154,7 +154,8 @@ export default function TelegramChannels({
             </a>
             <div className="mt-1.5 font-mono text-[10.5px] font-medium text-ink-400">
               {p.reactions > 0 && <span className="mr-2 text-brand-ink">♥ {compact(p.reactions)}</span>}
-              조회 {p.views}
+              {/* 조회수 파싱 실패(빈 문자열) 시 "조회 "만 남지 않게 숨김 */}
+              {p.views && <>조회 {p.views}</>}
             </div>
           </li>
         ))}
