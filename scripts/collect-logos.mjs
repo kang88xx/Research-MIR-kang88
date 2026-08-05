@@ -1,7 +1,7 @@
 // 로고 수집 스크립트 — 캘린더 이벤트 ticker + 거래소 로고를 public/logos/ 에 저장하고
 // lib/logos.ts 매니페스트를 생성한다. 새 이벤트가 추가되면 다시 실행하면 된다.
 //   node scripts/collect-logos.mjs
-import { writeFile, mkdir } from "node:fs/promises";
+import { writeFile, mkdir, readdir } from "node:fs/promises";
 import path from "node:path";
 import { PrismaClient } from "@prisma/client";
 
@@ -11,8 +11,37 @@ const EX_DIR = path.join(ROOT, "public/logos/exchanges");
 
 // 매크로/국가/특수 — 이모지로 표시되므로 로고 수집 제외 (EventIcon EMOJI_ICON과 일치)
 const EMOJI_TICKERS = new Set([
-  "US", "USA", "KR", "JP", "EU", "FOMC", "OPEC", "IRAN", "WORLDCUP", "CME", "MSCI",
+  "US", "USA", "KR", "JP", "EU", "CN", "FOMC", "FED", "OPEC", "IRAN", "WORLDCUP", "ASIAD",
+  "CME", "MSCI", "코인",
 ]);
+
+// 크립토 그룹이지만 코인이 아닌 것(기업·거래소·컨퍼런스·상품) — CoinGecko에서 동명 토큰이
+// 잘못 매칭될 수 있으므로 심볼 조회에서 제외하고 도메인 favicon으로만 받는다.
+const NON_COIN_DOMAIN = {
+  STRC: "strategy.com", // Strategy(구 MicroStrategy) 우선주
+  GBTC: "grayscale.com",
+  BASE: "base.org",
+  OKX: "okx.com",
+  BITHUMB: "bithumb.com",
+  BITMART: "bitmart.com",
+  BITMEX: "bitmex.com",
+  REVOLUT: "revolut.com",
+  NFTFI: "nftfi.com",
+  KBW: "koreablockchainweek.com",
+  T2049: "token2049.com",
+  COINFEST: "coinfest.asia",
+  BTCASIA: "b.tc", // Bitcoin Asia (BTC Inc)
+  IP: "story.foundation", // Story Protocol — CoinGecko symbols 조회에 안 잡힘
+};
+
+// CoinGecko symbols 일괄 조회에 안 잡히는 코인 — 이미지 URL 직접 지정
+const DIRECT_IMAGE = {
+  AERGO: "https://coin-images.coingecko.com/coins/images/4490/large/aergo.png",
+};
+
+// 로고 수집 자체를 건너뛸 ticker(이니셜 뱃지로 폴백) — CoinGecko에서 동명 밈코인이
+// 잘못 매칭되는 컨퍼런스 등 (WBS = 와이오밍 블록체인 심포지엄, 공식 favicon 없음)
+const SKIP_TICKERS = new Set(["WBS"]);
 
 // 노출 대상 거래소 → CoinGecko exchange id (없으면 favicon 도메인으로 폴백)
 const EXCHANGES = [
@@ -35,9 +64,17 @@ const STOCK_DOMAIN = {
   AMZN: "amazon.com", TSLA: "tesla.com", IBM: "ibm.com",
   INTC: "intel.com", KLAC: "kla.com", ARM: "arm.com",
   ASML: "asml.com", TSM: "tsmc.com", KLAR: "klarna.com",
-  HOOD: "robinhood.com", SAMSUNG: "samsung.com", SAMSUNGEM: "samsungsem.com",
+  HOOD: "robinhood.com", SAMSUNG: "samsung.com", SAMSUNGEM: "samsung.com",
   HYNIX: "skhynix.com", HYUNDAI: "hyundai.com", ANTHROPIC: "anthropic.com",
   OPENAI: "openai.com", CBRS: "cerebras.ai",
+  // 2026-08 캘린더 보충 종목
+  MSTR: "strategy.com", ADBE: "adobe.com", AMD: "amd.com",
+  AMAT: "appliedmaterials.com", MRVL: "marvell.com", PLTR: "palantir.com",
+  IONQ: "ionq.com", NAVER: "navercorp.com", CRCL: "circle.com",
+  GLXY: "galaxy.com", CRWV: "coreweave.com", SBET: "sharplink.com",
+  UNITREE: "unitree.com", SECZ: "securitize.io",
+  // 삼성전기 — samsungsem.com favicon 미제공(구글 기본 아이콘) → 삼성 로고 사용
+  SEMCO: "samsung.com",
 };
 
 async function download(url, dest) {
@@ -69,15 +106,23 @@ async function main() {
     events.filter((e) => e.groupMain === "주식").map((e) => e.ticker.toUpperCase()),
   );
   const tickers = [...new Set(events.map((e) => e.ticker.toUpperCase()))].filter(
-    (t) => !EMOJI_TICKERS.has(t),
+    (t) => !EMOJI_TICKERS.has(t) && !SKIP_TICKERS.has(t),
   );
-  const cryptoTickers = tickers.filter((t) => !stockTickers.has(t));
+  const cryptoTickers = tickers.filter((t) => !stockTickers.has(t) && !NON_COIN_DOMAIN[t]);
   console.log(`대상 ticker ${tickers.length}개 (크립토 ${cryptoTickers.length} · 주식 ${stockTickers.size})`);
 
-  // ── 1) 코인 로고 — CoinGecko markets (symbols 일괄 조회, 주식 제외) ──
-  const collectedCoins = new Set();
-  const symbols = cryptoTickers.map((t) => t.toLowerCase()).join(",");
+  // 이미 로컬에 있는 로고는 유지·재다운로드 생략 (증분 수집 — CoinGecko 실패 시에도 매니페스트에서 빠지지 않게)
+  const existing = new Set(
+    (await readdir(COINS_DIR))
+      .filter((f) => f.endsWith(".png") && !f.startsWith("._")) // ._* = macOS AppleDouble 메타파일 제외
+      .map((f) => f.slice(0, -4)),
+  );
+
+  // ── 1) 코인 로고 — CoinGecko markets (symbols 일괄 조회, 주식·비코인 제외) ──
+  const collectedCoins = new Set(existing);
+  const symbols = cryptoTickers.filter((t) => !existing.has(t)).map((t) => t.toLowerCase()).join(",");
   try {
+    if (!symbols) throw new Error("신규 코인 없음 — 조회 생략");
     const url =
       `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&symbols=${symbols}` +
       `&order=market_cap_desc&per_page=250&page=1&sparkline=false`;
@@ -98,10 +143,16 @@ async function main() {
     console.log("코인 수집 실패:", e.message);
   }
 
-  // ── 2) 남은 ticker — 주식 favicon 폴백 ──
+  // ── 2) 남은 ticker — 직접 지정 이미지 → 주식·비코인(기업/거래소/컨퍼런스) favicon 폴백 ──
   for (const t of tickers) {
     if (collectedCoins.has(t)) continue;
-    const domain = STOCK_DOMAIN[t];
+    const direct = DIRECT_IMAGE[t];
+    if (direct && (await download(direct, path.join(COINS_DIR, `${t}.png`)))) {
+      collectedCoins.add(t);
+      console.log(`  direct ✓ ${t}`);
+      continue;
+    }
+    const domain = STOCK_DOMAIN[t] ?? NON_COIN_DOMAIN[t];
     if (!domain) continue;
     if (await download(faviconUrl(domain), path.join(COINS_DIR, `${t}.png`))) {
       collectedCoins.add(t);

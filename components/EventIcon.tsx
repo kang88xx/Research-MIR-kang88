@@ -10,13 +10,16 @@ const EMOJI_ICON: Record<string, string> = {
   KR: "🇰🇷",
   JP: "🇯🇵",
   EU: "🇪🇺",
+  CN: "🇨🇳",
   FOMC: "🏛️",
   FED: "🏛️",
   OPEC: "🛢️",
   IRAN: "⚠️",
   WORLDCUP: "⚽",
+  ASIAD: "🏅",
   CME: "📈",
   MSCI: "📊",
+  코인: "🪙", // 미확정 상장 후보(텔레그램 포착 등) — 특정 로고 없음
 };
 
 const BADGE_COLORS = [
