@@ -45,7 +45,7 @@ const META: Record<string, Meta> = {
     update: "5분 캐시",
     sources: [
       { label: "바이낸스 BTCUSDT", url: "https://www.binance.com/en/trade/BTC_USDT" },
-      { label: "코인게코 비트코인", url: "https://www.coingecko.com/ko/coins/bitcoin" },
+      { label: "코인게코 비트코인", url: "https://www.coingecko.com/ko/코인/bitcoin" },
       { label: "업비트 KRW-BTC", url: "https://upbit.com/exchange?code=CRIX.UPBIT.KRW-BTC" },
     ],
   },
@@ -57,7 +57,7 @@ const META: Record<string, Meta> = {
     update: "5분 캐시",
     sources: [
       { label: "바이낸스 ETHUSDT", url: "https://www.binance.com/en/trade/ETH_USDT" },
-      { label: "코인게코 이더리움", url: "https://www.coingecko.com/ko/coins/ethereum" },
+      { label: "코인게코 이더리움", url: "https://www.coingecko.com/ko/코인/ethereum" },
       { label: "업비트 KRW-ETH", url: "https://upbit.com/exchange?code=CRIX.UPBIT.KRW-ETH" },
     ],
   },

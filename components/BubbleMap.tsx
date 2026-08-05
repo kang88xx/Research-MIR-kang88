@@ -33,6 +33,38 @@ type BubbleCoin = {
   change1y: number | null;
 };
 
+type CoinExchange = {
+  name: string;
+  identifier: string;
+  url: string;
+};
+
+// CoinGecko 거래소 id → 한글 라벨 (없으면 CoinGecko 표시명 그대로)
+const EXCHANGE_KO: Record<string, string> = {
+  upbit: "업비트",
+  binance: "바이낸스",
+  bithumb: "빗썸",
+  coinone: "코인원",
+  korbit: "코빗",
+  gdax: "코인베이스",
+  coinbase_international: "코인베이스",
+  okex: "OKX",
+  bybit_spot: "바이비트",
+  kraken: "크라켄",
+  kucoin: "쿠코인",
+  gate: "게이트",
+  mexc: "MEXC",
+  huobi: "HTX",
+  htx: "HTX",
+  bitget: "비트겟",
+  bitfinex: "비트파이넥스",
+  crypto_com: "크립토닷컴",
+  hyperliquid_spot: "하이퍼리퀴드",
+  "hyperliquid-spot": "하이퍼리퀴드",
+};
+
+const exchangeLabel = (e: CoinExchange) => EXCHANGE_KO[e.identifier] ?? e.name;
+
 type Period = "1h" | "24h" | "7d" | "30d";
 const PERIODS: { key: Period; label: string; field: keyof BubbleCoin }[] = [
   { key: "1h", label: "1H", field: "change1h" },
@@ -309,6 +341,49 @@ export default function BubbleMap() {
     return () => document.removeEventListener("keydown", onKey);
   }, [selected]);
 
+  // 선택 코인의 상장 거래소 상위 3곳 — 클릭 시 지연 로드 + 세션 내 캐시.
+  // null = 로딩 중(거래소 버튼 자리 비움), [] = 상장 정보 없음(코인게코 버튼만).
+  // exFailed = 서버가 조회 실패를 알린 상태(레이트리밋 등) — 캐시하지 않고 재선택 시 재시도.
+  const [exchanges, setExchanges] = useState<CoinExchange[] | null>(null);
+  const [exFailed, setExFailed] = useState(false);
+  const exchangeCacheRef = useRef(new Map<string, CoinExchange[]>());
+  useEffect(() => {
+    if (!selected) return;
+    const cached = exchangeCacheRef.current.get(selected);
+    if (cached) {
+      setExchanges(cached);
+      setExFailed(false);
+      return;
+    }
+    setExchanges(null);
+    setExFailed(false);
+    let alive = true;
+    fetch(`/api/bubbles/tickers?id=${encodeURIComponent(selected)}`)
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error("non-ok"))))
+      .then((json) => {
+        const list: CoinExchange[] = Array.isArray(json.exchanges)
+          ? json.exchanges.slice(0, 3)
+          : [];
+        // 서버 조회 실패 마커(updatedAt=epoch)는 캐시하지 않는다 — 재선택하면 다시 시도.
+        // (서버가 레이트리밋 큐·재시도를 거치므로 응답이 몇 초 걸릴 수 있고, 그 사이
+        //  카드를 닫았어도 성공 결과는 캐시에 넣어 다음 클릭에서 즉시 뜨게 한다.)
+        const failed = json.updatedAt === EPOCH;
+        if (!failed) exchangeCacheRef.current.set(selected, list);
+        if (!alive) return;
+        setExchanges(list);
+        setExFailed(failed);
+      })
+      .catch(() => {
+        // 네트워크 실패 — 코인게코 버튼만 노출, 캐시 안 함
+        if (!alive) return;
+        setExchanges([]);
+        setExFailed(true);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [selected]);
+
   const { w: W, h: H } = size;
   const hovered = hover
     ? renderNodes.find((n) => n.coin.id === hover) ?? null
@@ -537,7 +612,7 @@ export default function BubbleMap() {
         {sel &&
           (() => {
             const CARD_W = 320;
-            const CARD_H = 140; // 대략 높이 — 하단 클램핑용
+            const CARD_H = 168; // 대략 높이(버튼 2행 기준) — 하단 클램핑용
             const anchored = selPos != null && W >= CARD_W + 16;
             const style = anchored
               ? {
@@ -585,32 +660,58 @@ export default function BubbleMap() {
               </span>
               <span className="ml-auto text-[10.5px] text-ink-400">시총 #{sel.coin.marketCapRank ?? "-"}</span>
             </div>
-            <div className="mt-2 grid grid-cols-3 gap-1.5 text-center text-[11px] font-semibold">
-              <a
-                href={`https://www.coingecko.com/ko/coins/${encodeURIComponent(sel.coin.id)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="rounded-[5px] border border-line py-1.5 text-navy-900 hover:border-navy-900"
-              >
-                코인게코 ↗
-              </a>
-              <a
-                href={`https://upbit.com/exchange?code=CRIX.UPBIT.KRW-${encodeURIComponent(sel.coin.symbol.toUpperCase())}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="rounded-[5px] border border-line py-1.5 text-navy-900 hover:border-navy-900"
-              >
-                업비트 ↗
-              </a>
-              <a
-                href={`https://www.binance.com/en/trade/${encodeURIComponent(sel.coin.symbol.toUpperCase())}_USDT`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="rounded-[5px] border border-line py-1.5 text-navy-900 hover:border-navy-900"
-              >
-                바이낸스 ↗
-              </a>
-            </div>
+            {/* 실제 상장된 거래소(거래대금 상위 최대 3곳) + 코인게코는 항상 마지막.
+                심볼로 URL을 조립하던 방식은 미상장 코인에도 업비트 버튼이 뜨던 문제가 있어
+                CoinGecko tickers 기반(/api/bubbles/tickers)으로 교체. */}
+            {(() => {
+              const exs = exchanges ?? [];
+              const total = exs.length + 1; // + 코인게코
+              const cols = total === 4 ? 2 : total;
+              const btnCls =
+                "truncate rounded-[5px] border border-line px-1 py-1.5 text-navy-900 hover:border-navy-900";
+              return (
+                <>
+                  <div
+                    className="mt-2 grid gap-1.5 text-center text-[11px] font-semibold"
+                    style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+                  >
+                    {exs.map((e) => (
+                      <a
+                        key={e.identifier}
+                        href={e.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={btnCls}
+                      >
+                        {exchangeLabel(e)} ↗
+                      </a>
+                    ))}
+                    {/* 코인게코 한국어 URL은 경로 세그먼트도 번역됨 — /ko/coins/는 404, /ko/코인/이 정상 */}
+                    <a
+                      href={`https://www.coingecko.com/ko/코인/${encodeURIComponent(sel.coin.id)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={btnCls}
+                    >
+                      코인게코 ↗
+                    </a>
+                  </div>
+                  {exchanges === null ? (
+                    <p className="mt-1.5 text-center text-[10px] text-ink-400">
+                      상장 거래소 확인 중…
+                    </p>
+                  ) : exFailed ? (
+                    <p className="mt-1.5 text-center text-[10px] text-ink-400">
+                      거래소 정보를 못 불러왔어요 — 잠시 후 다시 선택해 주세요
+                    </p>
+                  ) : exs.length === 0 ? (
+                    <p className="mt-1.5 text-center text-[10px] text-ink-400">
+                      주요 거래소 상장 정보 없음
+                    </p>
+                  ) : null}
+                </>
+              );
+            })()}
           </div>
             );
           })()}

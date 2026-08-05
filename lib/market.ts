@@ -268,3 +268,130 @@ export async function getBubbles(): Promise<BubbleSnapshot> {
     return { coins: [], updatedAt: new Date(0).toISOString() };
   }
 }
+
+// ── 버블맵 클릭 카드: 코인별 실제 상장 거래소 상위 3곳 (24h 거래대금 합산 기준) ──
+// 심볼로 URL을 조립하던 방식은 미상장 코인에도 업비트 버튼이 뜨던 문제(오링크)가 있어
+// CoinGecko tickers로 실제 상장 여부·거래대금을 확인한다.
+export type CoinExchange = {
+  name: string; // CoinGecko 거래소 표시명 (예: "Upbit", "Coinbase Exchange")
+  identifier: string; // CoinGecko 거래소 id (예: "upbit", "gdax") — 클라이언트 한글 라벨 매핑용
+  url: string; // 해당 거래소 최대 거래대금 페어의 trade_url
+};
+
+export type CoinExchangesResult = { exchanges: CoinExchange[]; updatedAt: string };
+
+type CGTicker = {
+  market?: { name?: string; identifier?: string } | null;
+  trade_url?: string | null;
+  converted_volume?: { usd?: number | null } | null;
+  trust_score?: string | null; // green | yellow | red | null
+  is_anomaly?: boolean;
+  is_stale?: boolean;
+};
+
+const COIN_EXCHANGES_TTL_MS = 12 * 3600_000; // 상장 여부·거래대금 순위는 반나절 단위면 충분
+
+// CoinGecko 무료 API 레이트리밋 보호 — tickers 호출을 전역 직렬화 + 최소 간격.
+// 콜드 캐시 상태에서 버블을 연달아 클릭하면 클릭마다 외부 호출이 나가 6번째쯤부터
+// 429가 터지고 거래소 버튼이 빈 카드가 나오던 문제(사용자 보고). 큐로 간격을 벌리면
+// 뒤 클릭은 몇 초 늦게라도 성공하고, 성공 결과는 12h 캐시라 재발하지 않는다.
+const CG_CALL_GAP_MS = 2200;
+let cgQueue: Promise<unknown> = Promise.resolve();
+let cgLastCallAt = 0;
+
+function throttledCoinGecko<T>(task: () => Promise<T>): Promise<T> {
+  const run = cgQueue.then(async () => {
+    const wait = cgLastCallAt + CG_CALL_GAP_MS - Date.now();
+    if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+    try {
+      return await task();
+    } finally {
+      cgLastCallAt = Date.now();
+    }
+  });
+  cgQueue = run.catch(() => {}); // 실패해도 큐는 계속 흐른다
+  return run;
+}
+
+// 429 등 일시 오류 대비 백오프 재시도 (총 3회 시도)
+async function fetchJsonWithRetry<T>(url: string, timeoutMs: number): Promise<T> {
+  let lastErr: unknown;
+  for (const delay of [0, 3000, 6000]) {
+    if (delay > 0) await new Promise((r) => setTimeout(r, delay));
+    try {
+      return await throttledCoinGecko(() => fetchJson<T>(url, timeoutMs));
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  throw lastErr;
+}
+
+// 주요 거래소 허용목록(CoinGecko 거래소 id) — CoinGecko의 volume/trust 정렬 모두
+// 워시트레이딩 거래소(BTCC·Pionex·Tapbit 등, green 뱃지까지 달고 있음)가 상위를 차지해
+// API 정렬만으로는 못 거른다. 이용자가 실제 쓰는 주요 거래소로 한정하고 그 안에서 거래대금순.
+const MAJOR_EXCHANGES = new Set([
+  "upbit", "bithumb", "coinone", "korbit", // 국내
+  "binance", "binance_us", "gdax", "okex", "bybit_spot",
+  "kraken", "kucoin", "gate", "mexc", "huobi", "htx", "bitget", "bitfinex",
+  "crypto_com", "bitstamp", "gemini", "bitvavo", "hyperliquid-spot",
+]);
+
+async function fetchCoinExchanges(id: string): Promise<CoinExchangesResult> {
+  const url =
+    `https://api.coingecko.com/api/v3/coins/${encodeURIComponent(id)}/tickers` +
+    `?order=volume_desc&depth=false`;
+  const data = await fetchJsonWithRetry<{ tickers?: CGTicker[] }>(url, 8000);
+  if (!Array.isArray(data.tickers)) throw new Error("coingecko tickers unavailable");
+
+  // 주요 거래소 + 정상 티커만 — 이상치·스테일 제외
+  const pool = data.tickers.filter(
+    (t) =>
+      !t.is_anomaly &&
+      !t.is_stale &&
+      t.market?.identifier &&
+      MAJOR_EXCHANGES.has(t.market.identifier)
+  );
+
+  // 거래소별 USD 거래대금 합산 + 대표 페어(볼륨순 첫 trade_url)
+  const byExchange = new Map<string, { name: string; url: string | null; volume: number }>();
+  for (const t of pool) {
+    const key = t.market!.identifier!;
+    const entry = byExchange.get(key) ?? { name: t.market!.name ?? key, url: null, volume: 0 };
+    entry.volume += t.converted_volume?.usd ?? 0;
+    entry.url ??= t.trade_url ?? null; // volume_desc 순서 → 첫 trade_url이 최대 페어
+    byExchange.set(key, entry);
+  }
+
+  // CoinGecko trade_url에 붙는 제휴 코드(?ref=...) 제거
+  const cleanUrl = (raw: string): string => {
+    try {
+      const u = new URL(raw);
+      u.searchParams.delete("ref");
+      return u.toString();
+    } catch {
+      return raw;
+    }
+  };
+
+  // 상위 3곳 — 주요 거래소 상장이 3곳 미만이면 있는 만큼만(무명 거래소로 채우지 않는다)
+  const exchanges: CoinExchange[] = [...byExchange.entries()]
+    .filter(([, e]) => e.url != null)
+    .sort(([, a], [, b]) => b.volume - a.volume)
+    .slice(0, 3)
+    .map(([identifier, e]) => ({ name: e.name, identifier, url: cleanUrl(e.url!) }));
+
+  return { exchanges, updatedAt: new Date().toISOString() };
+}
+
+export async function getCoinExchanges(id: string): Promise<CoinExchangesResult> {
+  try {
+    // -v4: 주요 거래소 허용목록 + ref 파라미터 제거 — 옛 캐시 무시
+    return await cachedJson(`coin-tickers-v4:${id}`, COIN_EXCHANGES_TTL_MS, () =>
+      fetchCoinExchanges(id)
+    );
+  } catch {
+    // 실패 시 빈 목록 — 카드에는 코인게코 버튼만 남는다
+    return { exchanges: [], updatedAt: new Date(0).toISOString() };
+  }
+}
