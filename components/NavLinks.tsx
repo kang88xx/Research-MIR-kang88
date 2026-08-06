@@ -5,9 +5,8 @@ import { usePathname } from "next/navigation";
 import NavIcon, { type IconName } from "@/components/NavIcon";
 
 const NAV: { href: string; icon: IconName; label: string }[] = [
-  { href: "/dashboard", icon: "dashboard", label: "대시보드" },
-  { href: "/indicators", icon: "indicators", label: "각종 지표" },
   { href: "/calendar", icon: "calendar", label: "캘린더" },
+  { href: "/indicators", icon: "indicators", label: "각종 지표" },
   { href: "/kimchi", icon: "kimchi", label: "김치 프리미엄" },
   { href: "/bubble", icon: "bubble", label: "버블맵" },
   { href: "/telegram", icon: "telegram", label: "텔레그램" },

@@ -75,8 +75,8 @@ export default function RootLayout({
             <Suspense fallback={<HeaderSkeleton />}>
               <Header />
             </Suspense>
-            {/* 마켓바 — 홈·대시보드에서만 노출 (크립토·주가지수·코인 미니차트) */}
-            <RouteGate show={["/", "/dashboard"]}>
+            {/* 마켓바 — 홈에서만 노출 (크립토·주가지수·코인 미니차트) */}
+            <RouteGate show={["/"]}>
               <Suspense fallback={<MarketBarSkeleton />}>
                 <div className="reveal">
                   <MarketBar />

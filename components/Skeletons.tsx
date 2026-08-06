@@ -7,7 +7,7 @@ function Bar({ className = "" }: { className?: string }) {
   return <div className={`rounded bg-paper2 ${className}`} />;
 }
 
-// 섹션 공통 셸(라이트 헤더 + 흰 본문) — SignalRadar·ListingsStrip·UpcomingEvents 공용
+// 섹션 공통 셸(라이트 헤더 + 흰 본문) — SignalRadar·ListingsStrip 공용
 function SectionShell({ minBody }: { minBody: string }) {
   return (
     <section className="rounded-[6px] border border-line bg-white shadow-card overflow-hidden">
@@ -100,11 +100,6 @@ export function ListingsStripSkeleton() {
       </div>
     </section>
   );
-}
-
-// ── 홈: 다가오는 일정 ──
-export function UpcomingEventsSkeleton() {
-  return <SectionShell minBody="min-h-[200px]" />;
 }
 
 // ── 홈: 하단 게시판 영역(시장 분석) ──

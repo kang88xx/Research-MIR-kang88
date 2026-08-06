@@ -91,21 +91,3 @@ export function radarChips(
   if (opts.event) chips.push({ label: "오늘 일정", tone: "note" });
   return chips;
 }
-
-// 공포탐욕 — 커스텀 구간 대신 제공자(alternative.me) 분류 라벨에 해석만 매핑
-export function fngSignal(classification: string): Signal {
-  switch (classification) {
-    case "Extreme Fear":
-      return { label: "분할 관심 구간", tone: "note" };
-    case "Fear":
-      return { label: "리스크 관찰", tone: "note" };
-    case "Neutral":
-      return { label: "방향성 탐색", tone: "calm" };
-    case "Greed":
-      return { label: "추격 주의", tone: "caution" };
-    case "Extreme Greed":
-      return { label: "과열 경계", tone: "alert" };
-    default:
-      return { label: "—", tone: "calm" };
-  }
-}
