@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getTickers } from "@/lib/ticker";
 import { auth } from "@/lib/auth";
 import { formatKrw, formatPercent, formatPostDate } from "@/lib/format";
+import { parseDaily, stanceLabel } from "@/lib/daily";
 import PageTitle from "@/components/PageTitle";
 
 export const dynamic = "force-dynamic";
@@ -41,12 +42,20 @@ export default async function AnalysisPage() {
         description="운영진이 작성하는 공식 분석입니다. 작성 시점 가격이 자동 기록되어 현재가와 비교됩니다."
         actions={
           canWrite && (
-            <Link
-              href="/analysis/write"
-              className="bg-brand px-4 py-1.5 text-sm font-semibold text-on-brand hover:bg-amber-400"
-            >
-              분석 작성
-            </Link>
+            <span className="flex gap-2">
+              <Link
+                href="/analysis/write/daily"
+                className="border border-brand px-4 py-1.5 text-sm font-semibold text-brand-ink hover:bg-brand-weak"
+              >
+                데일리 작성
+              </Link>
+              <Link
+                href="/analysis/write"
+                className="bg-brand px-4 py-1.5 text-sm font-semibold text-on-brand hover:bg-amber-400"
+              >
+                분석 작성
+              </Link>
+            </span>
           )
         }
       />
@@ -63,6 +72,7 @@ export default async function AnalysisPage() {
               post.priceAtPost != null && now != null
                 ? ((now - post.priceAtPost) / post.priceAtPost) * 100
                 : null;
+            const daily = parseDaily(post.content);
             return (
               <Link
                 key={post.id}
@@ -71,6 +81,16 @@ export default async function AnalysisPage() {
               >
                 <div className="flex items-start justify-between gap-3">
                   <h2 className="font-semibold text-navy-900">
+                    {daily && (
+                      <>
+                        <span className="mr-1.5 inline-block border border-brand bg-brand-weak px-1.5 align-[1px] text-[10.5px] font-extrabold text-brand-ink">
+                          데일리
+                        </span>
+                        <span className="mr-1.5 inline-block bg-brand px-1.5 align-[1px] text-[10.5px] font-extrabold text-on-brand">
+                          {stanceLabel(daily.stance)}
+                        </span>
+                      </>
+                    )}
                     {post.title}
                     {post.commentCount > 0 && (
                       <span className="ml-1 text-xs text-indigo-700">[{post.commentCount}]</span>
@@ -92,7 +112,9 @@ export default async function AnalysisPage() {
                     </span>
                   )}
                 </div>
-                <p className="mt-1 line-clamp-2 text-sm text-ink-500">{post.content}</p>
+                <p className="mt-1 line-clamp-2 text-sm text-ink-500">
+                  {daily ? daily.verdict : post.content}
+                </p>
                 <p className="mt-2 text-xs text-ink-500">
                   {post.author.nickname} · {formatPostDate(post.createdAt)} · 조회 {post.viewCount} · 추천{" "}
                   {post.upvotes}

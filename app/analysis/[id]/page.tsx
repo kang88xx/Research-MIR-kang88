@@ -6,6 +6,8 @@ import { getTickers } from "@/lib/ticker";
 import { formatDateTime, formatKrw, formatPercent, formatPostDate } from "@/lib/format";
 import VoteButtons from "@/components/VoteButtons";
 import CommentForm from "@/components/CommentForm";
+import DailyPostBody from "@/components/DailyPostBody";
+import { parseDaily, stanceLabel } from "@/lib/daily";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +37,8 @@ export default async function AnalysisDetailPage({
 
   prisma.post.update({ where: { id }, data: { viewCount: { increment: 1 } } }).catch(() => {});
 
+  const daily = parseDaily(post.content);
+
   const now = post.priceSymbol
     ? snapshot.tickers.find((t) => t.symbol === post.priceSymbol)?.priceKrw ?? null
     : null;
@@ -47,8 +51,15 @@ export default async function AnalysisDetailPage({
     <div className="mx-auto max-w-4xl">
       <article className="border border-line bg-white">
         <header className="border-b border-line px-5 py-4">
-          <p className="eyebrow">공식 시장 분석</p>
-          <h1 className="text-xl font-bold text-navy-900">{post.title}</h1>
+          <p className="eyebrow">{daily ? "공식 시장 분석 · 데일리" : "공식 시장 분석"}</p>
+          <h1 className="text-xl font-bold text-navy-900">
+            {daily && (
+              <span className="mr-2 inline-block bg-brand px-2 align-[2px] text-[11px] font-extrabold text-on-brand">
+                {stanceLabel(daily.stance)}
+              </span>
+            )}
+            {post.title}
+          </h1>
           <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-500">
             <span className="text-ink-900">
               <span className="mr-0.5 bg-paper2 px-1 font-mono text-[10px] text-navy-500">Lv{post.author.level}</span>{" "}
@@ -79,9 +90,13 @@ export default async function AnalysisDetailPage({
           </div>
         )}
 
-        <div className="whitespace-pre-wrap px-5 py-6 text-[15px] leading-7 text-ink-900">
-          {post.content}
-        </div>
+        {daily ? (
+          <DailyPostBody data={daily} />
+        ) : (
+          <div className="whitespace-pre-wrap px-5 py-6 text-[15px] leading-7 text-ink-900">
+            {post.content}
+          </div>
+        )}
 
         <VoteButtons postId={post.id} upvotes={post.upvotes} downvotes={post.downvotes} />
       </article>

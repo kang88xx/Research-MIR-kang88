@@ -53,6 +53,70 @@ export async function createPost(formData: FormData) {
   redirect(`${basePath}/${post.id}`);
 }
 
+// ── 데일리 시장분석 발행 — 자동 데이터(시세·심리·일정)는 발행 시점에 수집해 박제 ──
+export async function createDailyPost(formData: FormData) {
+  const userId = await requireUserId();
+  const me = await prisma.user.findUnique({ where: { id: userId }, select: { level: true } });
+  if (!me || me.level < EDITOR_MIN_LEVEL) {
+    throw new Error("시장 분석 글은 운영진만 작성할 수 있습니다.");
+  }
+
+  const { STANCES, ADVICE_POSITIONS, ADVICE_ACTIONS, buildDailyAuto, serializeDaily } =
+    await import("@/lib/daily");
+
+  const title = String(formData.get("title") ?? "").trim();
+  const stance = String(formData.get("stance") ?? "");
+  const verdict = String(formData.get("verdict") ?? "").trim();
+  const opinion = String(formData.get("opinion") ?? "").trim();
+  const retro = String(formData.get("retro") ?? "").trim();
+
+  if (!title || title.length > 100) throw new Error("제목은 1~100자로 입력해 주세요.");
+  if (!STANCES.some((s) => s.key === stance)) throw new Error("스탠스를 선택해 주세요.");
+  if (!verdict || verdict.length > 200) throw new Error("오늘의 판단을 1~200자로 입력해 주세요.");
+  if (!opinion || opinion.length > 10000) throw new Error("견해 본문을 입력해 주세요.");
+
+  const advice = ADVICE_POSITIONS.map((position, i) => {
+    const action = String(formData.get(`advice-action-${i}`) ?? "");
+    const note = String(formData.get(`advice-note-${i}`) ?? "").trim();
+    if (!ADVICE_ACTIONS.some((a) => a.key === action)) throw new Error("자문 액션을 선택해 주세요.");
+    if (!note || note.length > 300) throw new Error(`${position} 자문을 1~300자로 입력해 주세요.`);
+    return { position, action: action as (typeof ADVICE_ACTIONS)[number]["key"], note };
+  });
+
+  const board = await prisma.board.findUnique({ where: { slug: "analysis" } });
+  if (!board) throw new Error("게시판을 찾을 수 없습니다.");
+
+  const auto = await buildDailyAuto();
+  const content = serializeDaily({
+    v: 1,
+    stance: stance as (typeof STANCES)[number]["key"],
+    verdict,
+    opinion,
+    advice,
+    retro: retro || undefined,
+    auto,
+  });
+
+  // 가격 검증은 기존 규칙 그대로 — 데일리는 BTC 기준 고정
+  const { getTickers } = await import("@/lib/ticker");
+  const snapshot = await getTickers();
+  const btc = snapshot.tickers.find((t) => t.symbol === "BTC");
+
+  const post = await prisma.post.create({
+    data: {
+      boardId: board.id,
+      userId,
+      title,
+      content,
+      priceAtPost: btc?.priceKrw ?? null,
+      priceSymbol: btc?.priceKrw != null ? "BTC" : null,
+    },
+  });
+
+  revalidatePath("/analysis");
+  redirect(`/analysis/${post.id}`);
+}
+
 // 게시글이 속한 보드의 기본 경로(/analysis · /forum/<slug>). 없는 글이면 null.
 // 댓글/투표 후 올바른 페이지를 재검증하기 위해 사용.
 async function postBasePath(postId: number): Promise<string | null> {

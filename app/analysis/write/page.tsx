@@ -35,6 +35,14 @@ export default async function AnalysisWritePage() {
         eyebrow="Write"
         title="분석 작성 — 시장 분석"
         description="등록 시 선택한 코인의 현재가가 자동 기록되며, 이후 실제 가격과 비교되어 표시됩니다."
+        actions={
+          <Link
+            href="/analysis/write/daily"
+            className="border border-brand px-4 py-1.5 text-sm font-semibold text-brand-ink hover:bg-brand-weak"
+          >
+            데일리 작성
+          </Link>
+        }
       />
       <form action={createPost} className="flex flex-col gap-3">
         <input type="hidden" name="board" value="analysis" />
