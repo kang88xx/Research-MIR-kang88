@@ -1,5 +1,6 @@
 import { cachedJson } from "@/lib/cache";
 import { fetchJson } from "@/lib/http";
+import { prisma } from "@/lib/prisma";
 
 export type FngPoint = {
   value: number;
@@ -269,6 +270,23 @@ export async function getBubbles(): Promise<BubbleSnapshot> {
   }
 }
 
+// 버블 스냅샷의 코인 id 집합 — 인스턴스 메모리에 캐시.
+// /api/bubbles/tickers 는 요청마다 id 유효성만 확인하면 되는데, getBubbles()를 그대로 부르면
+// 클릭 한 번에 31KB짜리 스냅샷 JSON을 DB에서 읽고 파싱한다. id 집합만 따로 들고 있으면
+// 캐시 적중 클릭의 DB 왕복이 2회→1회로 줄어든다(실측 ~115ms → ~60ms).
+let bubbleIdSet: { ids: Set<string>; at: number } | null = null;
+
+export async function isBubbleCoinId(id: string): Promise<boolean> {
+  if (bubbleIdSet && Date.now() - bubbleIdSet.at < BUBBLES_TTL_MS) {
+    return bubbleIdSet.ids.has(id);
+  }
+  const snapshot = await getBubbles();
+  // 빈 스냅샷(조회 실패)은 메모하지 않는다 — 모든 id가 404가 되어버린다
+  if (snapshot.coins.length === 0) return false;
+  bubbleIdSet = { ids: new Set(snapshot.coins.map((c) => c.id)), at: Date.now() };
+  return bubbleIdSet.ids.has(id);
+}
+
 // ── 버블맵 클릭 카드: 코인별 실제 상장 거래소 상위 3곳 (24h 거래대금 합산 기준) ──
 // 심볼로 URL을 조립하던 방식은 미상장 코인에도 업비트 버튼이 뜨던 문제(오링크)가 있어
 // CoinGecko tickers로 실제 상장 여부·거래대금을 확인한다.
@@ -296,10 +314,19 @@ const COIN_EXCHANGES_TTL_MS = 12 * 3600_000; // 상장 여부·거래대금 순�
 // 429가 터지고 거래소 버튼이 빈 카드가 나오던 문제(사용자 보고). 큐로 간격을 벌리면
 // 뒤 클릭은 몇 초 늦게라도 성공하고, 성공 결과는 12h 캐시라 재발하지 않는다.
 const CG_CALL_GAP_MS = 2200;
+// 큐 대기 상한 — 이보다 깊게 쌓이면 기다리게 두지 않고 즉시 실패시킨다.
+// 큐는 전역 FIFO라, 상한이 없으면 동시 클릭 N번째 사용자가 N×2.2초를 스피너만 보게 된다.
+// 즉시 실패하면 카드가 "잠시 후 다시" 안내로 바로 확정되고, 성공한 코인은 12h 캐시로 남는다.
+const CG_MAX_QUEUE_DEPTH = 4;
 let cgQueue: Promise<unknown> = Promise.resolve();
+let cgQueueDepth = 0;
 let cgLastCallAt = 0;
 
 function throttledCoinGecko<T>(task: () => Promise<T>): Promise<T> {
+  if (cgQueueDepth >= CG_MAX_QUEUE_DEPTH) {
+    return Promise.reject(new Error("coingecko queue saturated"));
+  }
+  cgQueueDepth += 1;
   const run = cgQueue.then(async () => {
     const wait = cgLastCallAt + CG_CALL_GAP_MS - Date.now();
     if (wait > 0) await new Promise((r) => setTimeout(r, wait));
@@ -307,21 +334,27 @@ function throttledCoinGecko<T>(task: () => Promise<T>): Promise<T> {
       return await task();
     } finally {
       cgLastCallAt = Date.now();
+      cgQueueDepth -= 1;
     }
   });
   cgQueue = run.catch(() => {}); // 실패해도 큐는 계속 흐른다
   return run;
 }
 
-// 429 등 일시 오류 대비 백오프 재시도 (총 3회 시도)
+// 429 등 일시 오류 대비 백오프 재시도 (총 2회 시도).
+// 3회 + [0,3s,6s] 백오프였을 땐 실패 코인 하나가 응답 11초를 찍고(실측) 그동안 전역 큐를
+// 점유해 다른 사용자 클릭까지 밀렸다. 재시도는 한 번이면 일시적 429는 대부분 흡수되고,
+// 최악 지연이 ~15초 → ~6초로 내려간다.
 async function fetchJsonWithRetry<T>(url: string, timeoutMs: number): Promise<T> {
   let lastErr: unknown;
-  for (const delay of [0, 3000, 6000]) {
+  for (const delay of [0, 1500]) {
     if (delay > 0) await new Promise((r) => setTimeout(r, delay));
     try {
       return await throttledCoinGecko(() => fetchJson<T>(url, timeoutMs));
     } catch (err) {
       lastErr = err;
+      // 큐 포화는 재시도해도 같은 이유로 막힌다 — 즉시 포기하고 자리를 비워준다
+      if (err instanceof Error && err.message === "coingecko queue saturated") break;
     }
   }
   throw lastErr;
@@ -384,14 +417,52 @@ async function fetchCoinExchanges(id: string): Promise<CoinExchangesResult> {
   return { exchanges, updatedAt: new Date().toISOString() };
 }
 
+const COIN_TICKERS_KEY = (id: string) => `coin-tickers-v4:${id}`;
+
 export async function getCoinExchanges(id: string): Promise<CoinExchangesResult> {
   try {
     // -v4: 주요 거래소 허용목록 + ref 파라미터 제거 — 옛 캐시 무시
-    return await cachedJson(`coin-tickers-v4:${id}`, COIN_EXCHANGES_TTL_MS, () =>
+    return await cachedJson(COIN_TICKERS_KEY(id), COIN_EXCHANGES_TTL_MS, () =>
       fetchCoinExchanges(id)
     );
   } catch {
     // 실패 시 빈 목록 — 카드에는 코인게코 버튼만 남는다
     return { exchanges: [], updatedAt: new Date(0).toISOString() };
   }
+}
+
+// 크론용 — 버블맵 상위 코인의 거래소 캐시를 미리 데운다.
+// 클릭 시점에 캐시가 비어 있으면 레이트리밋 큐(2.2초 간격) 때문에 최소 2.4초를 기다려야 한다.
+// 캐시가 차 있으면 같은 클릭이 ~60ms에 끝나므로, 콜드 클릭 자체를 없애는 게 가장 큰 개선이다.
+// TTL 12h / 크론 1시간 간격이라 매 회차 조금씩만 채워도 상위권은 항상 따뜻하게 유지된다.
+export async function warmCoinExchanges(
+  maxCoins: number,
+  budgetMs: number
+): Promise<{ warmed: number; skipped: number }> {
+  const deadline = Date.now() + budgetMs;
+  const { coins } = await getBubbles();
+  if (coins.length === 0) return { warmed: 0, skipped: 0 };
+
+  const wanted = coins.slice(0, maxCoins).map((c) => c.id);
+  // 이미 신선한 키는 건너뛴다 — 외부 호출 없이 남은 예산을 미수집 코인에 쓴다
+  let fresh = new Set<string>();
+  try {
+    const cutoff = new Date(Date.now() - COIN_EXCHANGES_TTL_MS);
+    const rows = await prisma.marketCache.findMany({
+      where: { key: { in: wanted.map(COIN_TICKERS_KEY) }, updatedAt: { gt: cutoff } },
+      select: { key: true },
+    });
+    fresh = new Set(rows.map((r) => r.key));
+  } catch {
+    // 조회 실패 시엔 전부 대상으로 두고 예산이 허용하는 만큼만 처리
+  }
+
+  let warmed = 0;
+  const stale = wanted.filter((id) => !fresh.has(COIN_TICKERS_KEY(id)));
+  for (const id of stale) {
+    if (Date.now() >= deadline) break; // 크론 maxDuration 초과 방지
+    await getCoinExchanges(id); // 내부에서 실패를 흡수 — 한 코인 실패가 워밍을 멈추지 않는다
+    warmed += 1;
+  }
+  return { warmed, skipped: stale.length - warmed };
 }

@@ -1,4 +1,4 @@
-import GajaLoader from "@/components/GajaLoader";
+import Spinner from "@/components/Spinner";
 
 export default function Sparkline({
   values,
@@ -25,7 +25,7 @@ export default function Sparkline({
         style={{ width, height }}
         title="데이터 수집 중"
       >
-        <GajaLoader size={Math.min(16, height - 8)} />
+        <Spinner size={Math.min(16, height - 8)} />
       </div>
     );
   }

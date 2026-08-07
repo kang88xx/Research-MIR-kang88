@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { getBubbles, getCoinExchanges } from "@/lib/market";
+import { getCoinExchanges, isBubbleCoinId } from "@/lib/market";
 
 export const dynamic = "force-dynamic";
 
@@ -10,8 +10,7 @@ export async function GET(req: NextRequest) {
   if (!/^[a-z0-9-]{1,64}$/.test(id)) {
     return NextResponse.json({ error: "bad id" }, { status: 400 });
   }
-  const snapshot = await getBubbles();
-  if (!snapshot.coins.some((c) => c.id === id)) {
+  if (!(await isBubbleCoinId(id))) {
     return NextResponse.json({ error: "unknown coin" }, { status: 404 });
   }
   const result = await getCoinExchanges(id);

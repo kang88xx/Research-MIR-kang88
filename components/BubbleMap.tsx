@@ -12,7 +12,7 @@ import {
   forceY,
   type Simulation,
 } from "d3-force";
-import GajaLoader from "@/components/GajaLoader";
+import Spinner from "@/components/Spinner";
 import { formatRelativeTime } from "@/lib/format";
 
 const EPOCH = new Date(0).toISOString();
@@ -38,6 +38,9 @@ type CoinExchange = {
   identifier: string;
   url: string;
 };
+
+// 거래소 조회 결과 — failed는 "서버가 조회에 실패했다"는 뜻(상장 정보 없음과 구분)
+type ExResult = { list: CoinExchange[]; failed: boolean };
 
 // CoinGecko 거래소 id → 한글 라벨 (없으면 CoinGecko 표시명 그대로)
 const EXCHANGE_KO: Record<string, string> = {
@@ -341,48 +344,72 @@ export default function BubbleMap() {
     return () => document.removeEventListener("keydown", onKey);
   }, [selected]);
 
-  // 선택 코인의 상장 거래소 상위 3곳 — 클릭 시 지연 로드 + 세션 내 캐시.
+  // 선택 코인의 상장 거래소 상위 3곳 — 호버 시 선반입(prefetch) + 세션 내 캐시.
   // null = 로딩 중(거래소 버튼 자리 비움), [] = 상장 정보 없음(코인게코 버튼만).
   // exFailed = 서버가 조회 실패를 알린 상태(레이트리밋 등) — 캐시하지 않고 재선택 시 재시도.
   const [exchanges, setExchanges] = useState<CoinExchange[] | null>(null);
   const [exFailed, setExFailed] = useState(false);
-  const exchangeCacheRef = useRef(new Map<string, CoinExchange[]>());
+  // 진행 중 요청(중복 발사 방지) / 완료된 결과(동기 조회로 스피너 깜빡임 제거)를 나눠 들고 있다
+  const exInflightRef = useRef(new Map<string, Promise<ExResult>>());
+  const exSettledRef = useRef(new Map<string, ExResult>());
+
+  const loadExchanges = useCallback((id: string): Promise<ExResult> => {
+    const settled = exSettledRef.current.get(id);
+    if (settled) return Promise.resolve(settled);
+    const running = exInflightRef.current.get(id);
+    if (running) return running;
+
+    const p = fetch(`/api/bubbles/tickers?id=${encodeURIComponent(id)}`)
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error("non-ok"))))
+      .then((json): ExResult => {
+        const list: CoinExchange[] = Array.isArray(json.exchanges)
+          ? json.exchanges.slice(0, 3)
+          : [];
+        // 서버 조회 실패 마커(updatedAt=epoch)는 캐시하지 않는다 — 다시 선택하면 재시도.
+        const failed = json.updatedAt === EPOCH;
+        const result = { list, failed };
+        if (!failed) exSettledRef.current.set(id, result);
+        return result;
+      })
+      // 네트워크 실패 — 코인게코 버튼만 노출, 캐시 안 함
+      .catch((): ExResult => ({ list: [], failed: true }))
+      .finally(() => exInflightRef.current.delete(id));
+
+    exInflightRef.current.set(id, p);
+    return p;
+  }, []);
+
+  // 호버 선반입 — 콜드 캐시일 때 서버가 레이트리밋 큐(코인당 2.2초)를 거치므로, 클릭을
+  // 기다렸다 시작하면 카드가 몇 초간 비어 있다. 커서가 잠깐 머무는 동안 미리 받아두면
+  // 대부분의 클릭이 이미 도착한 결과를 즉시 그린다. 180ms 디바운스로 버블 위를 훑고
+  // 지나갈 때 100개를 무더기로 요청하는 것을 막는다(서버 큐 포화 방지).
+  useEffect(() => {
+    if (!hover) return;
+    const t = setTimeout(() => void loadExchanges(hover), 180);
+    return () => clearTimeout(t);
+  }, [hover, loadExchanges]);
+
   useEffect(() => {
     if (!selected) return;
-    const cached = exchangeCacheRef.current.get(selected);
-    if (cached) {
-      setExchanges(cached);
-      setExFailed(false);
+    // 선반입이 끝났으면 로딩 상태를 거치지 않고 바로 확정 — 스피너가 한 프레임 깜빡이지 않게
+    const settled = exSettledRef.current.get(selected);
+    if (settled) {
+      setExchanges(settled.list);
+      setExFailed(settled.failed);
       return;
     }
     setExchanges(null);
     setExFailed(false);
     let alive = true;
-    fetch(`/api/bubbles/tickers?id=${encodeURIComponent(selected)}`)
-      .then((res) => (res.ok ? res.json() : Promise.reject(new Error("non-ok"))))
-      .then((json) => {
-        const list: CoinExchange[] = Array.isArray(json.exchanges)
-          ? json.exchanges.slice(0, 3)
-          : [];
-        // 서버 조회 실패 마커(updatedAt=epoch)는 캐시하지 않는다 — 재선택하면 다시 시도.
-        // (서버가 레이트리밋 큐·재시도를 거치므로 응답이 몇 초 걸릴 수 있고, 그 사이
-        //  카드를 닫았어도 성공 결과는 캐시에 넣어 다음 클릭에서 즉시 뜨게 한다.)
-        const failed = json.updatedAt === EPOCH;
-        if (!failed) exchangeCacheRef.current.set(selected, list);
-        if (!alive) return;
-        setExchanges(list);
-        setExFailed(failed);
-      })
-      .catch(() => {
-        // 네트워크 실패 — 코인게코 버튼만 노출, 캐시 안 함
-        if (!alive) return;
-        setExchanges([]);
-        setExFailed(true);
-      });
+    loadExchanges(selected).then((r) => {
+      if (!alive) return;
+      setExchanges(r.list);
+      setExFailed(r.failed);
+    });
     return () => {
       alive = false;
     };
-  }, [selected]);
+  }, [selected, loadExchanges]);
 
   const { w: W, h: H } = size;
   const hovered = hover
@@ -561,7 +588,7 @@ export default function BubbleMap() {
 
         {renderNodes.length === 0 && !error && (
           <div className="absolute inset-0 flex items-center justify-center gap-2 text-xs text-ink-500">
-            <GajaLoader size={16} />
+            <Spinner size={16} />
             버블맵 로딩 중…
           </div>
         )}
@@ -697,7 +724,8 @@ export default function BubbleMap() {
                     </a>
                   </div>
                   {exchanges === null ? (
-                    <p className="mt-1.5 text-center text-[10px] text-ink-400">
+                    <p className="mt-1.5 flex items-center justify-center gap-1.5 text-center text-[10px] text-ink-400">
+                      <Spinner size={11} />
                       상장 거래소 확인 중…
                     </p>
                   ) : exFailed ? (

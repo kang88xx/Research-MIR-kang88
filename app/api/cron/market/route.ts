@@ -9,7 +9,7 @@ import {
   getExchangeSpread,
   getTrendLabels,
 } from "@/lib/ticker";
-import { getMarketOverview, getFxHistory, getBubbles } from "@/lib/market";
+import { getMarketOverview, getFxHistory, getBubbles, warmCoinExchanges } from "@/lib/market";
 import { getTodayListings } from "@/lib/listings";
 import { getExchangeListingSets } from "@/lib/exchange-listings";
 import { getMarketBar } from "@/lib/marketbar";
@@ -52,6 +52,15 @@ export async function GET(req: Request) {
   const warmFailed = warm.filter((r) => r.status === "rejected").length;
 
   const result: Record<string, unknown> = { warmFailed };
+
+  // 버블맵 클릭 카드의 거래소 목록 워밍 — 콜드 클릭(최소 2.4초)을 캐시 적중(~60ms)으로 바꾼다.
+  // 코인당 레이트리밋 간격 2.2초라 한 회차 예산은 25초로 묶고(maxDuration 60), 신선한 키는
+  // 건너뛰므로 회차를 거듭하며 상위 40종이 점진적으로 채워진다.
+  try {
+    result.coinTickers = await warmCoinExchanges(40, 25_000);
+  } catch {
+    result.coinTickers = "error";
+  }
 
   // 김프 스냅샷 — 마지막 기록이 5분 이상 지났을 때만
   try {

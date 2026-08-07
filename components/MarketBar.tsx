@@ -1,6 +1,6 @@
 import { getMarketBar, type BarTile } from "@/lib/marketbar";
 import { formatPercent } from "@/lib/format";
-import GajaLoader from "@/components/GajaLoader";
+import Spinner from "@/components/Spinner";
 import Sparkline from "@/components/Sparkline";
 import LiveSparkline from "@/components/LiveSparkline";
 import MarketStatus, { type Mkt } from "@/components/MarketStatus";
@@ -218,7 +218,7 @@ function Tile({ t }: { t: BarTile }) {
       <div className={`${CARD} border-dashed bg-white/60`}>
         {t.label && <div className={TITLE}>{t.label}</div>}
         <div className="flex min-h-12 items-center justify-center gap-1.5 text-[11px] text-ink-300">
-          <GajaLoader size={14} />
+          <Spinner size={14} />
           {t.note ?? "데이터 수집 중…"}
         </div>
       </div>
@@ -349,7 +349,7 @@ export default async function MarketBar() {
       <div className="px-5 pt-[12px]">
         {tiles.length === 0 ? (
           <p className="rail flex items-center justify-center gap-2 py-2 text-center">
-            <GajaLoader size={15} />
+            <Spinner size={15} />
             마켓 데이터 불러오는 중…
           </p>
         ) : (

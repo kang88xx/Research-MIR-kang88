@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import EventIcon from "@/components/EventIcon";
-import GajaLoader from "@/components/GajaLoader";
+import Spinner from "@/components/Spinner";
 
 type EventSource = {
   name: string;
@@ -418,7 +418,7 @@ export default function CryptoCalendar({
 
       {loading ? (
         <p className="flex items-center justify-center gap-2 py-16 text-center text-sm text-ink-500">
-          <GajaLoader size={17} />
+          <Spinner size={17} />
           캘린더 불러오는 중…
         </p>
       ) : error ? (

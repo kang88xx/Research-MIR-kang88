@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { getMarketBar } from "@/lib/marketbar";
 import IndicatorGrid from "@/components/IndicatorGrid";
 import { MarketBarSkeleton } from "@/components/Skeletons";
-import GajaLoader from "@/components/GajaLoader";
+import Spinner from "@/components/Spinner";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "각종 지표 · KMIR" };
@@ -35,7 +35,7 @@ async function Indicators() {
   if (tiles.length === 0) {
     return (
       <p className="rail flex items-center justify-center gap-2 py-8 text-center">
-        <GajaLoader size={15} />
+        <Spinner size={15} />
         마켓 데이터 불러오는 중…
       </p>
     );

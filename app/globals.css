@@ -256,30 +256,19 @@ body {
   }
 }
 
-/* 가자가자 로더 — 브랜드 셰브런이 뒤→앞 순차 점등("가자, 가자") */
-@keyframes gaja-step {
-  0%,
-  100% {
-    opacity: 0.22;
-  }
-  25% {
-    opacity: 1;
-  }
-  55% {
-    opacity: 0.22;
+/* 로딩 스피너 — 브랜드 컬러 호가 도는 원형 인디케이터 */
+@keyframes spinner-rotate {
+  to {
+    transform: rotate(360deg);
   }
 }
-.gaja-step1 {
-  animation: gaja-step 1.2s ease-in-out infinite;
-}
-.gaja-step2 {
-  animation: gaja-step 1.2s ease-in-out 0.3s infinite;
+.spinner {
+  animation: spinner-rotate 0.7s linear infinite;
+  transform-origin: 50% 50%;
 }
 @media (prefers-reduced-motion: reduce) {
-  .gaja-step1,
-  .gaja-step2 {
+  .spinner {
     animation: none;
-    opacity: 0.8;
   }
 }
 
