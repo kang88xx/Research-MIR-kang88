@@ -64,20 +64,16 @@ export function SidebarAccountSkeleton() {
 // 실제 MarketBar는 272×72 고정 타일을 3행(지수/코인/매크로)으로 그린다.
 // 스켈레톤도 같은 행 수·타일 높이를 예약해야 콘텐츠 도착 시 레이아웃 점프(CLS)가 없다.
 export function MarketBarSkeleton() {
+  // 홈 본문(main px-5) 안에 배치되므로 자체 패딩·배경 없이 그리드 골격만 예약한다.
   return (
-    <div className="border-b border-line bg-paper">
-      <div className="flex flex-col gap-2 px-5 py-2">
-        {Array.from({ length: 3 }).map((_, row) => (
-          <div key={row} className="flex flex-wrap justify-between gap-y-2">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div
-                key={i}
-                className="h-[72px] w-[272px] shrink-0 animate-pulse rounded border border-line bg-paper2"
-              />
-            ))}
-          </div>
-        ))}
-      </div>
+    <div className="flex flex-col gap-2">
+      {Array.from({ length: 3 }).map((_, row) => (
+        <div key={row} className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="h-[72px] animate-pulse rounded border border-line bg-paper2" />
+          ))}
+        </div>
+      ))}
     </div>
   );
 }

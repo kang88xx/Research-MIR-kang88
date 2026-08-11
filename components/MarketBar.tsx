@@ -344,22 +344,21 @@ export default async function MarketBar() {
     return (ia === -1 ? TILE_ORDER.length : ia) - (ib === -1 ? TILE_ORDER.length : ib);
   });
 
+  // 홈 본문(main px-5) 안에서 렌더링되므로 자체 패딩 없이 그리드만 출력한다.
   return (
-    <div className="bg-paper">
-      <div className="px-5 pt-[12px]">
-        {tiles.length === 0 ? (
-          <p className="rail flex items-center justify-center gap-2 py-2 text-center">
-            <Spinner size={15} />
-            마켓 데이터 불러오는 중…
-          </p>
-        ) : (
-          <div className="grid auto-rows-fr grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
-            {tiles.map((t) => (
-              <Tile key={t.key} t={t} />
-            ))}
-          </div>
-        )}
-      </div>
+    <div>
+      {tiles.length === 0 ? (
+        <p className="rail flex items-center justify-center gap-2 py-2 text-center">
+          <Spinner size={15} />
+          마켓 데이터 불러오는 중…
+        </p>
+      ) : (
+        <div className="grid auto-rows-fr grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          {tiles.map((t) => (
+            <Tile key={t.key} t={t} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

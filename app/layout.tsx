@@ -4,14 +4,11 @@ import { Noto_Sans_KR, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
 import ConsoleSidebar from "@/components/ConsoleSidebar";
-import MarketBar from "@/components/MarketBar";
 import ListingsStrip from "@/components/ListingsStrip";
-import RouteGate from "@/components/RouteGate";
 import VisitTracker from "@/components/VisitTracker";
 import {
   HeaderSkeleton,
   ListingsStripSkeleton,
-  MarketBarSkeleton,
   SidebarAccountSkeleton,
 } from "@/components/Skeletons";
 
@@ -75,14 +72,6 @@ export default function RootLayout({
             <Suspense fallback={<HeaderSkeleton />}>
               <Header />
             </Suspense>
-            {/* 마켓바 — 홈에서만 노출 (크립토·주가지수·코인 미니차트) */}
-            <RouteGate show={["/"]}>
-              <Suspense fallback={<MarketBarSkeleton />}>
-                <div className="reveal">
-                  <MarketBar />
-                </div>
-              </Suspense>
-            </RouteGate>
             <main className="w-full flex-1 px-5 py-8">{children}</main>
             {/* 푸터 — 투명 배경 한 줄: 워드마크 · 출처 · 면책 */}
             <footer>

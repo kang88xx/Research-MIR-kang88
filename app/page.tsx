@@ -4,9 +4,14 @@ import HomeBoards from "@/components/HomeBoards";
 import CryptoCalendar from "@/components/CryptoCalendar";
 import TelegramChannels from "@/components/TelegramChannels";
 import BubbleMap from "@/components/BubbleMap";
+import MarketBar from "@/components/MarketBar";
 import { getMonthEvents } from "@/lib/calendar";
 import { getTelegramPopular } from "@/lib/telegram";
-import { SignalRadarSkeleton, HomeBoardsSkeleton } from "@/components/Skeletons";
+import {
+  SignalRadarSkeleton,
+  HomeBoardsSkeleton,
+  MarketBarSkeleton,
+} from "@/components/Skeletons";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +42,13 @@ export default async function Home() {
       {/* 크립토 캘린더 — 풀와이드 카드 (제목은 캘린더 자체 헤더 사용)
           신규 상장·상폐 정보는 레이아웃 최상단 고정 스트립으로 이동 */}
       <CryptoCalendar initialYear={calYear} initialMonth={calMonth} initialEvents={initialEvents} />
+
+      {/* 마켓바 — 캘린더가 첫 화면을 차지하도록 캘린더 아래로 배치 (크립토·주가지수·코인 미니차트) */}
+      <Suspense fallback={<MarketBarSkeleton />}>
+        <div className="reveal">
+          <MarketBar />
+        </div>
+      </Suspense>
 
       {/* 지금 주목할 코인 + 시총 상위 버블맵 — lg 이상에서 한 열 반반, 미만은 세로 스택 */}
       <div className="grid gap-[22px] lg:grid-cols-2 lg:items-stretch">

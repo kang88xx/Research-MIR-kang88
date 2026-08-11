@@ -1,4 +1,5 @@
 import { cachedJson } from "@/lib/cache";
+import { fetchJson } from "@/lib/http";
 import { getTickers, getExchangeComparison, type FxSource } from "@/lib/ticker";
 import { getFxHistory } from "@/lib/market";
 import { fetchUsdtDailyCloses } from "@/lib/marketbar";
@@ -136,5 +137,83 @@ export async function getKimchiOverview(): Promise<KimchiOverview> {
       history: [],
       updatedAt: new Date(0).toISOString(),
     };
+  }
+}
+
+// ── 장기 김프 히스토리 — 추이 팝업(일간·주간·월간)용 ──
+// 업비트 USDT 일봉 200일 + Yahoo 환율 1년치로 일별 김프 시리즈를 만든다.
+// 팝업에서만 쓰는 저빈도 데이터라 30분 캐시로 외부 호출을 억제한다.
+
+export type KimchiHistoryDay = { date: string; value: number }; // date: "YYYY-MM-DD"
+export type KimchiHistory = { days: KimchiHistoryDay[]; updatedAt: string };
+
+const HISTORY_TTL_MS = 30 * 60_000;
+
+async function fetchUsdtDailyClosesLong(): Promise<{ date: string; close: number }[]> {
+  const rows = await fetchJson<{ candle_date_time_kst: string; trade_price: number }[]>(
+    "https://api.upbit.com/v1/candles/days?market=KRW-USDT&count=200",
+    7000
+  );
+  if (!Array.isArray(rows)) throw new Error("upbit USDT candles malformed");
+  return rows
+    .map((r) => ({ date: r.candle_date_time_kst.slice(0, 10), close: r.trade_price }))
+    .filter((d) => Number.isFinite(d.close) && d.close > 0)
+    .reverse();
+}
+
+// 환율 1년치 — Yahoo KRW=X (marketbar의 6일 버전과 동일 소스, 범위만 다름)
+async function fetchFxHistoryLong(): Promise<{ date: string; rate: number }[]> {
+  const res = await fetch(
+    "https://query1.finance.yahoo.com/v8/finance/chart/KRW=X?interval=1d&range=1y",
+    {
+      signal: AbortSignal.timeout(7000),
+      cache: "no-store",
+      headers: { "User-Agent": "Mozilla/5.0", Accept: "application/json" },
+    }
+  );
+  if (!res.ok) throw new Error(`yahoo KRW=X 1y -> ${res.status}`);
+  const data = (await res.json()) as {
+    chart?: {
+      result?: {
+        timestamp?: number[];
+        indicators?: { quote?: { close?: (number | null)[] }[] };
+      }[];
+    };
+  };
+  const r = data?.chart?.result?.[0];
+  const ts = r?.timestamp ?? [];
+  const closes = r?.indicators?.quote?.[0]?.close ?? [];
+  const points = ts
+    .map((t, i) => ({ date: new Date(t * 1000).toISOString().slice(0, 10), rate: closes[i] ?? 0 }))
+    .filter((p) => p.rate > 0);
+  if (points.length === 0) throw new Error("yahoo fx 1y empty");
+  return points;
+}
+
+async function fetchKimchiHistory(): Promise<KimchiHistory> {
+  const [daily, fxHistory] = await Promise.all([fetchUsdtDailyClosesLong(), fetchFxHistoryLong()]);
+  const fxSorted = fxHistory.sort((a, b) => a.date.localeCompare(b.date));
+  // 대상일 이하 중 가장 최근 환율 — 주말·휴일은 직전 영업일 값으로 대체
+  const fxFor = (date: string): number | null => {
+    if (fxSorted.length === 0 || date < fxSorted[0].date) return null;
+    let rate = fxSorted[0].rate;
+    for (const p of fxSorted) if (p.date <= date) rate = p.rate;
+    return rate;
+  };
+  const days: KimchiHistoryDay[] = daily
+    .map((d) => {
+      const rate = fxFor(d.date);
+      return rate != null ? { date: d.date, value: (d.close / rate - 1) * 100 } : null;
+    })
+    .filter((d): d is KimchiHistoryDay => d != null);
+  if (days.length === 0) throw new Error("kimchi history unavailable");
+  return { days, updatedAt: new Date().toISOString() };
+}
+
+export async function getKimchiHistory(): Promise<KimchiHistory> {
+  try {
+    return await cachedJson("kimchiHistory:v1", HISTORY_TTL_MS, fetchKimchiHistory);
+  } catch {
+    return { days: [], updatedAt: new Date(0).toISOString() };
   }
 }

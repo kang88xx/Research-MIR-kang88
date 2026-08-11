@@ -1,5 +1,6 @@
 import { getKimchiOverview, kimchiZone, type KimchiZone } from "@/lib/kimchi";
 import { formatRelativeTime } from "@/lib/format";
+import KimchiTrendPopup from "@/components/KimchiTrendPopup";
 
 // 김프 상태 톤 → 색 (한국식: 프리미엄=레드 / 역프=블루).
 // CSS 토큰 참조로 다크 모드 자동 전환 — 하드코딩 hex는 다크 표면에서 헤드라인이 묻힌다(P2).
@@ -34,8 +35,6 @@ export default async function KimchiHero() {
       ? Math.min(100, Math.max(0, ((o.usdtKimchi - GAUGE_MIN) / (GAUGE_MAX - GAUGE_MIN)) * 100))
       : null;
 
-  // 7일 추이 막대 — 절대값 최대 기준으로 스케일 (최소 1%로 바닥 보정)
-  const maxAbs = Math.max(1, ...o.history.map((d) => Math.abs(d.value)));
   const fxIsEstimate = o.usdKrwSource === "fallback";
 
   return (
@@ -123,50 +122,9 @@ export default async function KimchiHero() {
           </div>
         </dl>
 
-        {/* ③ 최근 7일 USDT 김프 추이 — 0% 기준 상하 막대 */}
+        {/* ③ 최근 7일 USDT 김프 추이 — 클릭 시 일간·주간·월간 레이어 팝업 */}
         <div className="min-w-0 lg:border-l lg:border-line lg:pl-8">
-          <p className="text-[11px] font-medium text-ink-500">최근 7일 김프 추이</p>
-          {o.history.length === 0 ? (
-            <p className="mt-4 text-[11.5px] text-ink-400">추이 데이터를 불러오지 못했습니다.</p>
-          ) : (
-            <div className="mt-2">
-              <div className="flex h-[72px] items-stretch gap-1.5">
-                {o.history.map((d) => {
-                  const up = d.value >= 0;
-                  const hPct = Math.max(4, (Math.abs(d.value) / maxAbs) * 50);
-                  return (
-                    <div
-                      key={d.date}
-                      className="relative min-w-0 flex-1"
-                      title={`${d.date} · ${pctText(d.value)}`}
-                    >
-                      {/* 0% 기준선 */}
-                      <span className="absolute left-0 right-0 top-1/2 h-px bg-line" />
-                      <span
-                        className="absolute left-1/2 w-[70%] max-w-[18px] -translate-x-1/2 rounded-[2px]"
-                        style={{
-                          height: `${hPct}%`,
-                          ...(up ? { bottom: "50%" } : { top: "50%" }),
-                          background: up ? "var(--color-up)" : "var(--color-down)",
-                          opacity: 0.35 + 0.6 * Math.min(1, Math.abs(d.value) / maxAbs),
-                        }}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="mt-1 flex gap-1.5">
-                {o.history.map((d) => (
-                  <span
-                    key={d.date}
-                    className="min-w-0 flex-1 truncate text-center font-mono text-[8.5px] text-ink-400"
-                  >
-                    {d.date}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
+          <KimchiTrendPopup history={o.history} />
         </div>
       </div>
 
