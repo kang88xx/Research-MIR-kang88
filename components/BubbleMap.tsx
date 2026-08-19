@@ -174,6 +174,10 @@ export default function BubbleMap() {
   // null이면(키보드 선택·모바일) 하단 중앙 폴백.
   const [selPos, setSelPos] = useState<{ x: number; y: number } | null>(null);
   const [renderNodes, setRenderNodes] = useState<Node[]>([]);
+  // 첫 배치 수렴 완료 여부 — 정착 전에는 로딩을 유지해 초기 충돌 정렬(랙처럼 보임)을 숨긴다
+  const [settled, setSettled] = useState(false);
+  // 로고 프리로드 완료 여부 — 원격 로고 100장이 늦게 떠서 생기는 랙도 로딩 뒤로 숨긴다
+  const [assetsReady, setAssetsReady] = useState(false);
   const [size, setSize] = useState({ w: 0, h: 0 });
 
   const wrapRef = useRef<HTMLDivElement | null>(null);
@@ -252,6 +256,48 @@ export default function BubbleMap() {
     [period]
   );
 
+  // 로고 프리로드 — 70% 이상 로드되거나 2.5초 상한이 지나면 공개 (실패 이미지도 카운트)
+  useEffect(() => {
+    if (coins.length === 0) return;
+    let done = 0;
+    let finished = false;
+    const need = Math.ceil(coins.length * 0.7);
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      if (aliveRef.current) setAssetsReady(true);
+    };
+    const timeout = setTimeout(finish, 2500);
+    coins.forEach((c) => {
+      if (!c.image) {
+        if (++done >= need) finish();
+        return;
+      }
+      const img = new Image();
+      img.onload = img.onerror = () => {
+        if (++done >= need) finish();
+      };
+      img.src = c.image;
+    });
+    return () => clearTimeout(timeout);
+  }, [coins]);
+
+  const ready = settled && assetsReady;
+
+  // 공개 시점에 등장 스태거를 다시 찍는다 — 오버레이 뒤에서 이미 끝나버린 팝인을 재생하기 위함
+  const revealedRef = useRef(false);
+  useEffect(() => {
+    if (!ready || revealedRef.current) return;
+    revealedRef.current = true;
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
+    if (reduce) return;
+    const t0 = performance.now();
+    nodesRef.current.forEach((n, i) => {
+      n.born = t0 + i * 12;
+      n.scale = 0;
+    });
+  }, [ready]);
+
   // 노드 구성 + 은은하게 떠다니는 force 시뮬레이션
   useEffect(() => {
     const { w: W, h: H } = size;
@@ -321,6 +367,7 @@ export default function BubbleMap() {
       .alpha(isRebuild ? 0.4 : 0.9)
       .alphaDecay(0.028)
       .alphaTarget(reduceMotion ? 0 : 0.06)
+      .stop()
       .on("tick", () => {
         const t = performance.now();
         const hoverId = hoverRef.current;
@@ -369,6 +416,12 @@ export default function BubbleMap() {
         }
       });
     simRef.current = sim;
+
+    // 첫 배치 사전 수렴 — 랜덤 산포 → 충돌 정렬 과정을 화면에 보여주지 않고(랙처럼 보임)
+    // 동기 tick으로 미리 풀어둔 뒤 렌더한다. tick()은 "tick" 이벤트를 쏘지 않아 DOM 쓰기도 없음.
+    if (!isRebuild) sim.tick(140);
+    sim.restart();
+    setSettled(true);
 
     return () => {
       sim.stop();
@@ -489,8 +542,8 @@ export default function BubbleMap() {
         className="relative flex-1 overflow-hidden"
         onMouseLeave={() => setHover(null)}
       >
-        {W > 0 && H > 0 && (
-          <svg width={W} height={H} className="block" onClick={() => setSelected(null)}>
+        {W > 0 && H > 0 && ready && (
+          <svg width={W} height={H} className="reveal block" onClick={() => setSelected(null)}>
             <defs>
               {/* 중심은 옅고 가장자리로 갈수록 진해지는 라디얼 — 유리구슬 느낌 */}
               <radialGradient id="bm-grad-up">
@@ -625,8 +678,8 @@ export default function BubbleMap() {
           </svg>
         )}
 
-        {renderNodes.length === 0 && !error && (
-          <div className="absolute inset-0 flex items-center justify-center gap-2 text-xs text-ink-500">
+        {(!ready || renderNodes.length === 0) && !error && (
+          <div className="absolute inset-0 flex items-center justify-center gap-2 bg-white text-xs text-ink-500">
             <Spinner size={16} />
             버블맵 로딩 중…
           </div>

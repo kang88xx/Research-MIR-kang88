@@ -149,6 +149,23 @@ export default function CryptoCalendar({
   const monthKey = `${year}-${month}`;
   const loading = loadedKey !== monthKey;
   const [excluded, setExcluded] = useState<Set<string>>(new Set()); // 체크 해제된 소분류
+
+  // 헤더 기준 시각 — KST 현재 날짜·시간 (하이드레이션 불일치 방지: 마운트 후 세팅, 30초 갱신)
+  const [nowLabel, setNowLabel] = useState<string | null>(null);
+  useEffect(() => {
+    const DAY_KO = ["일", "월", "화", "수", "목", "금", "토"];
+    const fmt = () => {
+      const k = new Date(Date.now() + 9 * 3600_000);
+      setNowLabel(
+        `${k.getUTCMonth() + 1}/${k.getUTCDate()}(${DAY_KO[k.getUTCDay()]}) ${String(
+          k.getUTCHours()
+        ).padStart(2, "0")}:${String(k.getUTCMinutes()).padStart(2, "0")}`
+      );
+    };
+    fmt();
+    const t = setInterval(fmt, 30_000);
+    return () => clearInterval(t);
+  }, []);
   const [now, setNow] = useState(0); // 임박 판정용 — 마운트 후 설정(하이드레이션 안전)
 
   const LS_KEY = "cryptalk:calendar:excluded";
@@ -338,6 +355,12 @@ export default function CryptoCalendar({
             ›
           </button>
         </div>
+        {/* 기준 시각 — 오늘 날짜·현재 시간(KST)을 한눈에 */}
+        {nowLabel && (
+          <span className="hidden text-[11.5px] text-ink-400 sm:inline">
+            오늘 <b className="font-semibold text-ink-500 tabular-nums">{nowLabel}</b> KST 기준
+          </span>
+        )}
         {/* 그룹 필터 필 — 전체(네이비 채움) + 카테고리(헤어라인 필, 카테고리 색 텍스트) */}
         <div className="ml-auto flex flex-wrap items-center gap-1.5">
           <button
@@ -525,15 +548,6 @@ export default function CryptoCalendar({
           </div>
         </div>
       )}
-
-      <div className="flex items-center border-t border-hairline px-4 py-[11px] sm:px-6">
-        <span className="font-mono text-[10px] font-medium tracking-[0.14em] text-ink-500 uppercase">
-          Showing {visibleEvents.length} / {events.length} events
-        </span>
-        <span className="ml-auto text-[11px] text-ink-400">
-          이벤트를 누르면 개별 출처 확인 · 날짜 통상(UTC) 기준, 시각은 KST
-        </span>
-      </div>
 
       {selected && (
         <div
