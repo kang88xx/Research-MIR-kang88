@@ -62,21 +62,13 @@ export default async function Header() {
               </form>
             </>
           ) : (
-            <>
-              <Link
-                href="/login"
-                className="px-2 py-1.5 text-[13.5px] font-semibold text-ink-500 hover:text-ink-900"
-              >
-                로그인
-              </Link>
-              {/* 딥네이비 블록 CTA — 콘솔 포인트 컬러 */}
-              <Link
-                href="/register"
-                className="rounded-[4px] bg-brand px-4 py-1.5 text-[13.5px] font-bold text-on-brand hover:bg-amber-400"
-              >
-                회원가입
-              </Link>
-            </>
+            /* 가입·로그인은 구글 단일 경로 — 회원가입 버튼 없이 로그인 CTA 하나만 */
+            <Link
+              href="/login"
+              className="rounded-[4px] bg-brand px-4 py-1.5 text-[13.5px] font-bold text-on-brand hover:bg-amber-400"
+            >
+              로그인
+            </Link>
           )}
 
           {/* 동시접속 · 다크모드 · 언어 */}

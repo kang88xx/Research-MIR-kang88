@@ -256,18 +256,30 @@ body {
   }
 }
 
-/* 로딩 스피너 — 브랜드 컬러 호가 도는 원형 인디케이터 */
-@keyframes spinner-rotate {
+/* 오브 로더 — 크기 다른 점 3개가 각자 반경·속도·방향으로 공전하는 파티클 오빗.
+   색은 토큰만 사용해 다크 모드 자동 추종. */
+@keyframes orb-spin {
   to {
     transform: rotate(360deg);
   }
 }
-.spinner {
-  animation: spinner-rotate 0.7s linear infinite;
-  transform-origin: 50% 50%;
+@keyframes orb-spin-rev {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+.orb-orbit {
+  animation: orb-spin 1.3s linear infinite;
+}
+.orb-orbit--rev {
+  animation-name: orb-spin-rev;
+  animation-duration: 1.9s;
+}
+.orb-orbit--slow {
+  animation-duration: 2.5s;
 }
 @media (prefers-reduced-motion: reduce) {
-  .spinner {
+  .orb-orbit {
     animation: none;
   }
 }

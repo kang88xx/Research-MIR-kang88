@@ -9,6 +9,21 @@ import Link from "next/link";
 import type { BarTile } from "@/lib/marketbar";
 import { formatPercent } from "@/lib/format";
 import Sparkline from "@/components/Sparkline";
+import MarketStatus, { type Mkt } from "@/components/MarketStatus";
+import TileIcon, { ICONS } from "@/components/TileIcon";
+
+// 서브행 — 홈 마켓바(MarketBar)와 동일 문법: 상단 헤어라인 + 9.5px, 가로 1줄 고정
+const SUB =
+  "mt-2.5 flex flex-nowrap items-baseline justify-between gap-x-1.5 overflow-hidden border-t border-hairline pt-2 text-[9.5px] text-ink-500";
+
+// 타일 키 → 시장 구분 (장중/장마감 점 표시용) — MarketBar와 동일 규칙
+function marketOf(t: BarTile): Mkt | null {
+  if (t.market) return t.market;
+  if (t.key === "nasdaq") return "us";
+  if (t.key === "kospi" || t.key === "kosdaq") return "kr";
+  if (t.key === "gold") return "gold";
+  return null;
+}
 
 // 등락 색 — 한국식 (상승=레드, 하락=블루). MarketBar와 동일 문법.
 function dir(n: number | null): { text: string; stroke: string } {
@@ -180,8 +195,9 @@ function CardValue({ t }: { t: BarTile }) {
   if (t.fng) {
     const color = fngColor(t.fng.value);
     const pos = Math.min(100, Math.max(0, t.fng.value));
+    // 카드 본문 flex 안에서 내용 폭으로 쪼그라들면 게이지 바가 텍스트 폭만큼만 그려진다 → 전체 폭 강제
     return (
-      <div>
+      <div className="w-full">
         <div className="flex items-baseline gap-2">
           <span className="font-mono text-[22px] font-semibold leading-none tabular-nums" style={{ color }}>
             {t.fng.value}
@@ -226,7 +242,7 @@ function CardValue({ t }: { t: BarTile }) {
         </span>
         {t.mining.pricePct != null && (
           <span className="text-[12px] font-semibold whitespace-nowrap" style={{ color: col }}>
-            {loss ? "채굴 손실" : "채굴 이익"} {formatPercent(t.mining.pricePct)}
+            {loss ? "채굴 손실" : "채굴 이익"}
           </span>
         )}
       </div>
@@ -368,6 +384,7 @@ function DetailModal({ t, onClose }: { t: BarTile; onClose: () => void }) {
         aria-label={t.label}
       >
         <header className="sticky top-0 flex items-center gap-2 border-b border-line bg-white px-5 py-3.5">
+          <TileIcon k={t.key} size={16} />
           <h3 className="text-[15px] font-bold text-navy-900">{t.label}</h3>
           {meta && <span className="hidden text-[10.5px] text-ink-400 sm:inline">{meta.update}</span>}
           <button
@@ -403,6 +420,20 @@ function DetailModal({ t, onClose }: { t: BarTile; onClose: () => void }) {
                     <b className="font-semibold tabular-nums text-navy-700">{r.text}</b>
                   </span>
                 ))}
+              </div>
+            )}
+            {/* 채굴 손익분기 — 현재가와의 괴리율 */}
+            {t.mining && t.mining.pricePct != null && (
+              <div className="mt-3 flex items-baseline border-t border-hairline pt-3 text-[11.5px] text-ink-500">
+                손익분기 대비 현재가
+                <b
+                  className="ml-auto font-mono font-semibold tabular-nums"
+                  style={{
+                    color: t.mining.pricePct < 0 ? "var(--color-up)" : "var(--color-good)",
+                  }}
+                >
+                  {formatPercent(t.mining.pricePct)}
+                </b>
               </div>
             )}
             {/* MSTR 트레저리 상세 */}
@@ -508,7 +539,6 @@ export default function IndicatorGrid({ tiles }: { tiles: BarTile[] }) {
     <>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {tiles.map((t) => {
-          const meta = META[t.key];
           if (t.placeholder) {
             return (
               <div
@@ -525,13 +555,23 @@ export default function IndicatorGrid({ tiles }: { tiles: BarTile[] }) {
             <button
               key={t.key}
               onClick={() => setOpenKey(t.key)}
-              className="group rounded-[6px] border border-line bg-white px-4 py-3.5 text-left transition-colors hover:border-navy-900"
+              className="rounded-[6px] border border-line bg-white px-4 py-3.5 text-left transition-colors hover:border-navy-900"
             >
               <div className="flex items-center gap-2">
+                <TileIcon k={t.key} size={16} />
                 <span className="text-[12px] font-semibold text-navy-900">{t.label}</span>
-                <span className="ml-auto shrink-0 text-[10px] text-ink-300 transition-colors group-hover:text-navy-600">
-                  자세히 →
-                </span>
+                {ICONS[t.key]?.ticker && (
+                  <span className="font-mono text-[9.5px] font-medium tracking-[0.4px] text-ink-400">
+                    {ICONS[t.key].ticker}
+                  </span>
+                )}
+                {marketOf(t) && <MarketStatus market={marketOf(t)!} />}
+                {/* 채굴 손익분기점 — 업데이트 타임스탬프 (홈 마켓바와 동일) */}
+                {t.mining && t.sub && (
+                  <span className="ml-auto shrink-0 font-mono text-[9px] font-medium text-ink-500">
+                    업데이트 {t.sub}
+                  </span>
+                )}
               </div>
               <div className="mt-2.5 flex items-end justify-between gap-3">
                 <CardValue t={t} />
@@ -547,10 +587,113 @@ export default function IndicatorGrid({ tiles }: { tiles: BarTile[] }) {
                   </span>
                 )}
               </div>
-              {meta && (
-                <p className="mt-2.5 border-t border-hairline pt-2 text-[10.5px] leading-[1.5] text-ink-500">
-                  {meta.short}
-                </p>
+
+              {/* 환율 — 최근 영업일 "nD+값" 한 줄 (실제 날짜는 툴팁, 홈 마켓바와 동일) */}
+              {t.fx && t.fx.fx6.length > 1 && (
+                <div className="mt-2.5 flex flex-nowrap justify-between gap-x-1 overflow-hidden border-t border-hairline pt-2 font-mono text-[9.5px] font-medium text-ink-400">
+                  {t.fx.fx6
+                    .map((d, i) => {
+                      const prev = i > 0 ? t.fx!.fx6[i - 1].rate : null;
+                      const diff = prev != null ? d.rate - prev : 0;
+                      return { ...d, diff, daysAgo: t.fx!.fx6.length - i };
+                    })
+                    .slice(-5)
+                    .reverse()
+                    .map((d) => (
+                      <span key={d.daysAgo} title={d.date} className="flex shrink-0 items-baseline gap-[3px]">
+                        <span className="text-ink-300">{d.daysAgo}D</span>
+                        <b
+                          className="font-semibold tabular-nums"
+                          style={{
+                            color:
+                              d.diff > 0
+                                ? "var(--color-up)"
+                                : d.diff < 0
+                                  ? "var(--color-down)"
+                                  : "var(--color-navy-600)",
+                          }}
+                        >
+                          {Math.round(d.rate).toLocaleString("ko-KR")}
+                        </b>
+                      </span>
+                    ))}
+                </div>
+              )}
+
+              {/* 채굴 손익분기점 — 손익분기 대비 현재가 (홈 마켓바와 동일) */}
+              {t.mining && t.mining.pricePct != null && (
+                <div className={SUB}>
+                  손익분기 대비 현재가
+                  <b
+                    className="ml-auto font-mono text-[9.5px] font-semibold tabular-nums"
+                    style={{
+                      color: t.mining.pricePct < 0 ? "var(--color-up)" : "var(--color-good)",
+                    }}
+                  >
+                    {formatPercent(t.mining.pricePct)}
+                  </b>
+                </div>
+              )}
+
+              {/* 대표 종목 (나스닥·코스피) — 이름 + 시세 + 변동률 (홈 마켓바와 동일) */}
+              {t.stocks && t.stocks.length > 0 && (
+                <div className={SUB}>
+                  {t.stocks.map((s, i) => {
+                    const sc = dir(s.changePct);
+                    return (
+                      <span key={i} className="flex min-w-0 items-baseline gap-[3px]">
+                        <span className="truncate">{s.label}</span>
+                        <b className="shrink-0 font-mono text-[9.5px] font-semibold tabular-nums text-navy-900">
+                          {s.value}
+                        </b>
+                        {s.changePct != null && (
+                          <span
+                            className={`shrink-0 font-mono text-[9.5px] font-semibold tabular-nums ${sc.text}`}
+                          >
+                            {formatPercent(s.changePct)}
+                          </span>
+                        )}
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* MSTR 비트코인 트레저리 — 보유 / 변동(전일) / 평단(수익률) (홈 마켓바와 동일) */}
+              {t.treasury && (
+                <div className={SUB}>
+                  <span className="flex shrink-0 items-baseline gap-[3px]">
+                    보유
+                    <b className="font-mono text-[9.5px] font-semibold tabular-nums text-navy-900">
+                      {Math.round(t.treasury.holdings).toLocaleString()} BTC
+                    </b>
+                  </span>
+                  <span className="flex min-w-0 items-baseline gap-[3px]">
+                    변동
+                    <b
+                      className={`truncate font-mono text-[9.5px] font-semibold tabular-nums ${
+                        t.treasury.holdingsDelta !== 0 ? dir(t.treasury.holdingsDelta).text : "text-ink-400"
+                      }`}
+                    >
+                      {t.treasury.holdingsDelta !== 0
+                        ? `${t.treasury.holdingsDelta > 0 ? "+" : ""}${Math.round(
+                            t.treasury.holdingsDelta
+                          ).toLocaleString()} BTC`
+                        : "±0"}
+                    </b>
+                  </span>
+                  <span className="flex shrink-0 items-baseline gap-[3px]">
+                    평단
+                    <b className="font-mono text-[9.5px] font-semibold tabular-nums text-navy-900">
+                      ${Math.round(t.treasury.avgPriceUsd).toLocaleString()}
+                    </b>
+                    <span
+                      className={`font-mono text-[9.5px] font-semibold tabular-nums ${dir(t.treasury.returnPct).text}`}
+                    >
+                      {formatPercent(t.treasury.returnPct)}
+                    </span>
+                  </span>
+                </div>
               )}
             </button>
           );

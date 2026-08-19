@@ -8,9 +8,10 @@ const isDev = process.env.NODE_ENV !== "production";
 const csp = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
-  "style-src 'self' 'unsafe-inline'",
+  // Pretendard Variable을 jsdelivr CDN에서 로드(layout.tsx) — 차단 시 본문 폰트 전체가 폴백된다
+  "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
   "img-src 'self' data: https:", // 외부 상품 이미지(https) 허용
-  "font-src 'self' data:",
+  "font-src 'self' data: https://cdn.jsdelivr.net",
   `connect-src 'self'${isDev ? " ws:" : ""}`,
   "frame-ancestors 'none'", // 클릭재킹 차단
   "base-uri 'self'",

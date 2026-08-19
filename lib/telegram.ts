@@ -48,7 +48,6 @@ const POPULAR_KEY = "telegramPopular:v4"; // v4: 톱 20 + 차순위 충원 (v2: 
 const POPULAR_TTL_MS = 15 * 60_000; // 15분 — 30채널 × 96사이클/일 ≈ 2,900요청으로 차단 리스크 억제
 const POPULAR_TOP = 20;
 const POPULAR_WINDOW_MS = 24 * 3600_000; // 1차 랭킹 윈도우 — 부족하면 72h로 확장
-const FETCH_CONCURRENCY = 10;
 
 const POPULAR_CHANNELS: { handle: string; name: string }[] = [
   // 시황·분석·인플루언서
@@ -344,11 +343,9 @@ async function fetchChannelPosts(ch: { handle: string; name: string }): Promise<
 // 30채널 병렬 수집(동시성 제한) → 24h 윈도우 조회수 톱20 (부족 시 72h → 전체 최신순 보충).
 // 강프로 찻방(상장·상폐 추출 파이프라인)은 랭킹 풀에 넣지 않고 별도 15분 캐시로 함께 갱신한다.
 export async function collectTelegramPopular(): Promise<TelegramPopular> {
-  const results: (TgRankedPost[] | null)[] = [];
-  for (let i = 0; i < POPULAR_CHANNELS.length; i += FETCH_CONCURRENCY) {
-    const batch = POPULAR_CHANNELS.slice(i, i + FETCH_CONCURRENCY);
-    results.push(...(await Promise.all(batch.map(fetchChannelPosts))));
-  }
+  // 전 채널 동시 수집 — 배치(10개씩)는 배치마다 최악 채널을 기다려 최대 15초까지 늘어졌다.
+  // 채널당 5초 타임아웃이 있으므로 전체 병렬이어도 상한은 타임아웃 1회(5초)로 수렴한다.
+  const results = await Promise.all(POPULAR_CHANNELS.map(fetchChannelPosts));
   const ok = results.filter((r) => r !== null);
   // 과반 실패면 수집 실패로 간주 → cachedJson이 stale 캐시로 폴백
   if (ok.length < POPULAR_CHANNELS.length / 2) {

@@ -1,7 +1,5 @@
 import NextAuth from "next-auth";
-import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
-import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 
 // 구글 가입자 닉네임 자동 생성 (중복 시 숫자 접미사)
@@ -20,35 +18,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
   session: { strategy: "jwt" },
   pages: { signIn: "/login" },
-  providers: [
-    Google,
-    Credentials({
-      credentials: {
-        email: { label: "이메일", type: "email" },
-        password: { label: "비밀번호", type: "password" },
-      },
-      async authorize(credentials, request) {
-        // 가입 시 email은 trim+lowercase로 저장되므로 로그인도 동일 정규화해야 매칭됨
-        const email = (credentials?.email as string | undefined)?.trim().toLowerCase();
-        const password = credentials?.password as string | undefined;
-        if (!email || !password) return null;
-
-        // 무차별 대입 방지 — IP당 15분 10회 (초과 시 로그인 실패로 처리).
-        // 신뢰 헤더로 IP를 잡고, 저장소 장애 시 fail-closed로 우회를 막는다.
-        const { checkRateLimit, clientIp } = await import("@/lib/ratelimit");
-        const ip = request ? clientIp(request as Request) : "unknown";
-        if (!(await checkRateLimit(`login:${ip}`, 10, 15 * 60_000, true))) return null;
-
-        const user = await prisma.user.findUnique({ where: { email } });
-        if (!user?.passwordHash) return null; // 구글 전용 계정은 비밀번호 로그인 불가
-
-        const ok = await bcrypt.compare(password, user.passwordHash);
-        if (!ok) return null;
-
-        return { id: user.id, email: user.email, name: user.nickname };
-      },
-    }),
-  ],
+  // 가입·로그인은 구글 OAuth 단일 경로 — 이메일/비밀번호(Credentials)는 폐지
+  providers: [Google],
   callbacks: {
     async signIn({ user, account, profile }) {
       if (account?.provider === "google") {

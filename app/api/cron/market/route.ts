@@ -3,11 +3,8 @@ import { prisma } from "@/lib/prisma";
 import {
   getTickers,
   getExchangeComparison,
-  getKrwMarketStats,
   getKimchiTable,
-  getSignalRadar,
   getExchangeSpread,
-  getTrendLabels,
 } from "@/lib/ticker";
 import { getMarketOverview, getFxHistory, getBubbles, warmCoinExchanges } from "@/lib/market";
 import { getTodayListings } from "@/lib/listings";
@@ -34,14 +31,12 @@ export async function GET(req: Request) {
   }
 
   // TTL 만료된 캐시만 갱신 (느린 데이터는 자기 주기대로만 외부 호출)
+  // 시그널 레이더 섹션 제거(2026-08)로 radar·krwStats·trend 워밍은 삭제 — 소비처 없는 외부 호출이었다
   const warm = await Promise.allSettled([
     getTickers(),
     getExchangeComparison(),
-    getKrwMarketStats(),
     getKimchiTable(),
-    getSignalRadar(),
     getExchangeSpread(),
-    getTrendLabels(),
     getMarketOverview(),
     getFxHistory(),
     getBubbles(),

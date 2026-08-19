@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
+import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import InAppBrowserNotice from "@/components/InAppBrowserNotice";
 import { isInAppBrowser, openExternalBrowser } from "@/lib/inapp";
@@ -19,64 +18,21 @@ function safeCallback(raw: string | null): string {
   return "/";
 }
 
+// 가입·로그인 단일 진입점 — 구글 OAuth만 허용(이메일/비밀번호 폐지).
+// 처음 로그인하면 자동 가입되며, 관리자 승인 후 사이트 열람 가능(proxy.ts 게이트).
 function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
-
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setPending(true);
-    setError(null);
-    const form = new FormData(e.currentTarget);
-
-    const result = await signIn("credentials", {
-      email: form.get("email"),
-      password: form.get("password"),
-      redirect: false,
-    });
-
-    setPending(false);
-    if (result?.error) {
-      setError("이메일 또는 비밀번호가 올바르지 않습니다.");
-      return;
-    }
-    router.push(safeCallback(searchParams.get("callbackUrl")));
-    router.refresh();
-  }
 
   return (
-    <div className="mx-auto mt-10 w-full max-w-sm border border-line bg-white p-6">
-      <h1 className="mb-5 text-center text-lg font-semibold text-navy-900">로그인</h1>
-      <InAppBrowserNotice />
-      <form onSubmit={onSubmit} className="flex flex-col gap-3">
-        <input
-          name="email"
-          type="email"
-          required
-          placeholder="이메일"
-          className="border border-navy-300 bg-white px-3 py-2 text-sm text-ink-900 placeholder:text-navy-300 focus:border-navy-700 focus:outline-none"
-        />
-        <input
-          name="password"
-          type="password"
-          required
-          placeholder="비밀번호"
-          className="border border-navy-300 bg-white px-3 py-2 text-sm text-ink-900 placeholder:text-navy-300 focus:border-navy-700 focus:outline-none"
-        />
-        {error && <p className="text-xs text-red-600">{error}</p>}
-        <button
-          disabled={pending}
-          className="bg-amber-500 py-2 text-sm font-semibold text-navy-950 hover:bg-amber-400 disabled:opacity-50"
-        >
-          {pending ? "로그인 중..." : "로그인"}
-        </button>
-      </form>
-      <div className="my-4 flex items-center gap-3">
-        <span className="h-px flex-1 bg-line" />
-        <span className="text-[11px] text-navy-300">또는</span>
-        <span className="h-px flex-1 bg-line" />
+    <div className="mx-auto mt-16 w-full max-w-sm border border-line bg-white p-8">
+      <h1 className="text-center text-lg font-semibold text-navy-900">로그인</h1>
+      <p className="mt-2 text-center text-xs leading-relaxed text-ink-500">
+        구글 계정으로 로그인·가입할 수 있습니다.
+        <br />
+        신규 가입은 관리자 승인 후 이용 가능합니다.
+      </p>
+      <div className="mt-5">
+        <InAppBrowserNotice />
       </div>
       <button
         type="button"
@@ -88,7 +44,7 @@ function LoginForm() {
           }
           signIn("google", { callbackUrl: safeCallback(searchParams.get("callbackUrl")) });
         }}
-        className="flex w-full items-center justify-center gap-2 border border-navy-300 bg-white py-2 text-sm font-medium text-ink-900 hover:border-navy-900"
+        className="mt-2 flex w-full items-center justify-center gap-2 border border-navy-300 bg-white py-2.5 text-sm font-medium text-ink-900 hover:border-navy-900"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden>
           <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1z" />
@@ -98,12 +54,6 @@ function LoginForm() {
         </svg>
         Google로 계속하기
       </button>
-      <p className="mt-4 text-center text-xs text-ink-500">
-        아직 회원이 아니신가요?{" "}
-        <Link href="/register" className="text-navy-700 hover:underline">
-          회원가입
-        </Link>
-      </p>
     </div>
   );
 }

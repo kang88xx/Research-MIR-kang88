@@ -68,6 +68,45 @@ const EXCHANGE_KO: Record<string, string> = {
 
 const exchangeLabel = (e: CoinExchange) => EXCHANGE_KO[e.identifier] ?? e.name;
 
+// CoinGecko 거래소 id → 로컬 로고 (public/logos/exchanges/). 없는 거래소는 텍스트만.
+const EXCHANGE_LOGO: Record<string, string> = {
+  upbit: "Upbit",
+  binance: "Binance",
+  bithumb: "Bithumb",
+  coinone: "Coinone",
+  korbit: "Korbit",
+  gdax: "Coinbase",
+  coinbase_international: "Coinbase",
+  okex: "OKX",
+  bybit_spot: "Bybit",
+  kraken: "Kraken",
+  kucoin: "KuCoin",
+  gate: "Gate",
+  mexc: "MEXC",
+  huobi: "HTX",
+  htx: "HTX",
+  bitget: "Bitget",
+  bitfinex: "Bitfinex",
+  crypto_com: "CryptoCom",
+  hyperliquid_spot: "Hyperliquid",
+  "hyperliquid-spot": "Hyperliquid",
+};
+
+// 버튼 앞 14px 거래소 로고 — 파일이 없으면 조용히 숨긴다(텍스트 버튼으로 폴백)
+function ExchangeLogo({ src }: { src: string }) {
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt=""
+      className="h-3.5 w-3.5 shrink-0 rounded-full object-cover"
+      onError={(e) => {
+        e.currentTarget.style.display = "none";
+      }}
+    />
+  );
+}
+
 type Period = "1h" | "24h" | "7d" | "30d";
 const PERIODS: { key: Period; label: string; field: keyof BubbleCoin }[] = [
   { key: "1h", label: "1H", field: "change1h" },
@@ -695,7 +734,7 @@ export default function BubbleMap() {
               const total = exs.length + 1; // + 코인게코
               const cols = total === 4 ? 2 : total;
               const btnCls =
-                "truncate rounded-[5px] border border-line px-1 py-1.5 text-navy-900 hover:border-navy-900";
+                "flex items-center justify-center gap-1 rounded-[5px] border border-line px-1 py-1.5 text-navy-900 hover:border-navy-900";
               return (
                 <>
                   <div
@@ -710,7 +749,10 @@ export default function BubbleMap() {
                         rel="noopener noreferrer"
                         className={btnCls}
                       >
-                        {exchangeLabel(e)} ↗
+                        {EXCHANGE_LOGO[e.identifier] && (
+                          <ExchangeLogo src={`/logos/exchanges/${EXCHANGE_LOGO[e.identifier]}.png`} />
+                        )}
+                        <span className="truncate">{exchangeLabel(e)} ↗</span>
                       </a>
                     ))}
                     {/* 코인게코 한국어 URL은 경로 세그먼트도 번역됨 — /ko/coins/는 404, /ko/코인/이 정상 */}
@@ -720,7 +762,8 @@ export default function BubbleMap() {
                       rel="noopener noreferrer"
                       className={btnCls}
                     >
-                      코인게코 ↗
+                      <ExchangeLogo src="/coingecko.png" />
+                      <span className="truncate">코인게코 ↗</span>
                     </a>
                   </div>
                   {exchanges === null ? (

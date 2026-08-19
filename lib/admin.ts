@@ -99,6 +99,7 @@ export type MemberRow = {
   nickname: string;
   email: string;
   level: number;
+  approved: boolean;
   createdAt: Date;
   _count: { posts: number; comments: number };
 };
@@ -108,17 +109,22 @@ export async function getMembers(opts: {
   q?: string;
   sort?: MemberSort;
   page?: number;
+  // true면 승인 대기 계정만 (어드민 승인 큐)
+  pendingOnly?: boolean;
 }): Promise<{ rows: MemberRow[]; total: number; page: number; totalPages: number }> {
   const page = Math.max(1, opts.page ?? 1);
   const q = opts.q?.trim();
-  const where = q
-    ? {
-        OR: [
-          { nickname: { contains: q, mode: "insensitive" as const } },
-          { email: { contains: q, mode: "insensitive" as const } },
-        ],
-      }
-    : {};
+  const where = {
+    ...(q
+      ? {
+          OR: [
+            { nickname: { contains: q, mode: "insensitive" as const } },
+            { email: { contains: q, mode: "insensitive" as const } },
+          ],
+        }
+      : {}),
+    ...(opts.pendingOnly ? { approved: false } : {}),
+  };
   const orderBy =
     opts.sort === "level"
       ? [{ level: "desc" as const }, { createdAt: "desc" as const }]
@@ -135,6 +141,7 @@ export async function getMembers(opts: {
         nickname: true,
         email: true,
         level: true,
+        approved: true,
         createdAt: true,
         _count: { select: { posts: true, comments: true } },
       },

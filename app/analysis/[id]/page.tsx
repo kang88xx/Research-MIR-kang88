@@ -17,8 +17,9 @@ export default async function AnalysisDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id: idParam } = await params;
+  // 순수 정수만 허용 — "1.css" 같은 값이 parseInt로 1이 되어 우회되지 않게 엄격 검증
+  if (!/^\d+$/.test(idParam)) notFound();
   const id = parseInt(idParam, 10);
-  if (Number.isNaN(id)) notFound();
 
   const [session, snapshot] = await Promise.all([auth(), getTickers()]);
 

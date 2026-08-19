@@ -1,5 +1,4 @@
 import { Suspense } from "react";
-import SignalRadar from "@/components/SignalRadar";
 import HomeBoards from "@/components/HomeBoards";
 import CryptoCalendar from "@/components/CryptoCalendar";
 import TelegramChannels from "@/components/TelegramChannels";
@@ -7,11 +6,7 @@ import BubbleMap from "@/components/BubbleMap";
 import MarketBar from "@/components/MarketBar";
 import { getMonthEvents } from "@/lib/calendar";
 import { getTelegramPopular } from "@/lib/telegram";
-import {
-  SignalRadarSkeleton,
-  HomeBoardsSkeleton,
-  MarketBarSkeleton,
-} from "@/components/Skeletons";
+import { HomeBoardsSkeleton, MarketBarSkeleton } from "@/components/Skeletons";
 
 export const dynamic = "force-dynamic";
 
@@ -25,8 +20,8 @@ async function TelegramSection() {
   return <TelegramChannels popular={popular} />;
 }
 
-// 2a 파이낸스 그레이드 — 캘린더(풀와이드) → 지금 주목할 코인·버블맵(반반 2열)
-// → 텔레그램 인기 포스팅(가로 슬라이드) → 커뮤니티 게시판
+// 2a 파이낸스 그레이드 — 12개 시장 지표(최상단) → 캘린더(풀와이드) → 버블맵(풀와이드)
+// → 텔레그램 인기 포스팅(자동 슬라이드) → 커뮤니티 게시판
 export default async function Home() {
   // 캘린더는 UTC 통상일 기준으로 이벤트를 배치하므로 초기 달도 UTC 기준으로 잡는다.
   const now = new Date();
@@ -39,47 +34,38 @@ export default async function Home() {
   const initialEvents = await getMonthEvents(calYear, calMonth).catch(() => undefined);
   return (
     <div className="flex flex-col gap-[22px]">
-      {/* 크립토 캘린더 — 풀와이드 카드 (제목은 캘린더 자체 헤더 사용)
-          신규 상장·상폐 정보는 레이아웃 최상단 고정 스트립으로 이동 */}
-      <CryptoCalendar initialYear={calYear} initialMonth={calMonth} initialEvents={initialEvents} />
-
-      {/* 마켓바 — 캘린더가 첫 화면을 차지하도록 캘린더 아래로 배치 (크립토·주가지수·코인 미니차트) */}
+      {/* 마켓바 — 12개 시장 지표를 첫 화면 최상단에 배치 (크립토·주가지수·코인 미니차트) */}
       <Suspense fallback={<MarketBarSkeleton />}>
         <div className="reveal">
           <MarketBar />
         </div>
       </Suspense>
 
-      {/* 지금 주목할 코인 + 시총 상위 버블맵 — lg 이상에서 한 열 반반, 미만은 세로 스택 */}
-      <div className="grid gap-[22px] lg:grid-cols-2 lg:items-stretch">
-        <Suspense fallback={<SignalRadarSkeleton />}>
-          <div className="reveal min-w-0">
-            <SignalRadar />
-          </div>
-        </Suspense>
+      {/* 크립토 캘린더 — 풀와이드 카드 (제목은 캘린더 자체 헤더 사용)
+          신규 상장·상폐 정보는 레이아웃 최상단 고정 스트립으로 이동 */}
+      <CryptoCalendar initialYear={calYear} initialMonth={calMonth} initialEvents={initialEvents} />
 
-        {/* 버블맵은 옆의 랭킹 테이블 높이에 맞춰 늘어난다 (ResizeObserver가 부모 크기 추적) */}
-        <section
-          id="bubblemap"
-          className="flex min-w-0 scroll-mt-4 flex-col overflow-hidden rounded-[6px] border border-line bg-white"
-        >
-          <header className="title-band flex items-baseline gap-2 border-b px-4 py-3 sm:px-6">
-            <h2 className="text-[17px] font-extrabold tracking-[-0.3px] text-[#e5e4e2]">
-              시총 상위 버블맵
-            </h2>
-            <span className="ml-auto font-mono text-[11px] font-medium tracking-[0.7px] text-[#93a5b2]">
-              BUBBLE MAP
-            </span>
-          </header>
-          <div className="flex-1 px-3 py-3">
-            <div className="h-[340px] lg:h-full lg:min-h-[420px]">
-              <BubbleMap />
-            </div>
+      {/* 시총 상위 버블맵 — 풀와이드 카드 */}
+      <section
+        id="bubblemap"
+        className="flex min-w-0 scroll-mt-4 flex-col overflow-hidden rounded-[6px] border border-line bg-white"
+      >
+        <header className="title-band flex items-baseline gap-2 border-b px-4 py-3 sm:px-6">
+          <h2 className="text-[17px] font-extrabold tracking-[-0.3px] text-[#e5e4e2]">
+            시총 상위 버블맵
+          </h2>
+          <span className="ml-auto font-mono text-[11px] font-medium tracking-[0.7px] text-[#93a5b2]">
+            BUBBLE MAP
+          </span>
+        </header>
+        <div className="flex-1 px-3 py-3">
+          <div className="h-[340px] lg:h-[420px]">
+            <BubbleMap />
           </div>
-        </section>
-      </div>
+        </div>
+      </section>
 
-      {/* 텔레그램 인기 포스팅 — 가로 슬라이드 스트립 */}
+      {/* 텔레그램 인기 포스팅 — 자동 슬라이드 스트립 */}
       <div id="telegram" className="scroll-mt-4">
         <Suspense fallback={<TelegramChannels />}>
           <div className="reveal min-w-0">

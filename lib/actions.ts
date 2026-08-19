@@ -14,14 +14,35 @@ async function requireUserId(): Promise<string> {
 
 const EDITOR_MIN_LEVEL = 10;
 
-export async function createPost(formData: FormData) {
+// 승인된(또는 운영진) 회원만 통과. 서버 액션은 proxy.ts 페이지 게이트와 별개의 POST
+// 엔드포인트이므로(승인 대기 유저도 /pending 경유로 액션 호출 가능), 콘텐츠를 변경하는
+// 모든 액션은 이 헬퍼로 승인 여부를 직접 재확인한다(Codex 지적 P1).
+async function requireApprovedUserId(): Promise<string> {
   const userId = await requireUserId();
+  const me = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { approved: true, level: true },
+  });
+  if (!me || (!me.approved && me.level < EDITOR_MIN_LEVEL)) {
+    throw new Error("관리자 승인 후 이용할 수 있습니다.");
+  }
+  return userId;
+}
+
+export async function createPost(formData: FormData) {
+  const userId = await requireApprovedUserId();
   const boardSlug = String(formData.get("board") ?? "");
   const title = String(formData.get("title") ?? "").trim();
   const content = String(formData.get("content") ?? "").trim();
 
   if (!title || title.length > 100) throw new Error("제목은 1~100자로 입력해 주세요.");
   if (!content || content.length > 20000) throw new Error("내용을 입력해 주세요.");
+
+  // 도배 방지 — 사용자당 10분 5건. 저장소 장애 시 fail-closed(막음)로 우회 불가.
+  const { checkRateLimit } = await import("@/lib/ratelimit");
+  if (!(await checkRateLimit(`post:${userId}`, 5, 10 * 60_000, true))) {
+    throw new Error("글을 너무 자주 작성하고 있습니다. 잠시 후 다시 시도해 주세요.");
+  }
 
   const board = await prisma.board.findUnique({ where: { slug: boardSlug } });
   if (!board) throw new Error("게시판을 찾을 수 없습니다.");
@@ -55,7 +76,7 @@ export async function createPost(formData: FormData) {
 
 // ── 데일리 시장분석 발행 — 자동 데이터(시세·심리·일정)는 발행 시점에 수집해 박제 ──
 export async function createDailyPost(formData: FormData) {
-  const userId = await requireUserId();
+  const userId = await requireApprovedUserId();
   const me = await prisma.user.findUnique({ where: { id: userId }, select: { level: true } });
   if (!me || me.level < EDITOR_MIN_LEVEL) {
     throw new Error("시장 분석 글은 운영진만 작성할 수 있습니다.");
@@ -129,9 +150,16 @@ async function postBasePath(postId: number): Promise<string | null> {
 }
 
 export async function createComment(postId: number, formData: FormData) {
-  const userId = await requireUserId();
+  const userId = await requireApprovedUserId();
+  if (!Number.isInteger(postId)) throw new Error("잘못된 요청입니다.");
   const content = String(formData.get("content") ?? "").trim();
   if (!content || content.length > 2000) throw new Error("댓글 내용을 입력해 주세요.");
+
+  // 도배 방지 — 사용자당 5분 10건. 저장소 장애 시 fail-closed(막음)로 우회 불가.
+  const { checkRateLimit } = await import("@/lib/ratelimit");
+  if (!(await checkRateLimit(`comment:${userId}`, 10, 5 * 60_000, true))) {
+    throw new Error("댓글을 너무 자주 작성하고 있습니다. 잠시 후 다시 시도해 주세요.");
+  }
 
   // 존재 확인 + 실제 보드 경로 확보 (없는 글이면 raw Prisma 오류 대신 친화적 메시지)
   const basePath = await postBasePath(postId);
@@ -149,7 +177,10 @@ export async function createComment(postId: number, formData: FormData) {
 }
 
 export async function votePost(postId: number, value: 1 | -1) {
-  const userId = await requireUserId();
+  const userId = await requireApprovedUserId();
+  // 서버 액션 인자는 클라이언트가 임의 값으로 호출 가능 — 타입 표기만 믿지 않고 런타임 검증
+  if (value !== 1 && value !== -1) return { ok: false as const, message: "잘못된 요청입니다." };
+  if (!Number.isInteger(postId)) return { ok: false as const, message: "잘못된 요청입니다." };
 
   const basePath = await postBasePath(postId);
   if (!basePath) return { ok: false as const, message: "게시글을 찾을 수 없습니다." };
@@ -190,7 +221,7 @@ export async function logout() {
 
 // 닉네임 설정/변경. 구글 신규(미확정)는 최초 1회 무료, 그 외엔 총 3회까지 차감.
 export async function changeNickname(formData: FormData): Promise<NicknameResult> {
-  const userId = await requireUserId();
+  const userId = await requireApprovedUserId();
   const nickname = String(formData.get("nickname") ?? "").trim();
 
   if (nickname.length < 2 || nickname.length > 12) {
@@ -264,6 +295,21 @@ async function requireAdmin(): Promise<string> {
   return userId;
 }
 
+// 회원 승인/해제 — 승인 전 계정은 proxy.ts 게이트가 사이트 열람을 막는다.
+// 운영진(Lv10+) 계정은 게이트를 항상 통과하므로 여기서 해제해도 잠기지 않는다.
+export async function setMemberApproval(formData: FormData) {
+  await requireAdmin();
+  const userId = String(formData.get("userId") ?? "");
+  const approve = formData.get("approve") === "1";
+  if (!userId) throw new Error("대상 회원이 없습니다.");
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { approved: approve, approvedAt: approve ? new Date() : null },
+  });
+  revalidatePath("/admin/members");
+}
+
 export async function isAdmin(): Promise<boolean> {
   const session = await auth();
   if (!session?.user?.id) return false;
@@ -283,17 +329,20 @@ const MARKET_CACHE_KEYS = [
   "overview",
   "fxHistory",
   "kimchi",
-  "radar",
   "spread",
-  "krwStats",
-  "trend",
 ];
 
 export async function refreshMarketData(): Promise<void> {
-  try {
-    await prisma.marketCache.deleteMany({ where: { key: { in: MARKET_CACHE_KEYS } } });
-  } catch {
-    // 캐시 비우기 실패는 무시 — 재검증은 그대로 진행
+  // 승인 회원만 + 전역 20초 쿨다운 — 반복 캐시 비우기로 외부 API를 두들기는 악용 차단.
+  // (쿨다운 중에는 캐시 삭제 없이 재검증만 — 버튼 UX는 유지하되 외부 호출 폭주 방지)
+  await requireApprovedUserId();
+  const { checkRateLimit } = await import("@/lib/ratelimit");
+  if (await checkRateLimit("refresh:global", 1, 20_000)) {
+    try {
+      await prisma.marketCache.deleteMany({ where: { key: { in: MARKET_CACHE_KEYS } } });
+    } catch {
+      // 캐시 비우기 실패는 무시 — 재검증은 그대로 진행
+    }
   }
   revalidatePath("/", "layout");
 }

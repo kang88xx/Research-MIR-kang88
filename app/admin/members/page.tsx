@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { formatPostDate } from "@/lib/format";
 import { getMembers, type MemberSort } from "@/lib/admin";
+import { setMemberApproval } from "@/lib/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -13,20 +14,22 @@ const SORTS: { key: MemberSort; label: string }[] = [
 export default async function AdminMembersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; sort?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; sort?: string; page?: string; status?: string }>;
 }) {
   const sp = await searchParams;
   const q = sp.q?.trim() ?? "";
   const sort: MemberSort = sp.sort === "level" ? sp.sort : "recent";
   const page = Math.max(1, parseInt(sp.page ?? "1", 10) || 1);
+  const pendingOnly = sp.status === "pending";
 
-  const { rows, total, totalPages } = await getMembers({ q, sort, page });
+  const { rows, total, totalPages } = await getMembers({ q, sort, page, pendingOnly });
 
-  // 검색·정렬을 유지하며 page만 바꾸는 링크 빌더
+  // 검색·정렬·상태 필터를 유지하며 page만 바꾸는 링크 빌더
   const pageHref = (p: number) => {
     const params = new URLSearchParams();
     if (q) params.set("q", q);
     if (sort !== "recent") params.set("sort", sort);
+    if (pendingOnly) params.set("status", "pending");
     if (p > 1) params.set("page", String(p));
     const s = params.toString();
     return s ? `/admin/members?${s}` : "/admin/members";
@@ -62,12 +65,24 @@ export default async function AdminMembersPage({
             </option>
           ))}
         </select>
+        {pendingOnly && <input type="hidden" name="status" value="pending" />}
         <button
           type="submit"
           className="bg-navy-900 px-4 py-1.5 text-sm font-semibold text-white hover:bg-navy-700"
         >
           검색
         </button>
+        {/* 승인 대기 큐 토글 — 신규 가입 승인 작업 진입점 */}
+        <Link
+          href={pendingOnly ? "/admin/members" : "/admin/members?status=pending"}
+          className={`border px-3 py-1.5 text-sm font-semibold ${
+            pendingOnly
+              ? "border-navy-900 bg-navy-900 text-white"
+              : "border-line bg-white text-ink-500 hover:border-navy-700 hover:text-navy-700"
+          }`}
+        >
+          승인 대기만
+        </Link>
         {q && (
           <Link href="/admin/members" className="text-xs text-ink-500 hover:text-navy-700">
             초기화
@@ -84,13 +99,14 @@ export default async function AdminMembersPage({
               <th className="px-3 py-2 text-right font-normal">글</th>
               <th className="px-3 py-2 text-right font-normal">댓글</th>
               <th className="px-3 py-2 text-right font-normal">가입일</th>
+              <th className="px-3 py-2 text-center font-normal">승인</th>
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-12 text-center text-ink-500">
-                  {q ? "검색 결과가 없습니다." : "회원이 없습니다."}
+                <td colSpan={6} className="px-4 py-12 text-center text-ink-500">
+                  {q ? "검색 결과가 없습니다." : pendingOnly ? "승인 대기 중인 회원이 없습니다." : "회원이 없습니다."}
                 </td>
               </tr>
             ) : (
@@ -107,6 +123,33 @@ export default async function AdminMembersPage({
                   <td className="px-3 py-2 text-right font-mono text-ink-500">{m._count.comments}</td>
                   <td className="whitespace-nowrap px-3 py-2 text-right text-xs text-ink-500">
                     {formatPostDate(m.createdAt)}
+                  </td>
+                  {/* 승인 상태 + 토글 — 운영진(Lv10+)은 게이트를 항상 통과하므로 별도 표기 */}
+                  <td className="whitespace-nowrap px-3 py-2 text-center">
+                    {m.level >= 10 ? (
+                      <span className="text-[11px] font-semibold text-navy-500">운영진</span>
+                    ) : (
+                      <form action={setMemberApproval} className="inline-flex items-center gap-1.5">
+                        <input type="hidden" name="userId" value={m.id} />
+                        <input type="hidden" name="approve" value={m.approved ? "0" : "1"} />
+                        <span
+                          className={`text-[11px] font-semibold ${
+                            m.approved ? "text-emerald-600" : "text-amber-600"
+                          }`}
+                        >
+                          {m.approved ? "승인됨" : "대기"}
+                        </span>
+                        <button
+                          className={`border px-2 py-0.5 text-[11px] font-semibold ${
+                            m.approved
+                              ? "border-line text-ink-500 hover:border-red-400 hover:text-red-600"
+                              : "border-navy-900 bg-navy-900 text-white hover:bg-navy-700"
+                          }`}
+                        >
+                          {m.approved ? "해제" : "승인"}
+                        </button>
+                      </form>
+                    )}
                   </td>
                 </tr>
               ))

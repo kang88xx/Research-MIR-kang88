@@ -4,6 +4,7 @@ import Spinner from "@/components/Spinner";
 import Sparkline from "@/components/Sparkline";
 import LiveSparkline from "@/components/LiveSparkline";
 import MarketStatus, { type Mkt } from "@/components/MarketStatus";
+import TileIcon from "@/components/TileIcon";
 
 // 2a 파이낸스 그레이드 — 12개 지표 카드 공통 셸 (radius 14 · 보더 기반 · 그림자 없음)
 const CARD = "rounded-[6px] border border-line bg-white px-3 py-2";
@@ -51,7 +52,10 @@ function FngTile({ t }: { t: BarTile }) {
   const pos = Math.min(100, Math.max(0, f.value));
   return (
     <div className={CARD}>
-      <div className={TITLE}>{t.label}</div>
+      <div className={TITLE}>
+        <TileIcon k={t.key} size={14} />
+        {t.label}
+      </div>
       <div className="mt-1 flex items-baseline gap-[9px]">
         <span className={VAL_LG} style={{ color }}>
           {f.value}
@@ -79,7 +83,10 @@ function UsdtTile({ t }: { t: BarTile }) {
   const km = dir(u.tetherKimchi);
   return (
     <div className={CARD}>
-      <div className={TITLE}>{t.label}</div>
+      <div className={TITLE}>
+        <TileIcon k={t.key} size={14} />
+        {t.label}
+      </div>
       <div className="mt-1 flex items-baseline gap-[9px]">
         <span className={`${VAL_LG} ${km.text}`}>
           {u.tetherKimchi != null ? formatPercent(u.tetherKimchi) : "-"}
@@ -104,7 +111,10 @@ function DomTile({ t }: { t: BarTile }) {
     <div className={CARD}>
       <div className="flex gap-2.5">
         <div className="min-w-0 flex-1">
-          <div className={TITLE}>{t.label}</div>
+          <div className={TITLE}>
+        <TileIcon k={t.key} size={14} />
+        {t.label}
+      </div>
           <div className="mt-1 flex items-baseline gap-[9px]">
             <span className={`${VAL_LG} text-navy-900`}>{t.value}</span>
             {deltaPp != null && (
@@ -136,7 +146,8 @@ function MiningTile({ t }: { t: BarTile }) {
     m.pricePct == null ? "var(--color-neutral)" : loss ? "var(--color-up)" : "var(--color-good)";
   return (
     <div className={CARD}>
-      <div className="flex items-baseline text-[11.5px] font-semibold text-navy-900">
+      <div className="flex items-center gap-[7px] text-[11.5px] font-semibold text-navy-900">
+        <TileIcon k={t.key} size={14} />
         <span className="min-w-0 truncate">{t.label}</span>
         {/* 업데이트 타임스탬프 — 비필수 마이크로카피만 9px 유지 (codex 합의) */}
         {t.sub && (
@@ -170,7 +181,10 @@ function FxTile({ t }: { t: BarTile }) {
   const fx6 = f.fx6 ?? [];
   return (
     <div className={CARD}>
-      <div className={TITLE}>{t.label}</div>
+      <div className={TITLE}>
+        <TileIcon k={t.key} size={14} />
+        {t.label}
+      </div>
       <div className="mt-1 flex items-baseline gap-[9px]">
         <span className={VAL}>{t.value}</span>
         {t.changePct != null && <span className={`${CHG} ${c.text}`}>{formatPercent(t.changePct)}</span>}
@@ -240,6 +254,7 @@ function Tile({ t }: { t: BarTile }) {
       <div className="flex gap-2.5">
         <div className="min-w-0 flex-1">
           <div className={TITLE}>
+            <TileIcon k={t.key} size={14} />
             <span className="min-w-0 truncate">{t.label}</span>
             {mkt && <MarketStatus market={mkt} />}
           </div>

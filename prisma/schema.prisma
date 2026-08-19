@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "windows", "debian-openssl-3.0.x"]
 }
 
 datasource db {
@@ -13,11 +14,13 @@ model User {
   id           String    @id @default(cuid())
   email        String    @unique
   nickname     String    @unique
-  passwordHash String? // 소셜 로그인 계정은 비밀번호 없음
   level        Int       @default(1)
   // 닉네임: 가입 후 총 3회까지 변경. nicknameConfirmed=false(구글 신규)면 최초 1회 설정은 무료.
   nicknameChanges   Int     @default(0)
   nicknameConfirmed Boolean @default(true)
+  // 어드민 승인제 — 승인 전에는 로그인해도 사이트 열람 불가(운영진 Lv10+는 항상 통과)
+  approved   Boolean   @default(false)
+  approvedAt DateTime?
   createdAt    DateTime   @default(now())
   posts        Post[]
   comments     Comment[]
