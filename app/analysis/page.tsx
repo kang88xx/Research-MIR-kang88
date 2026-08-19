@@ -97,13 +97,19 @@ export default async function AnalysisPage() {
                     )}
                   </h2>
                   {post.priceAtPost != null && post.priceSymbol && (
-                    <span className="shrink-0 border border-line bg-paper px-2 py-1 text-[11px]">
-                      <b className="text-ink-900">{post.priceSymbol}</b>{" "}
+                    <span className="flex shrink-0 items-center gap-1.5 text-[11px]">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={`/logos/coins/${post.priceSymbol}.png`}
+                        alt=""
+                        className="h-3.5 w-3.5 rounded-full object-cover"
+                      />
+                      <b className="text-ink-900">{post.priceSymbol}</b>
                       <span className="text-ink-500">작성시 {formatKrw(post.priceAtPost)}</span>
                       {change != null && (
                         <span
-                          className={`ml-1 font-semibold ${
-                            change > 0 ? "text-red-600" : change < 0 ? "text-indigo-700" : "text-ink-500"
+                          className={`font-semibold ${
+                            change > 0 ? "text-up" : change < 0 ? "text-down" : "text-ink-500"
                           }`}
                         >
                           이후 {formatPercent(change)}

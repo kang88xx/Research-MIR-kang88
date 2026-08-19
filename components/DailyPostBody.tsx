@@ -1,5 +1,6 @@
 // 데일리 시장분석 본문 — 판단(스탠스)이 먼저, 데이터는 압축 스트립으로.
 // 훅 없는 순수 서버 컴포넌트. 데이터는 발행 시점에 박제된 DailyData를 그대로 그린다.
+import Link from "next/link";
 import {
   STANCES,
   stanceLabel,
@@ -139,38 +140,38 @@ export default function DailyPostBody({ data }: { data: DailyData }) {
           <h2 className="border-b border-hairline px-4 py-2.5 text-[13.5px] font-extrabold text-navy-900">
             앞으로의 일정 — 매크로 · 언락
           </h2>
-          <table className="w-full text-[13px] tabular-nums">
-            <tbody>
-              {[...macroEvents, ...unlockEvents].map((e, i) => (
-                <tr
-                  key={`${e.date}-${e.title}`}
-                  className={`${i > 0 ? "border-t border-hairline" : ""} ${
-                    e.importance >= 3 ? "bg-brand-weak shadow-[inset_3px_0_0_var(--color-brand)]" : ""
-                  }`}
-                >
-                  <td className="whitespace-nowrap px-4 py-2">
-                    <span
-                      className={`mr-2 inline-block px-1.5 font-mono text-[10px] font-bold ${
-                        e.importance >= 3 ? "bg-brand text-on-brand" : "bg-paper2 text-ink-500"
-                      }`}
-                    >
-                      {e.dday}
-                    </span>
-                    {e.date}
-                  </td>
-                  <td className={`w-full px-2 py-2 ${e.importance >= 3 ? "font-bold" : ""}`}>
-                    {e.title}
-                    {e.unlock && <span className="ml-1.5 text-[11px] text-ink-400">언락</span>}
-                    {e.estimated && <span className="ml-1.5 text-[11px] text-ink-400">추정</span>}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-2 text-right text-[11px] tracking-widest text-ink-300">
-                    <span className="text-brand-ink">{"★".repeat(e.importance)}</span>
-                    {"★".repeat(Math.max(0, 3 - e.importance))}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {/* 행 전체가 캘린더 바로가기 — 테이블 대신 링크 행 (시각은 동일) */}
+          <div className="text-[13px] tabular-nums">
+            {[...macroEvents, ...unlockEvents].map((e, i) => (
+              <Link
+                key={`${e.date}-${e.title}`}
+                href="/calendar"
+                className={`flex items-center gap-2 px-4 py-2 transition-colors hover:bg-paper2 ${
+                  i > 0 ? "border-t border-hairline" : ""
+                } ${e.importance >= 3 ? "bg-brand-weak shadow-[inset_3px_0_0_var(--color-brand)]" : ""}`}
+              >
+                <span className="flex shrink-0 items-center whitespace-nowrap">
+                  <span
+                    className={`mr-2 inline-block px-1.5 font-mono text-[10px] font-bold ${
+                      e.importance >= 3 ? "bg-brand text-on-brand" : "bg-paper2 text-ink-500"
+                    }`}
+                  >
+                    {e.dday}
+                  </span>
+                  {e.date}
+                </span>
+                <span className={`min-w-0 flex-1 truncate ${e.importance >= 3 ? "font-bold" : ""}`}>
+                  {e.title}
+                  {e.unlock && <span className="ml-1.5 text-[11px] font-normal text-ink-400">언락</span>}
+                  {e.estimated && <span className="ml-1.5 text-[11px] font-normal text-ink-400">추정</span>}
+                </span>
+                <span className="shrink-0 whitespace-nowrap text-right text-[11px] tracking-widest text-ink-300">
+                  <span className="text-brand-ink">{"★".repeat(e.importance)}</span>
+                  {"★".repeat(Math.max(0, 3 - e.importance))}
+                </span>
+              </Link>
+            ))}
+          </div>
           <p className="px-4 py-2 text-xs text-ink-400">
             중요도 ★★★ = 시장 전체 영향 · 향후 7일의 매크로(중요도 2+)·언락 일정만 표시, 전체는 캘린더 참고
           </p>

@@ -24,22 +24,25 @@ export default function VoteButtons({
 
   return (
     <div className="flex flex-col items-center gap-2 py-4">
-      <div className="flex items-center gap-3">
+      {/* 필 한 쌍 — 평시엔 무채색, 호버 시에만 상승=레드/하락=블루 관례색이 드러난다 */}
+      <div className="flex items-center gap-2">
         <button
           onClick={() => vote(1)}
           disabled={pending}
-          className="flex flex-col items-center gap-1 border border-line px-5 py-3 hover:border-red-600/60 hover:bg-paper2 disabled:opacity-50"
+          className="group flex items-center gap-1.5 rounded-full border border-line px-4 py-2 text-[13px] font-semibold text-ink-900 transition-colors hover:border-[var(--color-up)] hover:bg-paper2 hover:text-[var(--color-up)] disabled:opacity-50"
         >
-          <span className="text-sm font-semibold text-red-600">추천</span>
-          <span className="text-lg font-bold text-navy-900">{upvotes}</span>
+          <span className="text-[10px] text-[var(--color-up)]">▲</span>
+          추천
+          <span className="font-mono font-bold tabular-nums">{upvotes}</span>
         </button>
         <button
           onClick={() => vote(-1)}
           disabled={pending}
-          className="flex flex-col items-center gap-1 border border-line px-5 py-3 hover:border-indigo-700/60 hover:bg-paper2 disabled:opacity-50"
+          className="group flex items-center gap-1.5 rounded-full border border-line px-4 py-2 text-[13px] font-semibold text-ink-900 transition-colors hover:border-[var(--color-down)] hover:bg-paper2 hover:text-[var(--color-down)] disabled:opacity-50"
         >
-          <span className="text-sm font-semibold text-indigo-700">비추천</span>
-          <span className="text-lg font-bold text-navy-900">{downvotes}</span>
+          <span className="text-[10px] text-[var(--color-down)]">▼</span>
+          비추천
+          <span className="font-mono font-bold tabular-nums">{downvotes}</span>
         </button>
       </div>
       {message && <p className="text-xs text-ink-500">{message}</p>}
