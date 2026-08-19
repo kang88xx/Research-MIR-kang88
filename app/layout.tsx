@@ -77,8 +77,8 @@ export default function RootLayout({
             <footer>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4 text-[11.5px] text-ink-400">
                 <span className="text-xs font-bold text-navy-600">KMIR</span>
-                <span>시세 출처: 업비트 · 바이낸스 · Yahoo(환율)</span>
-                <span>투자 판단의 책임은 본인에게 있습니다.</span>
+                <span>Data: Upbit · Binance · CoinGecko · Yahoo Finance</span>
+                <span>Not financial advice. Trade at your own risk.</span>
               </div>
             </footer>
           </div>

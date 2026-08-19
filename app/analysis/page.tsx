@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getTickers } from "@/lib/ticker";
 import { auth } from "@/lib/auth";
 import { formatKrw, formatPercent, formatPostDate } from "@/lib/format";
-import { parseDaily, stanceLabel } from "@/lib/daily";
+import { parseDaily, stanceLabel, STANCE_COLOR } from "@/lib/daily";
 import PageTitle from "@/components/PageTitle";
 
 export const dynamic = "force-dynamic";
@@ -83,10 +83,17 @@ export default async function AnalysisPage() {
                   <h2 className="font-semibold text-navy-900">
                     {daily && (
                       <>
-                        <span className="mr-1.5 inline-block border border-brand bg-brand-weak px-1.5 align-[1px] text-[10.5px] font-extrabold text-brand-ink">
+                        {/* 소프트 필 — 파스텔 배경 + 동계열 텍스트 (스탠스는 의미 색 틴트) */}
+                        <span className="mr-1.5 inline-block rounded-full bg-brand-weak px-2.5 py-[3px] align-[1.5px] text-[10.5px] font-bold text-brand-ink">
                           데일리
                         </span>
-                        <span className="mr-1.5 inline-block bg-brand px-1.5 align-[1px] text-[10.5px] font-extrabold text-on-brand">
+                        <span
+                          className="mr-1.5 inline-block rounded-full px-2.5 py-[3px] align-[1.5px] text-[10.5px] font-bold"
+                          style={{
+                            color: STANCE_COLOR[daily.stance] ?? "var(--color-neutral)",
+                            background: `color-mix(in srgb, ${STANCE_COLOR[daily.stance] ?? "var(--color-neutral)"} 11%, transparent)`,
+                          }}
+                        >
                           {stanceLabel(daily.stance)}
                         </span>
                       </>

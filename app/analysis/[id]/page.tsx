@@ -7,7 +7,7 @@ import { formatDateTime, formatKrw, formatPercent, formatPostDate } from "@/lib/
 import VoteButtons from "@/components/VoteButtons";
 import CommentForm from "@/components/CommentForm";
 import DailyPostBody from "@/components/DailyPostBody";
-import { parseDaily, stanceLabel } from "@/lib/daily";
+import { parseDaily, stanceLabel, STANCE_COLOR } from "@/lib/daily";
 
 export const dynamic = "force-dynamic";
 
@@ -55,7 +55,14 @@ export default async function AnalysisDetailPage({
           <p className="eyebrow">{daily ? "공식 시장 분석 · 데일리" : "공식 시장 분석"}</p>
           <h1 className="text-xl font-bold text-navy-900">
             {daily && (
-              <span className="mr-2 inline-block bg-brand px-2 align-[2px] text-[11px] font-extrabold text-on-brand">
+              // 소프트 필 — 목록(STANCE_COLOR)과 동일한 의미 색 틴트
+              <span
+                className="mr-2 inline-block rounded-full px-2.5 py-[3px] align-[3px] text-[11px] font-bold"
+                style={{
+                  color: STANCE_COLOR[daily.stance] ?? "var(--color-neutral)",
+                  background: `color-mix(in srgb, ${STANCE_COLOR[daily.stance] ?? "var(--color-neutral)"} 11%, transparent)`,
+                }}
+              >
                 {stanceLabel(daily.stance)}
               </span>
             )}

@@ -24,6 +24,15 @@ export function stanceLabel(key: string): string {
   return STANCES.find((s) => s.key === key)?.label ?? key;
 }
 
+// 스탠스 필 색 — 방어(레드·오커) ↔ 공격(그린) 의미 스케일, 토큰 참조로 다크 모드 자동 추종
+export const STANCE_COLOR: Record<string, string> = {
+  reduce: "var(--color-up)",
+  conservative: "var(--color-neutral)",
+  wait: "var(--color-warn)",
+  selective: "var(--color-live)",
+  expand: "var(--color-good)",
+};
+
 // 포지션별 자문 — 행(포지션)은 고정, 액션 톤과 한 줄 조언만 매일 달라진다
 export const ADVICE_POSITIONS = ["현물 보유", "신규 진입", "단기 트레이딩"] as const;
 export const ADVICE_ACTIONS = [

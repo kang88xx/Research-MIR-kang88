@@ -1,8 +1,8 @@
 "use client";
 
-// d3-force 시뮬레이션이 노드 좌표를 직접 DOM(transform)에 쓰는 명령형 패턴.
-// React는 구조(원/로고/텍스트)만 렌더하고, 매 틱의 위치·스케일 갱신은
-// setAttribute로 처리해 리렌더 비용 없이 60fps 모션을 유지한다.
+// d3-force 시뮬레이션 + 캔버스 렌더러. SVG(노드별 DOM 리페인트)는 버블 100개에서
+// 프레임 비용이 커서 랙이 났고, 캔버스 한 장에 매 틱 직접 그려 60fps 모션을 유지한다.
+// React는 캔버스·오버레이(툴팁/카드) 구조만 렌더하고 그리기는 draw()가 전담한다.
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
@@ -144,20 +144,6 @@ function colorFor(change: number): string {
   return "#878e97"; // 보합: gray-500
 }
 
-// 텍스트 색 — 옅은 버블 위 가독용 커스텀 토큰 (globals.css: 라이트=진한 톤 / 다크=밝은 톤).
-// 하드코딩 hex는 다크 표면에서 심볼·퍼센트가 묻히던 문제(P2)로 토큰화.
-function textColorFor(change: number): string {
-  if (change > 0.05) return "var(--bm-text-up)";
-  if (change < -0.05) return "var(--bm-text-down)";
-  return "var(--bm-text-flat)";
-}
-
-function gradFor(change: number): string {
-  if (change > 0.05) return "bm-grad-up";
-  if (change < -0.05) return "bm-grad-down";
-  return "bm-grad-flat";
-}
-
 // 변동률 크기 → 색 강도(0~1). ±8% 이상이면 최대 강도
 function intensityFor(change: number): number {
   return Math.min(1, Math.abs(change) / 8);
@@ -183,7 +169,11 @@ export default function BubbleMap() {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const nodesRef = useRef<Node[]>([]);
   const simRef = useRef<Simulation<Node, undefined> | null>(null);
-  const gEls = useRef(new Map<string, SVGGElement>());
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  // 프리로드한 로고 이미지를 그대로 draw에 재사용 (재요청 0)
+  const imgCache = useRef(new Map<string, HTMLImageElement>());
+  // 시뮬레이션 정지 상태(모션 최소화)에서 호버 변화 시 수동 리드로용
+  const drawRef = useRef<() => void>(() => {});
   const tipRef = useRef<HTMLDivElement | null>(null);
   const hoverRef = useRef<string | null>(null);
 
@@ -273,11 +263,24 @@ export default function BubbleMap() {
         if (++done >= need) finish();
         return;
       }
+      const cached = imgCache.current.get(c.image);
+      if (cached?.complete) {
+        if (++done >= need) finish();
+        return;
+      }
+      // crossOrigin 미지정 — CDN 캐시에 CORS 헤더 없는 응답이 남아 있으면 anonymous 모드가
+      // 차단돼 로고가 통째로 빠진다. 캔버스 픽셀을 읽지 않으므로(taint 무해) 일반 모드로 로드.
       const img = new Image();
-      img.onload = img.onerror = () => {
+      img.onload = () => {
+        if (++done >= need) finish();
+        // 공개 이후(특히 시뮬레이션 정지 상태) 늦게 도착한 로고도 그려지게 리드로
+        requestAnimationFrame(() => drawRef.current());
+      };
+      img.onerror = () => {
         if (++done >= need) finish();
       };
       img.src = c.image;
+      imgCache.current.set(c.image, img);
     });
     return () => clearTimeout(timeout);
   }, [coins]);
@@ -351,6 +354,112 @@ export default function BubbleMap() {
     setRenderNodes(nodes);
 
     simRef.current?.stop();
+
+    // ── 캔버스 렌더러 — SVG(노드별 DOM 리페인트)의 프레임 비용이 랙의 주범이라
+    // 한 장의 캔버스에 직접 그린다. 프레임당 2~5ms 수준으로 유영 모션이 60fps 유지.
+    const rgba = (hex: string, a: number) => {
+      const v = parseInt(hex.slice(1), 16);
+      return `rgba(${(v >> 16) & 255},${(v >> 8) & 255},${v & 255},${a})`;
+    };
+    // 캔버스는 CSS 변수를 못 읽으므로 텍스트 토큰을 1회 해석 (다크 모드 값 그대로)
+    const cssVar = (name: string, fb: string) =>
+      getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fb;
+    const TXT = {
+      up: cssVar("--bm-text-up", "#8f1f1a"),
+      down: cssVar("--bm-text-down", "#1d4f9c"),
+      flat: cssVar("--bm-text-flat", "#4b5563"),
+    };
+    const txtFor = (c: number) => (c > 0.05 ? TXT.up : c < -0.05 ? TXT.down : TXT.flat);
+    const FONT = `-apple-system, "Apple SD Gothic Neo", sans-serif`;
+
+    const draw = () => {
+      const cv = canvasRef.current;
+      const ctx = cv?.getContext("2d");
+      if (!cv || !ctx) return;
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const pw = Math.round(W * dpr);
+      if (cv.width !== pw || cv.height !== Math.round(H * dpr)) {
+        cv.width = pw;
+        cv.height = Math.round(H * dpr);
+        cv.style.width = `${W}px`;
+        cv.style.height = `${H}px`;
+      }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, W, H);
+      const hoverId = hoverRef.current;
+
+      for (const n of nodes) {
+        const s = Math.max(0, n.scale);
+        if (s < 0.02) continue;
+        const r = n.r * s;
+        const isHover = hoverId === n.coin.id;
+        const it = intensityFor(n.change);
+        const base = colorFor(n.change);
+        const flat = !(n.change > 0.05 || n.change < -0.05);
+        // SVG 라디얼 그라디언트와 동일 스탑 — 중심 옅고 가장자리 진한 유리구슬
+        const stops: [number, number][] = flat
+          ? [[0, 0.04], [0.6, 0.06], [0.86, 0.12], [1, 0.26]]
+          : [[0, 0.05], [0.6, 0.08], [0.86, 0.16], [1, 0.34]];
+        const grad = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, r);
+        for (const [o, a] of stops) grad.addColorStop(o, rgba(base, a));
+        const fillOp = 0.55 + 0.45 * it;
+        ctx.globalAlpha = isHover ? Math.min(1, fillOp + 0.3) : fillOp;
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+        ctx.fillStyle = grad;
+        ctx.fill();
+        ctx.globalAlpha = isHover ? 0.85 : 0.28 + 0.34 * it;
+        ctx.lineWidth = isHover ? 1.5 : 1;
+        ctx.strokeStyle = base;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+
+        // 로고 — 흰 원 배경 + 원형 클리핑 (프리로드 캐시 재사용, 미로드 시 배경 원만)
+        if (n.r > 16) {
+          const lr = n.r * 0.36 * s;
+          const lcy = n.y - n.r * 0.25 * s;
+          ctx.beginPath();
+          ctx.arc(n.x, lcy, lr, 0, Math.PI * 2);
+          ctx.fillStyle = "#fff";
+          ctx.fill();
+          const img = n.coin.image ? imgCache.current.get(n.coin.image) : undefined;
+          if (img?.complete && img.naturalWidth > 0) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(n.x, lcy, lr, 0, Math.PI * 2);
+            ctx.clip();
+            const iw = img.naturalWidth;
+            const ih = img.naturalHeight;
+            const sq = Math.min(iw, ih); // preserveAspectRatio slice와 동일한 중앙 크롭
+            ctx.drawImage(img, (iw - sq) / 2, (ih - sq) / 2, sq, sq, n.x - lr, lcy - lr, lr * 2, lr * 2);
+            ctx.restore();
+          }
+          ctx.beginPath();
+          ctx.arc(n.x, lcy, lr, 0, Math.PI * 2);
+          ctx.lineWidth = 0.75;
+          ctx.strokeStyle = "#ffffff";
+          ctx.stroke();
+        }
+
+        // 텍스트 — 심볼(+큰 버블은 변동률). SVG의 baseline 오프셋 그대로.
+        ctx.textAlign = "center";
+        ctx.fillStyle = txtFor(n.change);
+        ctx.font = `700 ${Math.max(7, n.r * 0.28) * s}px ${FONT}`;
+        ctx.fillText(n.coin.symbol, n.x, n.y + (n.r > 16 ? n.r * 0.46 : 3) * s);
+        if (n.r > 26) {
+          ctx.font = `400 ${Math.max(6, n.r * 0.2) * s}px ${FONT}`;
+          ctx.globalAlpha = 0.85;
+          ctx.fillText(
+            `${n.change > 0 ? "+" : ""}${n.change.toFixed(1)}%`,
+            n.x,
+            n.y + n.r * 0.73 * s
+          );
+          ctx.globalAlpha = 1;
+        }
+      }
+    };
+    drawRef.current = draw;
+
     const sim = forceSimulation(nodes)
       .velocityDecay(0.22)
       .force("x", forceX(W / 2).strength(0.01))
@@ -398,14 +507,8 @@ export default function BubbleMap() {
           }
           const desired = base * (hoverId === n.coin.id ? 1.06 : 1);
           n.scale += (desired - n.scale) * 0.16;
-
-          const g = gEls.current.get(n.coin.id);
-          if (g)
-            g.setAttribute(
-              "transform",
-              `translate(${n.x},${n.y}) scale(${Math.max(0.001, n.scale)})`
-            );
         }
+        draw();
         // 툴팁이 호버 중인 버블을 따라가게
         if (hoverId && tipRef.current) {
           const n = nodes.find((nn) => nn.coin.id === hoverId);
@@ -417,9 +520,10 @@ export default function BubbleMap() {
       });
     simRef.current = sim;
 
-    // 첫 배치 사전 수렴 — 랜덤 산포 → 충돌 정렬 과정을 화면에 보여주지 않고(랙처럼 보임)
-    // 동기 tick으로 미리 풀어둔 뒤 렌더한다. tick()은 "tick" 이벤트를 쏘지 않아 DOM 쓰기도 없음.
-    if (!isRebuild) sim.tick(140);
+    // 사전 수렴 — 랜덤 산포/기간 전환의 충돌 정렬 과정을 화면에 보여주지 않고(랙처럼 보임)
+    // 동기 tick으로 미리 풀어둔 뒤 렌더한다. tick()은 "tick" 이벤트를 쏘지 않아 그리기 비용 0.
+    sim.tick(isRebuild ? 90 : 140);
+    draw();
     sim.restart();
     setSettled(true);
 
@@ -504,6 +608,26 @@ export default function BubbleMap() {
   }, [selected, loadExchanges]);
 
   const { w: W, h: H } = size;
+
+  // 캔버스 히트 테스트 — 나중에 그린(배열 뒤쪽) 버블이 위에 있으므로 역순 탐색
+  const hitTest = useCallback((x: number, y: number): Node | null => {
+    const nodes = nodesRef.current;
+    for (let i = nodes.length - 1; i >= 0; i--) {
+      const n = nodes[i];
+      const dr = n.r * Math.max(0.001, n.scale);
+      const dx = x - n.x;
+      const dy = y - n.y;
+      if (dx * dx + dy * dy <= dr * dr) return n;
+    }
+    return null;
+  }, []);
+
+  // 시뮬레이션이 멈춘 상태(모션 최소화)에서도 호버 강조가 그려지게 수동 리드로
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => drawRef.current());
+    return () => cancelAnimationFrame(raf);
+  }, [hover]);
+
   const hovered = hover
     ? renderNodes.find((n) => n.coin.id === hover) ?? null
     : null;
@@ -543,139 +667,34 @@ export default function BubbleMap() {
         onMouseLeave={() => setHover(null)}
       >
         {W > 0 && H > 0 && ready && (
-          <svg width={W} height={H} className="reveal block" onClick={() => setSelected(null)}>
-            <defs>
-              {/* 중심은 옅고 가장자리로 갈수록 진해지는 라디얼 — 유리구슬 느낌 */}
-              <radialGradient id="bm-grad-up">
-                <stop offset="0%" stopColor="#e5443b" stopOpacity={0.05} />
-                <stop offset="60%" stopColor="#e5443b" stopOpacity={0.08} />
-                <stop offset="86%" stopColor="#e5443b" stopOpacity={0.16} />
-                <stop offset="100%" stopColor="#e5443b" stopOpacity={0.34} />
-              </radialGradient>
-              <radialGradient id="bm-grad-down">
-                <stop offset="0%" stopColor="#2e7ce6" stopOpacity={0.05} />
-                <stop offset="60%" stopColor="#2e7ce6" stopOpacity={0.08} />
-                <stop offset="86%" stopColor="#2e7ce6" stopOpacity={0.16} />
-                <stop offset="100%" stopColor="#2e7ce6" stopOpacity={0.34} />
-              </radialGradient>
-              <radialGradient id="bm-grad-flat">
-                <stop offset="0%" stopColor="#878e97" stopOpacity={0.04} />
-                <stop offset="60%" stopColor="#878e97" stopOpacity={0.06} />
-                <stop offset="86%" stopColor="#878e97" stopOpacity={0.12} />
-                <stop offset="100%" stopColor="#878e97" stopOpacity={0.26} />
-              </radialGradient>
-            </defs>
-            {renderNodes.map((n) => {
-              const it = intensityFor(n.change);
-              const isHover = hover === n.coin.id;
-              const fillOp = 0.55 + 0.45 * it;
-              return (
-                <g
-                  key={n.coin.id}
-                  ref={(el) => {
-                    if (el) gEls.current.set(n.coin.id, el);
-                    else gEls.current.delete(n.coin.id);
-                  }}
-                  transform={`translate(${n.x},${n.y}) scale(${Math.max(0.001, n.scale)})`}
-                  className="cursor-pointer focus:outline-none"
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`${n.coin.name} (${n.coin.symbol}) ${n.change > 0 ? "+" : ""}${n.change.toFixed(1)}%`}
-                  onMouseEnter={() => setHover(n.coin.id)}
-                  onFocus={() => setHover(n.coin.id)}
-                  // 버블을 벗어나면 즉시 해제 — 컨테이너 mouseleave만으로는 맵 안 빈 공간으로
-                  // 이동했을 때 툴팁·확대가 남던 문제(P2) 방지
-                  onMouseLeave={() => setHover((h) => (h === n.coin.id ? null : h))}
-                  onBlur={() => setHover((h) => (h === n.coin.id ? null : h))}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    // PC(파인 포인터)는 커서 위치에 카드 앵커 — 모바일·터치는 하단 폴백
-                    const rect = wrapRef.current?.getBoundingClientRect();
-                    const fine =
-                      typeof window !== "undefined" &&
-                      window.matchMedia?.("(pointer: fine)").matches === true;
-                    setSelPos(
-                      fine && rect ? { x: e.clientX - rect.left, y: e.clientY - rect.top } : null
-                    );
-                    setSelected((s) => (s === n.coin.id ? null : n.coin.id));
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      // 키보드 선택 — 버블 현재 좌표를 앵커로 사용
-                      setSelPos({ x: n.x, y: n.y });
-                      setSelected((s) => (s === n.coin.id ? null : n.coin.id));
-                    }
-                  }}
-                >
-                  <circle
-                    r={n.r}
-                    fill={`url(#${gradFor(n.change)})`}
-                    fillOpacity={isHover ? Math.min(1, fillOp + 0.3) : fillOp}
-                    stroke={colorFor(n.change)}
-                    strokeOpacity={isHover ? 0.85 : 0.28 + 0.34 * it}
-                    strokeWidth={isHover ? 1.5 : 1}
-                  />
-                  {n.r > 16 &&
-                    (() => {
-                      const lr = n.r * 0.36; // 로고 반지름 (텍스트와 겹치지 않게 축소)
-                      const lcy = -n.r * 0.25; // 로고 중심 y — 심볼 텍스트와 간격 30% 좁힘
-                      const clipId = `logo-clip-${n.coin.id}`;
-                      return (
-                        <>
-                          <clipPath id={clipId}>
-                            <circle cx={0} cy={lcy} r={lr} />
-                          </clipPath>
-                          {/* 흰 배경 원 — 사각/투명 로고도 원형으로 보이게 */}
-                          <circle cx={0} cy={lcy} r={lr} fill="#fff" />
-                          <image
-                            href={n.coin.image}
-                            x={-lr}
-                            y={lcy - lr}
-                            width={lr * 2}
-                            height={lr * 2}
-                            clipPath={`url(#${clipId})`}
-                            preserveAspectRatio="xMidYMid slice"
-                          />
-                          {/* 얇은 테두리로 원형 경계 또렷하게 */}
-                          <circle
-                            cx={0}
-                            cy={lcy}
-                            r={lr}
-                            fill="none"
-                            stroke="#ffffff"
-                            strokeWidth={0.75}
-                          />
-                        </>
-                      );
-                    })()}
-                  <text
-                    textAnchor="middle"
-                    y={n.r > 16 ? n.r * 0.46 : 3}
-                    fontSize={Math.max(7, n.r * 0.28)}
-                    fontWeight={700}
-                    fill={textColorFor(n.change)}
-                    style={{ pointerEvents: "none", userSelect: "none" }}
-                  >
-                    {n.coin.symbol}
-                  </text>
-                  {n.r > 26 && (
-                    <text
-                      textAnchor="middle"
-                      y={n.r * 0.73}
-                      fontSize={Math.max(6, n.r * 0.2)}
-                      fill={textColorFor(n.change)}
-                      fillOpacity={0.85}
-                      style={{ pointerEvents: "none", userSelect: "none" }}
-                    >
-                      {n.change > 0 ? "+" : ""}
-                      {n.change.toFixed(1)}%
-                    </text>
-                  )}
-                </g>
-              );
-            })}
-          </svg>
+          <canvas
+            ref={canvasRef}
+            className="reveal block"
+            role="img"
+            aria-label="시가총액 상위 100 버블맵 — 버블을 클릭하면 거래소 바로가기 카드가 열립니다"
+            onMouseMove={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              const hit = hitTest(e.clientX - rect.left, e.clientY - rect.top);
+              e.currentTarget.style.cursor = hit ? "pointer" : "default";
+              setHover((h) => (hit ? (h === hit.coin.id ? h : hit.coin.id) : h === null ? h : null));
+            }}
+            onClick={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              const x = e.clientX - rect.left;
+              const y = e.clientY - rect.top;
+              const hit = hitTest(x, y);
+              if (!hit) {
+                setSelected(null);
+                return;
+              }
+              // PC(파인 포인터)는 커서 위치에 카드 앵커 — 모바일·터치는 하단 폴백
+              const fine =
+                typeof window !== "undefined" &&
+                window.matchMedia?.("(pointer: fine)").matches === true;
+              setSelPos(fine ? { x, y } : null);
+              setSelected((s) => (s === hit.coin.id ? null : hit.coin.id));
+            }}
+          />
         )}
 
         {(!ready || renderNodes.length === 0) && !error && (
