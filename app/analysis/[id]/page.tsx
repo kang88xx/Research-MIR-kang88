@@ -76,11 +76,15 @@ export default async function AnalysisDetailPage({
   // 현재가 폴백은 쓰지 않는다 — 판정이 시세에 따라 뒤집히지 않게(불변성, Codex 교차검수).
   let directionVerdict: { changePct: number; hit: boolean } | "pending" | null = null;
   if (daily?.direction && post.priceAtPost != null) {
+    // createdAt 동률까지 목록과 동일한 순서(createdAt, id)로 "바로 다음" 데일리를 고른다
     const nextDaily = await prisma.post.findFirst({
       where: {
         boardId: post.boardId,
-        createdAt: { gt: post.createdAt },
         content: { startsWith: DAILY_MARKER },
+        OR: [
+          { createdAt: { gt: post.createdAt } },
+          { createdAt: post.createdAt, id: { gt: post.id } },
+        ],
       },
       orderBy: [{ createdAt: "asc" }, { id: "asc" }],
       select: { priceAtPost: true },

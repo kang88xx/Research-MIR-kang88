@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import { formatKrw, formatPercent, formatPostDate } from "@/lib/format";
 import {
   parseDaily,
+  DAILY_MARKER,
   stanceLabel,
   directionLabel,
   judgeDirection,
@@ -46,9 +47,11 @@ export default async function AnalysisPage() {
   // 경계가 되므로, 구버전 데일리를 건너뛰어 다른 날 가격으로 판정하는 일이 없다(Codex 교차검수).
   // 다음 데일리가 없거나 그 기록가가 없으면 "판정 전" — 현재가 폴백을 쓰지 않아 한번 내려진
   // 판정이 시세에 따라 뒤집히지 않는다(판정 불변성). 상세 페이지와 동일 규칙.
+  // 경계 판별은 마커 prefix 기준 — 상세 페이지의 DB 조회(startsWith)와 동일 기준을 써서
+  // JSON이 깨진 데일리도 양쪽에서 똑같이 경계로 취급된다(파싱 성공 여부로 갈리지 않게).
   const allDailies = posts
+    .filter((p) => p.content.startsWith(DAILY_MARKER))
     .map((p) => ({ id: p.id, createdAt: p.createdAt, priceAtPost: p.priceAtPost, daily: parseDaily(p.content) }))
-    .filter((r) => r.daily != null)
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || b.id - a.id);
   type Verdict = { changePct: number; hit: boolean } | "pending";
   const verdicts = new Map<number, Verdict>();

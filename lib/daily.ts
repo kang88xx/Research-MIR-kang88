@@ -36,7 +36,7 @@ export const STANCE_COLOR: Record<string, string> = {
 };
 
 // ── BTC 다음날 방향 예측 — 발행 다음날 같은 시각(09:00 KST) 가격으로 자동 판정·공개 ──
-// 관망(neutral)은 "변동성이 거의 없다"는 예측: ±BAND% 이내 횡보해야 적중.
+// 관망(neutral)은 "변동성이 거의 없다"는 예측: ±BAND% 미만 횡보해야 적중.
 // 상방/하방은 각각 +BAND% 이상 / -BAND% 이하로 움직여야 적중 — 애매한 움직임에
 // 방향을 걸면 미적중이 되므로, 확신 없는 날은 관망을 고르는 유인이 구조에 내장된다.
 export const DIRECTIONS = [

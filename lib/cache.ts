@@ -24,6 +24,13 @@ function lkgSetIfNewer(key: string, data: unknown, at: number): void {
   if (!cur || at > cur.at) lkg.set(key, { data, at });
 }
 
+// 수동 새로고침 등 강제 무효화용 — 이 인스턴스의 LKG를 버려 다음 요청이 재수집하게 한다.
+// (DB 캐시 행만 지우면 인메모리 LKG가 fresh로 남아 같은 인스턴스에선 새로고침이 무력화된다.
+//  다른 인스턴스의 LKG는 각자 TTL 만료로 자연 해소 — 최선 노력 무효화.)
+export function invalidateLocalCache(keys: string[]): void {
+  for (const k of keys) lkg.delete(k);
+}
+
 // 갱신 태스크 시작 (인스턴스 내 중복 합치기) — 반환된 프로미스는 항상 존재
 function startRefresh<T>(key: string, fetcher: () => Promise<T>): Promise<unknown> {
   if (!inflight.has(key)) {
