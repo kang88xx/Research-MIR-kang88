@@ -45,7 +45,7 @@ const JUDGMENT_SCHEMA = {
       type: "string",
       enum: DIRECTION_KEYS,
       description:
-        "내일 오전 9시(KST)까지 24시간 BTC 방향 예측. up=상방(+1% 이상 상승 기대) / down=하방(-1% 이상 하락 기대) / neutral=관망(±1% 이내 저변동 횡보 기대).",
+        "내일 오전 9시(KST)까지 24시간 BTC 방향 예측. up=상방(+1% 이상 상승 기대) / down=하방(-1% 이상 하락 기대) / neutral=관망(±1% 미만 저변동 횡보 기대).",
     },
     verdict: {
       type: "string",
@@ -80,7 +80,7 @@ const SYSTEM_PROMPT = `당신은 KMIR(Kang Market Intelligence & Research)의 �
 - 문체는 "~다"로 끝나는 단정한 분석체. 이모지·과장·호들갑 금지.
 - 줄표(—, "—" 기호)는 제목·본문 어디에도 쓰지 않는다. 문장을 나누거나 쉼표·"~로," 같은 연결로 표현한다.
 - 스탠스 5단계: reduce(축소) / conservative(보수) / wait(관망) / selective(선별 매수) / expand(확대). 판단·견해·자문의 톤은 선택한 스탠스와 일관되어야 한다.
-- 방향 예측(direction): 내일 오전 9시(KST)까지 24시간 BTC 방향을 up(상방)/down(하방)/neutral(관망) 중 하나로 예측한다. 기준은 ±${DIRECTION_BAND_PCT}%: up은 +${DIRECTION_BAND_PCT}% 이상 상승, down은 -${DIRECTION_BAND_PCT}% 이상 하락, neutral은 ±${DIRECTION_BAND_PCT}% 이내 저변동 횡보를 뜻한다. 다음날 실제 가격으로 자동 판정되어 적중 여부가 공개되므로, 근거가 충분할 때만 방향을 걸고 저변동이 기대되는 날은 neutral을 고른다. 방향의 근거는 견해에 반드시 포함한다.
+- 방향 예측(direction): 내일 오전 9시(KST)까지 24시간 BTC 방향을 up(상방)/down(하방)/neutral(관망) 중 하나로 예측한다. 기준은 ±${DIRECTION_BAND_PCT}%: up은 +${DIRECTION_BAND_PCT}% 이상 상승, down은 -${DIRECTION_BAND_PCT}% 이상 하락, neutral은 ±${DIRECTION_BAND_PCT}% 미만 저변동 횡보를 뜻한다. 다음날 실제 가격으로 자동 판정되어 적중 여부가 공개되므로, 근거가 충분할 때만 방향을 걸고 저변동이 기대되는 날은 neutral을 고른다. 방향의 근거는 견해에 반드시 포함한다.
 - 유동성 지표(총 시총과 24h 변화, BTC 도미넌스, BTC·ETH 거래대금)는 시장 전체 자금 흐름 판단에 활용한다.
 - "기관·규제 뉴스"는 텔레그램 공개 채널에서 자동 수집한 비공식 스니펫이다. 미국 법안·규제 동향과 기업·은행권의 BTC·ETH 대규모 매수 움직임 판단에 참고하되, 사실 단정의 근거로 쓰지 않는다. 관련 없거나 신뢰가 낮아 보이는 항목은 무시한다.
 - 견해(opinion)는 3~5문단, 문단 사이는 빈 줄 하나. 첫 문단은 시장 상황 요약, 이후 문단은 판단의 근거와 리스크, 마지막 문단은 오늘 지켜볼 것.

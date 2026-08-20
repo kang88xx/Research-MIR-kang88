@@ -368,24 +368,36 @@ async function scrape(): Promise<{ listings: Listing[]; updatedAt: string }> {
     }
     l.scheduledAt = await extractScheduledTime(l.url);
   };
+  // 예산 초과 시 새 작업 배분을 멈추고(진행 중 건만 마무리), 타이머는 finally에서 해제.
+  const deadline = Date.now() + 10_000;
   const queue = [...candidates];
   const workers = Array.from({ length: Math.min(6, queue.length) }, async () => {
     for (;;) {
+      if (Date.now() >= deadline) return; // 예산 소진 — 남은 후보는 미정(null) 유지
       const l = queue.shift();
       if (!l) return;
       await extractOne(l);
     }
   });
-  await Promise.race([
-    Promise.all(workers),
-    new Promise((resolve) => setTimeout(resolve, 10_000)),
-  ]);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      Promise.all(workers),
+      new Promise((resolve) => {
+        timer = setTimeout(resolve, 10_000);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
 
   // '금일'은 게시일이 아니라 상장 예정일(scheduledAt) 기준으로 확정 — 없으면 게시일로 폴백.
   // 임박 순(예정 시각 빠른 것)으로 정렬해 위쪽에 가장 가까운 일정이 오게 한다.
+  // 얕은 복사로 스냅숏 — 예산 초과 후 뒤늦게 끝난 워커가 반환·캐시된 결과를 변형하지 못하게.
   const listings = candidates
     .filter((l) => kstDay(new Date(l.scheduledAt ?? l.date)) === today)
-    .sort((a, b) => (a.scheduledAt ?? a.date).localeCompare(b.scheduledAt ?? b.date));
+    .sort((a, b) => (a.scheduledAt ?? a.date).localeCompare(b.scheduledAt ?? b.date))
+    .map((l) => ({ ...l }));
 
   return { listings, updatedAt: new Date().toISOString() };
 }

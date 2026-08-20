@@ -25,17 +25,31 @@ function isPublic(pathname: string): boolean {
 // 트레이드오프: 승인/해제가 최대 60초 늦게 반영된다(콘텐츠 변경 액션은 lib/actions의
 // requireApprovedUserId가 매번 DB로 재확인하므로 쓰기 권한은 즉시 차단된다).
 const GATE_TTL_MS = 60_000;
+// DB 장애 시 만료된 캐시를 유예 사용할 상한 — 이보다 오래되면 fail-closed(로그인으로).
+// (장애가 무기한 stale 승인을 유지하지 못하게 한다 — Codex 교차검수 2026-08-20)
+const GATE_STALE_MAX_MS = 10 * 60_000;
 const GATE_CACHE_MAX = 5_000; // 세션 수 폭주 시 메모리 상한 — 넘치면 전체 비우고 다시 채움
 const gateCache = new Map<string, { approved: boolean; level: number; at: number }>();
 
 async function getGateInfo(userId: string): Promise<{ approved: boolean; level: number } | null> {
   const hit = gateCache.get(userId);
   if (hit && Date.now() - hit.at < GATE_TTL_MS) return hit;
-  const me = await prisma.user
-    .findUnique({ where: { id: userId }, select: { approved: true, level: true } })
-    .catch(() => null);
-  // DB 조회 실패 시: 직전 캐시가 있으면 만료됐어도 사용(일시 장애로 전 회원을 로그아웃시키지 않음)
-  if (!me) return hit ?? null;
+  let me: { approved: boolean; level: number } | null;
+  try {
+    me = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { approved: true, level: true },
+    });
+  } catch {
+    // DB 조회 "실패"(장애)만 stale 유예 — 정상 null(탈퇴)과 반드시 구분한다.
+    if (hit && Date.now() - hit.at < GATE_STALE_MAX_MS) return hit;
+    return null;
+  }
+  // 정상 조회 결과가 "계정 없음"(탈퇴 등) — 캐시를 지워 접근을 즉시 회수
+  if (!me) {
+    gateCache.delete(userId);
+    return null;
+  }
   if (gateCache.size >= GATE_CACHE_MAX) gateCache.clear();
   gateCache.set(userId, { ...me, at: Date.now() });
   return me;

@@ -134,7 +134,7 @@ export default async function DailyWritePage() {
             ))}
           </div>
           <p className="mt-2 text-xs text-ink-400">
-            다음날 09:00 KST BTC 기록가로 자동 판정됩니다. 상방 = +{DIRECTION_BAND_PCT}% 이상, 하방 = -{DIRECTION_BAND_PCT}% 이상 하락, 관망 = ±{DIRECTION_BAND_PCT}% 이내 저변동.
+            다음 데일리의 BTC 기록가로 자동 판정됩니다. 상방 = +{DIRECTION_BAND_PCT}% 이상, 하방 = -{DIRECTION_BAND_PCT}% 이상 하락, 관망 = ±{DIRECTION_BAND_PCT}% 미만 저변동.
           </p>
         </fieldset>
 

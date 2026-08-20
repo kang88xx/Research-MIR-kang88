@@ -1,10 +1,10 @@
-# Neon DB 일일 백업 — pg_dump → AES-256 암호화 → GitHub 아티팩트(30일 보관)
+# Supabase DB 일일 백업 — pg_dump → AES-256 암호화 → GitHub 아티팩트(30일 보관)
 #
 # 공개 리포지토리라 아티팩트를 누구나 내려받을 수 있으므로, 덤프는 반드시
 # DB_BACKUP_PASSPHRASE로 암호화해서만 올린다 (회원 이메일 등 개인정보 포함).
 #
 # 필요한 리포 시크릿:
-#   DB_BACKUP_URL        — Neon 직접 연결 URL (풀러 미경유, .env의 DIRECT_URL)
+#   DB_BACKUP_URL        — Supabase 세션 풀러(5432) URL (.env의 DIRECT_URL)
 #   DB_BACKUP_PASSPHRASE — 암호화 패스프레이즈 (로컬 .env.local에도 보관)
 #
 # 복원 방법:
@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      # Neon이 PG 17이라 pg_dump도 17이 필요 (우분투 기본 클라이언트는 16)
+      # Supabase가 PG 17이라 pg_dump도 17이 필요 (우분투 기본 클라이언트는 16)
       - name: Install postgresql-client-17
         run: |
           sudo install -d /usr/share/postgresql-common/pgdg

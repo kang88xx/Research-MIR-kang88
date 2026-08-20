@@ -49,8 +49,9 @@ export default async function AnalysisDetailPage({
 
   // 조회수 +1 — 유저당 글당 30분에 1회만 집계(새로고침 부풀리기 방지). waitUntil로 감싸
   // 응답 후에도 업데이트 완료를 보장한다(fire-and-forget은 서버리스에서 조용히 유실됐다).
+  // failClosed=true: 조회수는 비핵심 지표 — rate limit 저장소 장애 시 부풀리기보다 미집계를 택한다.
   const counted = session?.user?.id
-    ? await checkRateLimit(`view:${id}:${session.user.id}`, 1, 30 * 60_000).catch(() => false)
+    ? await checkRateLimit(`view:${id}:${session.user.id}`, 1, 30 * 60_000, true).catch(() => false)
     : false;
   if (counted) {
     try {
@@ -70,8 +71,9 @@ export default async function AnalysisDetailPage({
       ? ((now - post.priceAtPost) / post.priceAtPost) * 100
       : null;
 
-  // 방향 예측 판정 — 다음 데일리의 BTC 기록가(같은 09:00 KST 발행 기준) 대비.
-  // 다음 데일리가 없으면 발행 24시간 경과 후 현재가로 근사, 그 전엔 "판정 전"(목록과 동일 규칙).
+  // 방향 예측 판정 — 경계는 "바로 다음(더 최신) 데일리"의 BTC 기록가로 고정(목록과 동일 규칙).
+  // direction 유무와 무관하게 바로 다음 데일리를 경계로 쓰고, 없거나 기록가가 없으면 "판정 전".
+  // 현재가 폴백은 쓰지 않는다 — 판정이 시세에 따라 뒤집히지 않게(불변성, Codex 교차검수).
   let directionVerdict: { changePct: number; hit: boolean } | "pending" | null = null;
   if (daily?.direction && post.priceAtPost != null) {
     const nextDaily = await prisma.post.findFirst({
@@ -79,15 +81,11 @@ export default async function AnalysisDetailPage({
         boardId: post.boardId,
         createdAt: { gt: post.createdAt },
         content: { startsWith: DAILY_MARKER },
-        priceAtPost: { not: null },
       },
-      orderBy: { createdAt: "asc" },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
       select: { priceAtPost: true },
     });
-    const nextPrice =
-      nextDaily?.priceAtPost ??
-      // eslint-disable-next-line react-hooks/purity -- SSR(force-dynamic) 요청 시각 기준 판정
-      (Date.now() - post.createdAt.getTime() >= 24 * 3600_000 ? now : null);
+    const nextPrice = nextDaily?.priceAtPost ?? null;
     if (nextPrice == null) {
       directionVerdict = "pending";
     } else {

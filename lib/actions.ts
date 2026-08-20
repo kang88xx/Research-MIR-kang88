@@ -341,10 +341,16 @@ export async function refreshMarketData(): Promise<void> {
   // 우회를 막는다(쿨다운 판정 불가면 캐시 삭제 없이 재검증만).
   const userId = await requireApprovedUserId();
   const { checkRateLimit } = await import("@/lib/ratelimit");
-  const [userOk, globalOk] = await Promise.all([
-    checkRateLimit(`refresh:user:${userId}`, 1, 60_000, true),
-    checkRateLimit("refresh:global", 1, 20_000, true),
-  ]);
+  // 순차 검사 + 실패 시 환불 — 전역 쿨다운에 막혔을 뿐인데 사용자 60초 슬롯까지
+  // 소비되는 것을 막는다(Codex 교차검수). 환불 실패는 무시(다음 창에서 자연 회복).
+  const userKey = `refresh:user:${userId}`;
+  const userOk = await checkRateLimit(userKey, 1, 60_000, true);
+  const globalOk = userOk && (await checkRateLimit("refresh:global", 1, 20_000, true));
+  if (userOk && !globalOk) {
+    await prisma.rateLimit
+      .updateMany({ where: { key: userKey, count: { gt: 0 } }, data: { count: { decrement: 1 } } })
+      .catch(() => {});
+  }
   if (userOk && globalOk) {
     try {
       await prisma.marketCache.deleteMany({ where: { key: { in: MARKET_CACHE_KEYS } } });

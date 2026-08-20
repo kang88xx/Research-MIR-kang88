@@ -16,10 +16,14 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const session = await auth();
   const id = session?.user?.id;
   if (!id) return null;
-  const me = await prisma.user.findUnique({
-    where: { id },
-    select: { level: true, nickname: true, nicknameConfirmed: true },
-  });
+  // 표시용 조회 — DB 일시 장애로 페이지 전체(global-error)가 죽지 않게 null 폴백.
+  // 권한이 걸린 쓰기 액션은 lib/actions의 requireApprovedUserId가 별도로 fail-closed 검사한다.
+  const me = await prisma.user
+    .findUnique({
+      where: { id },
+      select: { level: true, nickname: true, nicknameConfirmed: true },
+    })
+    .catch(() => null);
   if (!me) return null;
   return { id, ...me };
 });

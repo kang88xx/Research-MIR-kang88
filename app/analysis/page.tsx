@@ -42,30 +42,27 @@ export default async function AnalysisPage() {
   const priceNow = new Map(snapshot.tickers.map((t) => [t.symbol, t.priceKrw]));
 
   // ── 데일리 방향 예측 판정 ──
-  // 발행 시점 BTC 기록가(priceAtPost) 대비 "다음 데일리"의 기록가(같은 09:00 KST 발행 기준)로
-  // 변동률을 계산해 적중을 가른다. 다음 데일리가 아직 없으면 발행 24시간 경과 후 현재가로 근사,
-  // 그 전에는 "판정 전". 구버전 데일리(direction 없음)는 판정 대상에서 제외한다.
-  // eslint-disable-next-line react-hooks/purity -- SSR(force-dynamic) 요청 시각 기준 판정
-  const nowMs = Date.now();
-  const btcNow = priceNow.get("BTC") ?? null;
-  const dailyRows = posts
+  // 경계는 "바로 다음(더 최신) 데일리"로 고정한다 — direction 유무와 무관하게 모든 데일리가
+  // 경계가 되므로, 구버전 데일리를 건너뛰어 다른 날 가격으로 판정하는 일이 없다(Codex 교차검수).
+  // 다음 데일리가 없거나 그 기록가가 없으면 "판정 전" — 현재가 폴백을 쓰지 않아 한번 내려진
+  // 판정이 시세에 따라 뒤집히지 않는다(판정 불변성). 상세 페이지와 동일 규칙.
+  const allDailies = posts
     .map((p) => ({ id: p.id, createdAt: p.createdAt, priceAtPost: p.priceAtPost, daily: parseDaily(p.content) }))
-    .filter((r) => r.daily?.direction && r.priceAtPost != null);
+    .filter((r) => r.daily != null)
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || b.id - a.id);
   type Verdict = { changePct: number; hit: boolean } | "pending";
   const verdicts = new Map<number, Verdict>();
-  for (let i = 0; i < dailyRows.length; i++) {
-    const cur = dailyRows[i];
-    // posts가 최신순이므로 바로 앞 원소가 "그 다음 날(더 최신)" 데일리
-    let nextPrice: number | null = dailyRows[i - 1]?.priceAtPost ?? null;
-    if (nextPrice == null) {
-      nextPrice = nowMs - cur.createdAt.getTime() >= 24 * 3600_000 ? btcNow : null;
-    }
+  for (let i = 0; i < allDailies.length; i++) {
+    const cur = allDailies[i];
+    if (!cur.daily?.direction || cur.priceAtPost == null) continue; // 구버전·가격 누락은 판정 대상 아님
+    // 최신순 정렬 — 바로 앞 원소가 "그 다음 날(더 최신)" 데일리 (direction 없어도 경계로 사용)
+    const nextPrice = allDailies[i - 1]?.priceAtPost ?? null;
     if (nextPrice == null) {
       verdicts.set(cur.id, "pending");
       continue;
     }
-    const changePct = ((nextPrice - cur.priceAtPost!) / cur.priceAtPost!) * 100;
-    verdicts.set(cur.id, { changePct, hit: judgeDirection(cur.daily!.direction!, changePct) });
+    const changePct = ((nextPrice - cur.priceAtPost) / cur.priceAtPost) * 100;
+    verdicts.set(cur.id, { changePct, hit: judgeDirection(cur.daily.direction, changePct) });
   }
   const decided = [...verdicts.values()].filter((v): v is Exclude<Verdict, "pending"> => v !== "pending");
   const hitCount = decided.filter((v) => v.hit).length;
@@ -103,8 +100,8 @@ export default async function AnalysisPage() {
             {Math.round((hitCount / decided.length) * 100)}%
           </b>
           <span className="text-ink-500">
-            {hitCount}/{decided.length} 적중 · 상방/하방 ±{DIRECTION_BAND_PCT}% 기준 · 다음날 09:00
-            KST BTC 기록가로 판정
+            {hitCount}/{decided.length} 적중 · ±{DIRECTION_BAND_PCT}% 기준 · 다음 데일리의 BTC
+            기록가로 판정 · 최근 글 30개 범위
           </span>
         </div>
       )}
