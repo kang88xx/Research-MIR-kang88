@@ -1,25 +1,25 @@
-// 텔레 봇 — 큐레이션 고정 목록 (트레이딩 봇 · 밈코인 툴 텔레그램 채널/봇 8종)
+// 텔레 봇 — 큐레이션 고정 목록 (뉴스·온체인·알림 텔레그램 채널/봇 8종)
 // 실시간 수집 대상이 아니라 리서치용 바로가기 타일. 필요 시 여기서 목록만 수정하면 된다.
-// 현재 전 항목 준비중(비활성) — 링크를 걸지 않고 흐리게만 노출. 확정된 채널부터
-// active: true 로 바꾸면 배지·링크·색이 살아난다.
+// active 미지정 항목은 준비중(비활성) — 링크 없이 흐리게만 노출. 확정되면 active: true.
+// (2026-08-20 운영자 큐레이션 교체 — GMGN만 유지, 나머지 7종 신규. 전 핸들 t.me 검증)
 
 type Entry = {
   name: string;
   handle: string; // t.me 핸들
   desc: string;
-  tag: "BOT" | "MEME";
+  tag: "BOT" | "MEME" | "ALPHA";
   active?: boolean; // 미지정(false) = 준비중
 };
 
 const ENTRIES: Entry[] = [
-  { name: "Maestro", handle: "MaestroSniperBot", desc: "멀티체인 스나이핑·트레이딩 봇의 표준", tag: "BOT" },
-  { name: "Trojan", handle: "solana_trojanbot", desc: "솔라나 밈코인 트레이딩 봇 — 속도 특화", tag: "BOT" },
-  { name: "Banana Gun", handle: "BananaGunSniper_bot", desc: "ETH·SOL 스나이퍼 봇, 신규 상장 대응", tag: "BOT" },
-  { name: "BonkBot", handle: "bonkbot_bot", desc: "솔라나 원클릭 매매 봇 — BONK 생태계", tag: "BOT" },
+  { name: "Walter Bloomberg", handle: "WalterBloomberg", desc: "미 증시·크립토 속보 터미널 뉴스 중계", tag: "BOT", active: true },
+  { name: "Onchain Radar", handle: "onchain_radar_eng", desc: "온체인 스마트머니·지갑 추적 알파", tag: "BOT", active: true },
+  { name: "Binance Alpha Tracker", handle: "binance_alpha_airdrop", desc: "바이낸스 알파 에어드롭 트래커", tag: "ALPHA", active: true },
+  { name: "New Listings Feed", handle: "NewListingsFeed", desc: "거래소 신규 상장 실시간 피드", tag: "BOT", active: true },
+  { name: "더따리 김프 알림", handle: "theddari_kimp", desc: "김프 0.5% 변동 알림 (업비트·바이낸스 기준)", tag: "BOT", active: true },
+  { name: "BWEnews", handle: "BWEnews", desc: "최속 크립토 속보·알파 뉴스", tag: "BOT", active: true },
+  { name: "Yndegen", handle: "Yndegen", desc: "밈코인 디젠 콜 채널", tag: "MEME", active: true },
   { name: "GMGN", handle: "GMGN_sol_bot", desc: "밈코인 스마트머니 추적 + 트레이딩", tag: "MEME" },
-  { name: "PepeBoost", handle: "pepeboost_sol_bot", desc: "신규 밈코인 알림·매매 봇", tag: "MEME" },
-  { name: "SolTradingBot", handle: "SolTradingBot", desc: "솔라나 DEX 트레이딩 봇", tag: "BOT" },
-  { name: "Safeguard", handle: "SafeguardRobot", desc: "밈코인 커뮤니티 입장 검증 봇", tag: "MEME" },
 ];
 
 export default function TelegramBotsMeme() {
@@ -42,7 +42,11 @@ export default function TelegramBotsMeme() {
               {e.active ? (
                 <span
                   className={`ml-auto shrink-0 rounded-[3px] px-1 font-mono text-[9px] font-bold ${
-                    e.tag === "BOT" ? "bg-brand-weak text-brand-ink" : "bg-paper2 text-ink-500"
+                    e.tag === "BOT"
+                      ? "bg-brand-weak text-brand-ink"
+                      : e.tag === "ALPHA"
+                        ? "bg-info-bg text-info"
+                        : "bg-paper2 text-ink-500"
                   }`}
                 >
                   {e.tag}

@@ -1,24 +1,17 @@
 import Link from "next/link";
-import { auth } from "@/lib/auth";
 import { logout } from "@/lib/actions";
-import { prisma } from "@/lib/prisma";
 import RefreshButton from "@/components/RefreshButton";
-import LiveViewers from "@/components/LiveViewers";
+import TodayVisits from "@/components/TodayVisits";
 import LangToggle from "@/components/LangToggle";
 import ThemeToggle from "@/components/ThemeToggle";
 import NavLinks from "@/components/NavLinks";
-
-const ADMIN_MIN_LEVEL = 10;
+import { ADMIN_MIN_LEVEL } from "@/lib/roles";
+import { getCurrentUser } from "@/lib/current-user";
 
 // 모바일 헤더 — 콘솔 라이트(흰 표면 + 헤어라인). 데스크톱(lg+)은 좌측 사이드바가 대신한다.
 export default async function Header() {
-  const session = await auth();
-  const me = session?.user?.id
-    ? await prisma.user.findUnique({
-        where: { id: session.user.id },
-        select: { level: true, nickname: true, nicknameConfirmed: true },
-      })
-    : null;
+  // 요청 단위 메모이제이션 — 사이드바·모바일 헤더가 함께 렌더되어도 유저 조회는 1회(lib/current-user)
+  const me = await getCurrentUser();
 
   return (
     <header className="border-b border-hairline bg-surface lg:hidden">
@@ -34,9 +27,9 @@ export default async function Header() {
 
         {/* 우측 — 회원 · 출석체크(로그인 시) */}
         <div className="ml-auto flex min-w-0 shrink-0 flex-wrap items-center justify-end gap-x-3 gap-y-1.5 text-sm">
-          {session?.user ? (
+          {me ? (
             <>
-              {me && me.level >= ADMIN_MIN_LEVEL && (
+              {me.level >= ADMIN_MIN_LEVEL && (
                 <Link
                   href="/admin"
                   className="py-1.5 font-semibold text-ink-500 hover:text-brand-ink"
@@ -44,7 +37,7 @@ export default async function Header() {
                   어드민
                 </Link>
               )}
-              {me && !me.nicknameConfirmed && (
+              {!me.nicknameConfirmed && (
                 <Link
                   href="/settings"
                   className="rounded-[4px] border border-brand bg-brand-weak px-2 py-1 text-xs font-semibold text-brand-ink hover:bg-brand hover:text-on-brand"
@@ -53,7 +46,7 @@ export default async function Header() {
                 </Link>
               )}
               <Link href="/settings" className="text-ink-500 hover:text-ink-900" title="내 설정">
-                <b className="font-semibold text-ink-900">{me?.nickname ?? session.user.name}</b> 님
+                <b className="font-semibold text-ink-900">{me.nickname}</b> 님
               </Link>
               <form action={logout}>
                 <button className="rounded-[4px] border border-hairline px-3 py-1 text-ink-500 hover:border-border-strong hover:text-ink-900">
@@ -73,7 +66,7 @@ export default async function Header() {
 
           {/* 동시접속 · 다크모드 · 언어 */}
           <span className="flex items-center gap-3 border-l border-hairline pl-3">
-            <LiveViewers />
+            <TodayVisits />
             <ThemeToggle />
             <LangToggle />
           </span>

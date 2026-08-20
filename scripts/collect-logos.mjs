@@ -2,6 +2,7 @@
 // lib/logos.ts 매니페스트를 생성한다. 새 이벤트가 추가되면 다시 실행하면 된다.
 //   node scripts/collect-logos.mjs
 import { writeFile, mkdir, readdir } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { PrismaClient } from "@prisma/client";
 
@@ -77,6 +78,17 @@ const STOCK_DOMAIN = {
   SEMCO: "samsung.com",
 };
 
+// 저장 후 64px로 리사이즈 — 화면 표시는 12~18px인데 원본(최대 수백 KB)을 그대로 서빙하면
+// 로고 디렉터리가 19MB까지 불었다(2026-08-20 리뷰). macOS 내장 sips 사용, 실패해도 원본 유지.
+function resizeTo64(dest) {
+  if (process.platform !== "darwin") return; // sips는 macOS 전용 — 타 플랫폼은 원본 유지
+  try {
+    execFileSync("sips", ["-Z", "64", dest], { stdio: "ignore" });
+  } catch {
+    /* 리사이즈 실패는 무시 — 원본이라도 서빙 */
+  }
+}
+
 async function download(url, dest) {
   try {
     const res = await fetch(url, { redirect: "follow", headers: { "User-Agent": "Mozilla/5.0" } });
@@ -84,6 +96,7 @@ async function download(url, dest) {
     const buf = Buffer.from(await res.arrayBuffer());
     if (buf.length < 100) return false; // 빈/깨진 이미지 방지
     await writeFile(dest, buf);
+    resizeTo64(dest);
     return true;
   } catch {
     return false;

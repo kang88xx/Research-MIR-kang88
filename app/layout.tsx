@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { Noto_Sans_KR, Geist_Mono } from "next/font/google";
+import { Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
 import ConsoleSidebar from "@/components/ConsoleSidebar";
@@ -12,13 +12,9 @@ import {
   SidebarAccountSkeleton,
 } from "@/components/Skeletons";
 
-// 데이터 콘솔 — UI/본문: Pretendard(CDN, 폴백 Noto Sans KR) · 숫자/티커/마이크로 라벨: Geist Mono
-const notoSansKr = Noto_Sans_KR({
-  variable: "--font-noto-sans-kr",
-  subsets: ["latin"],
-  weight: ["400", "500", "700", "800"],
-});
-
+// 데이터 콘솔 — UI/본문: Pretendard Variable(셀프호스팅 동적 서브셋) · 숫자/티커: Geist Mono.
+// Noto Sans KR(next/font 4웨이트)은 제거 — 실제 한글은 Pretendard가 그려서 낭비 다운로드였고,
+// 폴백은 시스템 서체(Apple SD Gothic Neo·Malgun Gothic, globals.css)로 충분하다.
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
@@ -38,13 +34,16 @@ export default function RootLayout({
   return (
     <html
       lang="ko"
-      className={`${notoSansKr.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      {/* Pretendard Variable — 시안 본문 서체 (React 19가 head로 호이스팅) */}
+      {/* Pretendard Variable — 셀프호스팅(public/fonts, v1.3.9 동적 서브셋).
+          jsdelivr CDN 의존 제거: 렌더 블로킹 서드파티·CDN 장애 리스크·CSP 예외가 함께 사라진다.
+          no-css-tags 예외: 유니코드 레인지 서브셋 92개를 쓰는 폰트 CSS라 next/font로 못 옮긴다. */}
+      {/* eslint-disable-next-line @next/next/no-css-tags */}
       <link
         rel="stylesheet"
-        href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
+        href="/fonts/pretendard/pretendardvariable-dynamic-subset.min.css"
         precedence="default"
       />
       <body className="flex min-h-full flex-col">

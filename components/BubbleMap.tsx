@@ -62,7 +62,7 @@ const EXCHANGE_KO: Record<string, string> = {
   bitget: "비트겟",
   bitfinex: "비트파이넥스",
   crypto_com: "크립토닷컴",
-  hyperliquid_spot: "하이퍼리퀴드",
+  // CoinGecko 공식 식별자는 하이픈("hyperliquid-spot") — /exchanges/list로 확인(2026-08-20)
   "hyperliquid-spot": "하이퍼리퀴드",
 };
 
@@ -88,7 +88,6 @@ const EXCHANGE_LOGO: Record<string, string> = {
   bitget: "Bitget",
   bitfinex: "Bitfinex",
   crypto_com: "CryptoCom",
-  hyperliquid_spot: "Hyperliquid",
   "hyperliquid-spot": "Hyperliquid",
 };
 
@@ -677,6 +676,15 @@ export default function BubbleMap() {
               const hit = hitTest(e.clientX - rect.left, e.clientY - rect.top);
               e.currentTarget.style.cursor = hit ? "pointer" : "default";
               setHover((h) => (hit ? (h === hit.coin.id ? h : hit.coin.id) : h === null ? h : null));
+            }}
+            onTouchStart={(e) => {
+              // 터치 디바이스는 호버 선반입이 불가능 — 손가락이 닿는 순간 거래소 목록을
+              // 미리 요청해, 이어지는 탭(클릭) 시 카드가 콜드 큐(최소 2.4초)를 건너뛰게 한다.
+              const rect = e.currentTarget.getBoundingClientRect();
+              const t = e.touches[0];
+              if (!t) return;
+              const hit = hitTest(t.clientX - rect.left, t.clientY - rect.top);
+              if (hit) void loadExchanges(hit.coin.id);
             }}
             onClick={(e) => {
               const rect = e.currentTarget.getBoundingClientRect();

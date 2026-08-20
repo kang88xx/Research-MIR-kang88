@@ -7,10 +7,9 @@ import { buildDailyAuto, STANCES, ADVICE_POSITIONS, ADVICE_ACTIONS } from "@/lib
 import { kstDay } from "@/lib/time";
 import SubmitButton from "@/components/SubmitButton";
 import PageTitle from "@/components/PageTitle";
+import { EDITOR_MIN_LEVEL } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
-
-const EDITOR_MIN_LEVEL = 10;
 
 const INPUT_CLS =
   "border border-navy-300 bg-white px-3 py-2 text-sm text-ink-900 placeholder:text-navy-300 focus:border-navy-700 focus:outline-none";

@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { waitUntil } from "@vercel/functions";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { checkRateLimit } from "@/lib/ratelimit";
 import { getTickers } from "@/lib/ticker";
 import { formatDateTime, formatKrw, formatPercent, formatPostDate } from "@/lib/format";
 import VoteButtons from "@/components/VoteButtons";
@@ -36,7 +38,18 @@ export default async function AnalysisDetailPage({
   });
   if (!post || post.board.slug !== "analysis") notFound();
 
-  prisma.post.update({ where: { id }, data: { viewCount: { increment: 1 } } }).catch(() => {});
+  // 조회수 +1 — 유저당 글당 30분에 1회만 집계(새로고침 부풀리기 방지). waitUntil로 감싸
+  // 응답 후에도 업데이트 완료를 보장한다(fire-and-forget은 서버리스에서 조용히 유실됐다).
+  const counted = session?.user?.id
+    ? await checkRateLimit(`view:${id}:${session.user.id}`, 1, 30 * 60_000).catch(() => false)
+    : false;
+  if (counted) {
+    try {
+      waitUntil(prisma.post.update({ where: { id }, data: { viewCount: { increment: 1 } } }).catch(() => {}));
+    } catch {
+      // waitUntil 미지원 환경(로컬 Node) — 프로미스는 이미 실행 중
+    }
+  }
 
   const daily = parseDaily(post.content);
 
@@ -74,7 +87,7 @@ export default async function AnalysisDetailPage({
               {post.author.nickname}
             </span>
             <span>{formatDateTime(post.createdAt)}</span>
-            <span>조회 {post.viewCount + 1}</span>
+            <span>조회 {post.viewCount + (counted ? 1 : 0)}</span>
             <span>댓글 {post.commentCount}</span>
           </div>
         </header>

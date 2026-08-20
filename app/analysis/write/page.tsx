@@ -5,8 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { createPost } from "@/lib/actions";
 import SubmitButton from "@/components/SubmitButton";
 import PageTitle from "@/components/PageTitle";
+import { EDITOR_MIN_LEVEL } from "@/lib/roles";
 
-const EDITOR_MIN_LEVEL = 10;
 const SYMBOLS = ["BTC", "ETH", "XRP", "SOL", "TRX"];
 
 export default async function AnalysisWritePage() {

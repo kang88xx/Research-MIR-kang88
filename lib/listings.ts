@@ -4,7 +4,7 @@
 
 import { lookup } from "node:dns/promises";
 import { cachedJson } from "@/lib/cache";
-import { kstDay } from "@/lib/time";
+import { kstDay, KST_MS } from "@/lib/time";
 
 // ── SSRF 방어 — 채널에서 파싱한 외부 URL은 공격자 제어 가능 ──
 function isPrivateIPv4(ip: string): boolean {
@@ -151,7 +151,7 @@ const MON: Record<string, number> = {
 
 // KST(UTC+9) 시:분 → UTC ISO. 자정 전후로 음수 시각이 나와도 Date.UTC가 날짜를 보정함.
 function kstToUtcIso(y: number, mo1: number, d: number, hh: number, mm: number): string {
-  return new Date(Date.UTC(y, mo1 - 1, d, hh, mm) - 9 * 3600_000).toISOString();
+  return new Date(Date.UTC(y, mo1 - 1, d, hh, mm) - KST_MS).toISOString();
 }
 
 // ── Bithumb 공지: 본문(예상거래시간)은 Cloudflare로 서버 fetch 불가 → 공개 공지 리스트 API 사용 ──
@@ -224,6 +224,36 @@ function isAllowedFetchHost(hostname: string): boolean {
   return ALLOWED_FETCH_HOSTS.some((re) => re.test(hostname));
 }
 
+// 원문 fetch 응답 바이트 상한 — 대용량 페이지 하나가 서버리스 메모리·시간을 잡아먹지 않게
+// 스트림으로 읽다가 상한에서 끊는다. 상장 시각 표기는 문서 앞부분에 있어 잘려도 무방.
+const EXTRACT_MAX_BYTES = 512 * 1024;
+
+async function readTextCapped(res: Response, maxBytes: number): Promise<string> {
+  if (!res.body) return "";
+  const reader = res.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    chunks.push(value);
+    if (total >= maxBytes) {
+      await reader.cancel().catch(() => {});
+      break;
+    }
+  }
+  const buf = new Uint8Array(Math.min(total, maxBytes));
+  let off = 0;
+  for (const c of chunks) {
+    const slice = off + c.byteLength > buf.byteLength ? c.subarray(0, buf.byteLength - off) : c;
+    buf.set(slice, off);
+    off += slice.byteLength;
+    if (off >= buf.byteLength) break;
+  }
+  return new TextDecoder().decode(buf);
+}
+
 // 원문 공지에서 상장 예정 시각(UTC)을 best-effort로 추출. 못 찾으면 null.
 async function extractScheduledTime(url: string | null): Promise<string | null> {
   if (!url) return null;
@@ -250,7 +280,10 @@ async function extractScheduledTime(url: string | null): Promise<string | null> 
       },
     });
     if (!res.ok) return null;
-    const t = (await res.text())
+    // HTML만 파싱 — 바이너리/JSON 응답을 통째로 텍스트 변환하지 않는다
+    const ct = res.headers.get("content-type") ?? "";
+    if (ct && !/text\/html|application\/xhtml/i.test(ct)) return null;
+    const t = (await readTextCapped(res, EXTRACT_MAX_BYTES))
       .replace(/<script[\s\S]*?<\/script>/g, " ")
       .replace(/<style[\s\S]*?<\/style>/g, " ")
       .replace(/<[^>]+>/g, " ")
@@ -322,20 +355,31 @@ async function scrape(): Promise<{ listings: Listing[]; updatedAt: string }> {
   const hasBithumb = candidates.some((l) => l.exchange === "Bithumb");
   const bithumbNotices = hasBithumb ? await fetchBithumbNotices() : new Map<string, BithumbNotice>();
 
-  // 원문에서 상장 예정 시각 추출 (병렬, 실패 시 null=미정)
-  await Promise.all(
-    candidates.map(async (l) => {
-      if (l.exchange === "Bithumb") {
-        // 빗썸: 공지 제목의 "(거래 오픈 …)"을 우선 사용(안정적), 없으면 본문 best-effort
-        const id = l.url?.match(/feed\.bithumb\.com\/notice\/(\d+)/)?.[1];
-        const notice = id ? bithumbNotices.get(id) : undefined;
-        l.scheduledAt = notice ? parseBithumbTradeTime(notice.title, notice.publishedAt) : null;
-        if (!l.scheduledAt) l.scheduledAt = await extractScheduledTime(l.url);
-        return;
-      }
-      l.scheduledAt = await extractScheduledTime(l.url);
-    })
-  );
+  // 원문에서 상장 예정 시각 추출 — 동시성 6으로 제한(최대 40개 동시 소켓 방지) +
+  // 전체 10초 예산(콜드 캐시 인라인 경로가 오래 막히지 않게). 예산 초과분은 미정(null) 유지.
+  const extractOne = async (l: Listing) => {
+    if (l.exchange === "Bithumb") {
+      // 빗썸: 공지 제목의 "(거래 오픈 …)"을 우선 사용(안정적), 없으면 본문 best-effort
+      const id = l.url?.match(/feed\.bithumb\.com\/notice\/(\d+)/)?.[1];
+      const notice = id ? bithumbNotices.get(id) : undefined;
+      l.scheduledAt = notice ? parseBithumbTradeTime(notice.title, notice.publishedAt) : null;
+      if (!l.scheduledAt) l.scheduledAt = await extractScheduledTime(l.url);
+      return;
+    }
+    l.scheduledAt = await extractScheduledTime(l.url);
+  };
+  const queue = [...candidates];
+  const workers = Array.from({ length: Math.min(6, queue.length) }, async () => {
+    for (;;) {
+      const l = queue.shift();
+      if (!l) return;
+      await extractOne(l);
+    }
+  });
+  await Promise.race([
+    Promise.all(workers),
+    new Promise((resolve) => setTimeout(resolve, 10_000)),
+  ]);
 
   // '금일'은 게시일이 아니라 상장 예정일(scheduledAt) 기준으로 확정 — 없으면 게시일로 폴백.
   // 임박 순(예정 시각 빠른 것)으로 정렬해 위쪽에 가장 가까운 일정이 오게 한다.

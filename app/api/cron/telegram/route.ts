@@ -4,9 +4,9 @@ import { refreshTelegramFeed, refreshTelegramPopular } from "@/lib/telegram";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60; // 인기 피드는 30채널 병렬 수집 — 여유 확보
 
-// 텔레그램 수집 강제 갱신 — 인기 포스팅(30채널) + 강프로 찻방(상장·상폐 후보 검수 큐).
-// 평상시에는 홈 방문 시 15분 SWR(lib/telegram)로 갱신되므로 크론 없이도 동작한다.
-// (크론 등록 시 vercel.json에 추가 — 현재는 수동 트리거/헬스체크 용도)
+// 텔레그램 수집 강제 갱신 — 인기 포스팅(34채널) + 강프로 찻방(상장·상폐 후보 검수 큐).
+// vercel.json에 30분 크론으로 등록(2026-08-20) — 상장·상폐 후보 추출(DB 쓰기)은 이 경로
+// 전용이다. 인기 포스팅 위젯은 홈 방문 시 15분 SWR(lib/telegram)로도 갱신된다.
 export async function GET(req: Request) {
   const secret = process.env.CRON_SECRET;
   const authed = secret ? req.headers.get("authorization") === `Bearer ${secret}` : false;

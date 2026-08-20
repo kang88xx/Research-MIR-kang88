@@ -111,10 +111,8 @@ function DomTile({ t }: { t: BarTile }) {
     <div className={CARD}>
       <div className="flex gap-2.5">
         <div className="min-w-0 flex-1">
-          <div className={TITLE}>
-        <TileIcon k={t.key} size={14} />
-        {t.label}
-      </div>
+          {/* 도미넌스는 파생 지표 — 코인 로고 없이 텍스트 타이틀만 (운영 결정 2026-08-20) */}
+          <div className={TITLE}>{t.label}</div>
           <div className="mt-1 flex items-baseline gap-[9px]">
             <span className={`${VAL_LG} text-navy-900`}>{t.value}</span>
             {deltaPp != null && (
@@ -146,8 +144,8 @@ function MiningTile({ t }: { t: BarTile }) {
     m.pricePct == null ? "var(--color-neutral)" : loss ? "var(--color-up)" : "var(--color-good)";
   return (
     <div className={CARD}>
+      {/* 채굴 손익도 파생 지표 — 코인 로고 없이 텍스트 타이틀만 (운영 결정 2026-08-20) */}
       <div className="flex items-center gap-[7px] text-[11.5px] font-semibold text-navy-900">
-        <TileIcon k={t.key} size={14} />
         <span className="min-w-0 truncate">{t.label}</span>
         {/* 업데이트 타임스탬프 — 비필수 마이크로카피만 9px 유지 (codex 합의) */}
         {t.sub && (

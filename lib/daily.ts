@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getTickers } from "@/lib/ticker";
 import { getMarketOverview, getBubbles, fngLabelKo } from "@/lib/market";
 import { getMarketBar } from "@/lib/marketbar";
-import { upcomingKstRange } from "@/lib/time";
+import { upcomingKstRange, KST_MS } from "@/lib/time";
 
 export const DAILY_MARKER = "[[KMIR-DAILY-V1]]";
 
@@ -187,9 +187,9 @@ export async function buildDailyAuto(): Promise<DailyData["auto"]> {
   const moversDown = ranked.slice(-3).reverse().map(fmtMover).join(" · ");
 
   // ── 일정 — 매크로(중요도 2+) + 언락, 향후 7일 ──
-  const todayKst = new Date(startUtc.getTime() + 9 * 3600_000);
+  const todayKst = new Date(startUtc.getTime() + KST_MS);
   const events: DailyEvent[] = calendarEvents.map((e) => {
-    const eventKst = new Date(e.date.getTime() + 9 * 3600_000);
+    const eventKst = new Date(e.date.getTime() + KST_MS);
     const diffDays = Math.round(
       (Date.UTC(eventKst.getUTCFullYear(), eventKst.getUTCMonth(), eventKst.getUTCDate()) -
         Date.UTC(todayKst.getUTCFullYear(), todayKst.getUTCMonth(), todayKst.getUTCDate())) /

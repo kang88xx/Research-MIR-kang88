@@ -6,8 +6,7 @@ import { kstDay } from "@/lib/time";
 // (운영 결정 2026-07-07: 거래소 공지 4종 수집기 대신 이 채널에서만 추출. docs/data-collection 참조)
 const CHANNEL = "kang_tearoom";
 const CHANNEL_NAME = "강프로 찻방";
-const FEED_KEY = "telegramFeed:v1";
-const FEED_TTL_MS = 15 * 60_000; // 15분 — t.me 공개 프리뷰 폴링 주기
+const FEED_KEY = "telegramFeed:v1"; // 크론(refreshTelegramFeed)이 30분 간격으로 갱신
 const MAX_POSTS = 12;
 
 export type TgPost = {
@@ -27,8 +26,9 @@ export type TelegramFeed = {
 };
 
 // ── 인기 포스팅 (멀티 채널) ──
-// 한국 크립토 채널 25곳(2026-07-12 telemetr.io 랭킹에서 큐레이션, 전 채널 t.me/s 프리뷰 검증)
-// 에서 조회수 상위 12개를 뽑는다. 제외 원칙(운영 결정 2026-07-12): 거래소 공지·실시간 알람·
+// 한국 크립토 채널 34곳(2026-07-12 telemetr.io 랭킹 큐레이션 25곳 + 2026-08-20 운영자 추가
+// 9곳, 전 채널 t.me/s 프리뷰 검증)에서 조회수 상위를 뽑는다.
+// 제외 원칙(운영 결정 2026-07-12): 거래소 공지·실시간 알람·
 // 봇/자동 중계(예: 새우잡이어선 — 거래소 공지 리포스트 봇)·뉴스 매체(고빈도로 순위 독식)·
 // 미러 중복 채널(예: hoon_trading은 shipalnam과 동일 글 게시 → 한쪽만 유지).
 export type TgRankedPost = TgPost & {
@@ -44,7 +44,7 @@ export type TelegramPopular = {
   updatedAt: string;
 };
 
-const POPULAR_KEY = "telegramPopular:v4"; // v4: 톱 20 + 차순위 충원 (v2: channelPhoto 추가)
+const POPULAR_KEY = "telegramPopular:v5"; // v5: 채널 34곳으로 확장 (v4: 톱 20 + 차순위 충원)
 const POPULAR_TTL_MS = 15 * 60_000; // 15분 — 30채널 × 96사이클/일 ≈ 2,900요청으로 차단 리스크 억제
 const POPULAR_TOP = 20;
 const POPULAR_WINDOW_MS = 24 * 3600_000; // 1차 랭킹 윈도우 — 부족하면 72h로 확장
@@ -77,6 +77,16 @@ const POPULAR_CHANNELS: { handle: string; name: string }[] = [
   { handle: "c0wfarm", name: "흑우농장" },
   { handle: "chikointhebox", name: "치코의 택배상자" },
   { handle: "raoni1", name: "라오니" },
+  // 운영자 추가 (2026-08-20, 전 채널 t.me/s 프리뷰 검증)
+  { handle: "Roh0517", name: "Nodo의 부두술" },
+  { handle: "justdegenguy", name: "Degen Guy" },
+  { handle: "Web3LearningWithInger", name: "돈포하" },
+  { handle: "ewlreads", name: "EWL's doomscroll" },
+  { handle: "Dove262", name: "그냥 꼬맹" },
+  { handle: "kimmm1kim", name: "작업일지" },
+  { handle: "crypto_sexy_open", name: "Crypto 은고" },
+  { handle: "hodl100y", name: "Hodl crypto for 100y" },
+  { handle: "MaestroMonologues", name: "Maestro Monologues" },
 ];
 
 // t.me/s HTML 엔티티 → 텍스트. &amp;는 마지막에 풀어야 "&amp;lt;" 같은 중첩 인코딩이 이중 디코딩되지 않는다.
@@ -254,10 +264,11 @@ async function extractListingDrafts(posts: TgPost[]): Promise<number> {
   return created;
 }
 
-// 수집 본체 — t.me/s 조회 + 파싱 + 상장 후보 추출. 위젯 캐시(fetcher)와 크론이 공유.
-// 주의: 검수 큐 초안 생성(DB 쓰기)이 홈 SSR의 캐시 갱신 경로에서도 실행된다 — 무료 플랜에선
-// 크론이 하루 1회뿐이라 의도한 트레이드오프. 포스트 ID 멱등 처리로 중복 기입은 방지된다.
-export async function collectTelegramFeed(): Promise<TelegramFeed> {
+// 수집 본체 — t.me/s 조회 + 파싱. 위젯 캐시(fetcher)와 크론이 공유.
+// 검수 큐 초안 생성(DB 쓰기)은 크론 전용(extractDrafts=true, refreshTelegramFeed 경유)으로만
+// 실행한다 — 홈 SSR 렌더 경로의 DB 쓰기와 인스턴스 간 동시 실행 레이스를 없애고,
+// 상장·상폐 파이프라인이 방문자 트래픽에 의존하지 않게 한다(2026-08-20, /api/cron/telegram 등록).
+export async function collectTelegramFeed(extractDrafts = false): Promise<TelegramFeed> {
   const res = await fetch(`https://t.me/s/${CHANNEL}`, {
     cache: "no-store",
     signal: AbortSignal.timeout(8000),
@@ -266,23 +277,14 @@ export async function collectTelegramFeed(): Promise<TelegramFeed> {
   if (!res.ok) throw new Error(`t.me/s/${CHANNEL} ${res.status}`);
   const posts = parseTelegramPreview(await res.text());
   if (posts.length === 0) throw new Error("telegram preview parse: 0 posts"); // 마크업 변경 감지 → stale 폴백
-  await extractListingDrafts(posts);
+  if (extractDrafts) await extractListingDrafts(posts);
   return { channel: CHANNEL, channelName: CHANNEL_NAME, posts, updatedAt: new Date().toISOString() };
-}
-
-// 홈 위젯용 — DB 캐시(15분 SWR). 실패 시 null (위젯이 샘플 데이터로 폴백).
-export async function getTelegramFeed(): Promise<TelegramFeed | null> {
-  try {
-    return await cachedJson(FEED_KEY, FEED_TTL_MS, collectTelegramFeed);
-  } catch {
-    return null;
-  }
 }
 
 // 크론·헬스체크용 — 강제 갱신. cachedJson을 거치지 않고 직접 수집해 실패를 그대로 전파한다
 // (cachedJson은 실패 시 stale 캐시로 폴백하므로, 이를 쓰면 수집이 며칠째 깨져도 ok로 보고되는 문제)
 export async function refreshTelegramFeed(): Promise<TelegramFeed> {
-  const feed = await collectTelegramFeed();
+  const feed = await collectTelegramFeed(true); // 크론 전용 — 상장·상폐 후보 추출 포함
   try {
     await prisma.marketCache.upsert({
       where: { key: FEED_KEY },
@@ -400,14 +402,9 @@ export async function collectTelegramPopular(): Promise<TelegramPopular> {
 }
 
 // 홈 위젯용 — DB 캐시(15분 SWR). 실패 시 null (위젯이 샘플 데이터로 폴백).
-// 상장·상폐 후보 추출(강프로 찻방)도 같은 사이클에서 계속 돌도록 여기서 함께 트리거한다.
 export async function getTelegramPopular(): Promise<TelegramPopular | null> {
   try {
-    const [popular] = await Promise.all([
-      cachedJson(POPULAR_KEY, POPULAR_TTL_MS, collectTelegramPopular),
-      getTelegramFeed(), // 자체 15분 캐시 — 만료 시에만 실제 수집·추출 실행
-    ]);
-    return popular;
+    return await cachedJson(POPULAR_KEY, POPULAR_TTL_MS, collectTelegramPopular);
   } catch {
     return null;
   }

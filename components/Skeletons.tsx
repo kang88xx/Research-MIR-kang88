@@ -7,7 +7,7 @@ function Bar({ className = "" }: { className?: string }) {
   return <div className={`rounded bg-paper2 ${className}`} />;
 }
 
-// 섹션 공통 셸(라이트 헤더 + 흰 본문) — SignalRadar·ListingsStrip 공용
+// 섹션 공통 셸(라이트 헤더 + 흰 본문) — HomeBoards 등 섹션 스켈레톤 공용
 function SectionShell({ minBody }: { minBody: string }) {
   return (
     <section className="rounded-[6px] border border-line bg-white shadow-card overflow-hidden">
@@ -76,11 +76,6 @@ export function MarketBarSkeleton() {
       ))}
     </div>
   );
-}
-
-// ── 홈: 지금 봐야 할 코인(시그널 레이더) ──
-export function SignalRadarSkeleton() {
-  return <SectionShell minBody="min-h-[180px]" />;
 }
 
 // ── 전역 상단: 신규 상장·상폐 고정 스트립 ──

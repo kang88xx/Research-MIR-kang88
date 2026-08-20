@@ -1,16 +1,16 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { kstDayStartUtc } from "@/lib/time";
+import { kstDayStartUtc, KST_MS } from "@/lib/time";
 import { DAILY_MARKER, buildDailyAuto, serializeDaily } from "@/lib/daily";
 import { generateDailyJudgment } from "@/lib/daily-ai";
 import { getTickers } from "@/lib/ticker";
+import { EDITOR_MIN_LEVEL } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 // Opus 5는 사고 시간이 길어 한 턴에 수 분까지 걸릴 수 있다 — 데이터 수집분까지 여유 확보
 export const maxDuration = 300;
 
-const EDITOR_MIN_LEVEL = 10;
 const WEEKDAY_KO = ["일", "월", "화", "수", "목", "금", "토"];
 
 // Vercel Cron: 매일 00:00 UTC(= 09:00 KST) 호출 — vercel.json 참고.
@@ -59,7 +59,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: "analysis board not found" }, { status: 500 });
     }
 
-    const kstNow = new Date(Date.now() + 9 * 3600_000);
+    const kstNow = new Date(Date.now() + KST_MS);
     const dateLabel = `${kstNow.getUTCMonth() + 1}/${kstNow.getUTCDate()}(${WEEKDAY_KO[kstNow.getUTCDay()]})`;
 
     const auto = await buildDailyAuto();

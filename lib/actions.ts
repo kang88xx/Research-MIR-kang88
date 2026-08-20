@@ -5,14 +5,13 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NICK_MAX_CHANGES, type NicknameResult } from "@/lib/nickname";
+import { EDITOR_MIN_LEVEL } from "@/lib/roles";
 
 async function requireUserId(): Promise<string> {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
   return session.user.id;
 }
-
-const EDITOR_MIN_LEVEL = 10;
 
 // 승인된(또는 운영진) 회원만 통과. 서버 액션은 proxy.ts 페이지 게이트와 별개의 POST
 // 엔드포인트이므로(승인 대기 유저도 /pending 경유로 액션 호출 가능), 콘텐츠를 변경하는
@@ -333,11 +332,16 @@ const MARKET_CACHE_KEYS = [
 ];
 
 export async function refreshMarketData(): Promise<void> {
-  // 승인 회원만 + 전역 20초 쿨다운 — 반복 캐시 비우기로 외부 API를 두들기는 악용 차단.
-  // (쿨다운 중에는 캐시 삭제 없이 재검증만 — 버튼 UX는 유지하되 외부 호출 폭주 방지)
-  await requireApprovedUserId();
+  // 승인 회원만 + 사용자별 60초 & 전역 20초 쿨다운 — 반복 캐시 비우기로 외부 API를
+  // 두들기는 악용 차단. failClosed=true: DB 장애 시 rate limit이 열려서 삭제가 통과하는
+  // 우회를 막는다(쿨다운 판정 불가면 캐시 삭제 없이 재검증만).
+  const userId = await requireApprovedUserId();
   const { checkRateLimit } = await import("@/lib/ratelimit");
-  if (await checkRateLimit("refresh:global", 1, 20_000)) {
+  const [userOk, globalOk] = await Promise.all([
+    checkRateLimit(`refresh:user:${userId}`, 1, 60_000, true),
+    checkRateLimit("refresh:global", 1, 20_000, true),
+  ]);
+  if (userOk && globalOk) {
     try {
       await prisma.marketCache.deleteMany({ where: { key: { in: MARKET_CACHE_KEYS } } });
     } catch {

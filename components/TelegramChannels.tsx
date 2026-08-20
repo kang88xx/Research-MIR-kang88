@@ -1,11 +1,12 @@
 "use client";
 
 // 한국 텔레그램 인기 포스팅 — 마퀴 스트립 (풀와이드, 낮은 높이).
-// 실데이터: lib/telegram getTelegramPopular(한국 크립토 25채널 t.me 프리뷰, 15분 캐시)
+// 실데이터: lib/telegram getTelegramPopular(한국 크립토 34채널 t.me 프리뷰, 15분 캐시)
 // 에서 혼합 점수(조회수×반응) 톱20을 받아 카드로 노출. 수신 실패 시 샘플 폴백.
 // 홈(strip)은 파트너 로고처럼 끊김 없이 좌로 흘러가는 마퀴 — 호버 시 일시정지(.ticker-track).
 
 import type { TelegramPopular } from "@/lib/telegram";
+import { kstMonthDayTime } from "@/lib/time";
 
 const MAX_POSTS = 20;
 // 마퀴 루프가 화면 폭보다 짧으면 빈 구간이 보이므로 최소 카드 수까지 반복해 채운다
@@ -21,24 +22,17 @@ type Post = {
   postUrl: string; // 게시글 링크
 };
 
-// KST "M/D HH:MM" — 서버/클라이언트 동일 결과(하이드레이션 안전)
-function kstTimeLabel(iso: string): string {
-  const k = new Date(new Date(iso).getTime() + 9 * 3600_000);
-  return `${k.getUTCMonth() + 1}/${k.getUTCDate()} ${String(k.getUTCHours()).padStart(2, "0")}:${String(
-    k.getUTCMinutes()
-  ).padStart(2, "0")}`;
-}
-
 // 반응 수 컴팩트 표기 (1234 → "1.2K")
 function compact(n: number): string {
   return n >= 1000 ? `${(n / 1000).toFixed(1)}K` : String(n);
 }
 
-// 샘플 데이터 — 피드 수신 실패/최초 수집 전 폴백
+// 샘플 데이터 — 피드 수신 실패/최초 수집 전 폴백.
+// 허구의 시세·김프 수치를 넣지 않는다(실데이터로 오인 방지) — 채널 소개만 중립적으로 표기.
 const SAMPLE_POSTS: Post[] = [
-  { channel: "우리는 트윗충", avatar: null, time: "2시간 전", title: "비트코인 5.8만달러 지지 확인, 단기 반등 시나리오 점검", views: "12.4K", reactions: 231, postUrl: "https://t.me/twitchoong" },
-  { channel: "캔들의 신 관점", avatar: null, time: "5시간 전", title: "USDT 김프 -1.8% 진입, 역프 확대 주의", views: "15.2K", reactions: 468, postUrl: "https://t.me/godofcandle" },
-  { channel: "해달의 투자 정보", avatar: null, time: "8시간 전", title: "바이낸스 신규 상장 공지: 신규 토큰 현물 마켓 추가", views: "21.7K", reactions: 152, postUrl: "https://t.me/seaotterbtc" },
+  { channel: "우리는 트윗충", avatar: null, time: "", title: "포스팅을 수집하는 중입니다. 잠시 후 최신 글이 표시됩니다.", views: "", reactions: 0, postUrl: "https://t.me/twitchoong" },
+  { channel: "캔들의 신 관점", avatar: null, time: "", title: "포스팅을 수집하는 중입니다. 잠시 후 최신 글이 표시됩니다.", views: "", reactions: 0, postUrl: "https://t.me/godofcandle" },
+  { channel: "해달의 투자 정보", avatar: null, time: "", title: "포스팅을 수집하는 중입니다. 잠시 후 최신 글이 표시됩니다.", views: "", reactions: 0, postUrl: "https://t.me/seaotterbtc" },
 ];
 
 // 카드 1장 — strip(마퀴)·grid 공용. rank는 원본 목록 기준 순위(반복 채움과 무관).
@@ -95,13 +89,13 @@ export default function TelegramChannels({
 }) {
   const grid = layout === "grid";
 
-  // 실데이터(t.me 프리뷰 25채널 랭킹) 우선, 없으면 샘플 폴백
+  // 실데이터(t.me 프리뷰 34채널 랭킹) 우선, 없으면 샘플 폴백
   const live = popular != null && popular.posts.length > 0;
   const posts: Post[] = (live
     ? popular.posts.map((p) => ({
         channel: p.channelName,
         avatar: p.channelPhoto ?? null,
-        time: kstTimeLabel(p.dateIso),
+        time: kstMonthDayTime(p.dateIso),
         title: p.title,
         views: p.views,
         reactions: p.reactions,

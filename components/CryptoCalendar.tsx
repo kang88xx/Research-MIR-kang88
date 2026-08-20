@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import EventIcon from "@/components/EventIcon";
 import Spinner from "@/components/Spinner";
+import { KST_MS } from "@/lib/time";
 
 type EventSource = {
   name: string;
@@ -110,7 +111,6 @@ const GROUP_FALLBACK: GroupStyle = {
 };
 const groupColor = (g: string): GroupStyle => GROUP_COLORS[g] ?? GROUP_FALLBACK;
 
-const KST_OFFSET = 9 * 3600_000;
 const IMMINENT_MS = 12 * 3600_000; // 시작 12시간 전부터 강조
 
 // 확정 시각이 있는 이벤트만 Date 반환 (00:00:00 UTC = 시각 미지정 → null)
@@ -124,7 +124,7 @@ function eventTime(ev: CalendarEvent): Date | null {
 
 // KST HH:mm
 function kstHm(d: Date): string {
-  const k = new Date(d.getTime() + KST_OFFSET);
+  const k = new Date(d.getTime() + KST_MS);
   return `${String(k.getUTCHours()).padStart(2, "0")}:${String(k.getUTCMinutes()).padStart(2, "0")}`;
 }
 
@@ -155,7 +155,7 @@ export default function CryptoCalendar({
   useEffect(() => {
     const DAY_KO = ["일", "월", "화", "수", "목", "금", "토"];
     const fmt = () => {
-      const k = new Date(Date.now() + 9 * 3600_000);
+      const k = new Date(Date.now() + KST_MS);
       setNowLabel(
         `${k.getUTCMonth() + 1}/${k.getUTCDate()}(${DAY_KO[k.getUTCDay()]}) ${String(
           k.getUTCHours()

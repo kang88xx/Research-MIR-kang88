@@ -1,6 +1,7 @@
 import { getTodayListings, type Exchange, type Listing } from "@/lib/listings";
 import { EXCHANGE_LOGOS } from "@/lib/logos";
 import { formatRelativeTime } from "@/lib/format";
+import { kstHHMM, kstMonthDayTime } from "@/lib/time";
 
 const EPOCH = new Date(0).toISOString();
 
@@ -12,18 +13,6 @@ function koDetail(l: Listing): string {
   if (/spot/.test(t)) return "현물 상장";
   if (/delist/.test(t)) return "상장 폐지";
   return "상장 예정";
-}
-
-// HH:mm (KST)
-function kstTime(iso: string): string {
-  const d = new Date(new Date(iso).getTime() + 9 * 3600_000);
-  return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`;
-}
-
-// M/D HH:mm (KST) — 상장 예정 시각용
-function kstDateTime(iso: string): string {
-  const d = new Date(new Date(iso).getTime() + 9 * 3600_000);
-  return `${d.getUTCMonth() + 1}/${d.getUTCDate()} ${kstTime(iso)}`;
 }
 
 // 거래소 브랜드 색 (뱃지)
@@ -111,14 +100,14 @@ export default async function ListingsStrip() {
                     className={`shrink-0 font-mono text-[10px] font-semibold ${
                       imminent ? "text-red-600" : "text-navy-700"
                     }`}
-                    title={`상장 예정 (한국시간) · 게시 ${kstTime(l.date)} KST`}
+                    title={`상장 예정 (한국시간) · 게시 ${kstHHMM(l.date)} KST`}
                   >
-                    {kstDateTime(l.scheduledAt)} KST
+                    {kstMonthDayTime(l.scheduledAt)} KST
                   </span>
                 ) : (
                   <span
                     className="shrink-0 font-mono text-[10px] text-ink-400"
-                    title={`상장 시각 미확인 · 게시 ${kstTime(l.date)} KST`}
+                    title={`상장 시각 미확인 · 게시 ${kstHHMM(l.date)} KST`}
                   >
                     미정
                   </span>

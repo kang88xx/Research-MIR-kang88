@@ -8,7 +8,6 @@ import {
 } from "@/lib/ticker";
 import { getMarketOverview, getFxHistory, getBubbles, warmCoinExchanges } from "@/lib/market";
 import { getTodayListings } from "@/lib/listings";
-import { getExchangeListingSets } from "@/lib/exchange-listings";
 import { getMarketBar } from "@/lib/marketbar";
 
 export const dynamic = "force-dynamic";
@@ -31,7 +30,7 @@ export async function GET(req: Request) {
   }
 
   // TTL 만료된 캐시만 갱신 (느린 데이터는 자기 주기대로만 외부 호출)
-  // 시그널 레이더 섹션 제거(2026-08)로 radar·krwStats·trend 워밍은 삭제 — 소비처 없는 외부 호출이었다
+  // 시그널 레이더 관련 워밍(radar·krwStats·trend·exchange-listing-sets)은 소비처가 없어 삭제(2026-08).
   const warm = await Promise.allSettled([
     getTickers(),
     getExchangeComparison(),
@@ -41,7 +40,6 @@ export async function GET(req: Request) {
     getFxHistory(),
     getBubbles(),
     getTodayListings(),
-    getExchangeListingSets(),
     getMarketBar(),
   ]);
   const warmFailed = warm.filter((r) => r.status === "rejected").length;

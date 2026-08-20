@@ -5,10 +5,9 @@ import { auth } from "@/lib/auth";
 import { formatKrw, formatPercent, formatPostDate } from "@/lib/format";
 import { parseDaily, stanceLabel, STANCE_COLOR } from "@/lib/daily";
 import PageTitle from "@/components/PageTitle";
+import { EDITOR_MIN_LEVEL } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
-
-const EDITOR_MIN_LEVEL = 10;
 
 export default async function AnalysisPage() {
   const [board, snapshot, session] = await Promise.all([

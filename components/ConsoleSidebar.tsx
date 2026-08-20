@@ -1,24 +1,17 @@
 import Link from "next/link";
-import { auth } from "@/lib/auth";
 import { logout } from "@/lib/actions";
-import { prisma } from "@/lib/prisma";
 import SideNav from "@/components/SideNav";
 import RefreshButton from "@/components/RefreshButton";
-import LiveViewers from "@/components/LiveViewers";
+import TodayVisits from "@/components/TodayVisits";
 import LangToggle from "@/components/LangToggle";
 import ThemeToggle from "@/components/ThemeToggle";
-
-const ADMIN_MIN_LEVEL = 10;
+import { ADMIN_MIN_LEVEL } from "@/lib/roles";
+import { getCurrentUser } from "@/lib/current-user";
 
 // 데스크톱 좌측 사이드바 — 콘솔 시안: 로고 블록 · 번호형 네비 · 하단 ACCOUNT 패널
 export default async function ConsoleSidebar() {
-  const session = await auth();
-  const me = session?.user?.id
-    ? await prisma.user.findUnique({
-        where: { id: session.user.id },
-        select: { level: true, nickname: true, nicknameConfirmed: true },
-      })
-    : null;
+  // 요청 단위 메모이제이션 — 사이드바·모바일 헤더가 함께 렌더되어도 유저 조회는 1회(lib/current-user)
+  const me = await getCurrentUser();
 
   return (
     <aside className="console-side sticky top-0 hidden h-screen w-[228px] shrink-0 flex-col overflow-y-auto lg:flex">
@@ -43,14 +36,14 @@ export default async function ConsoleSidebar() {
         <p className="font-mono text-[9.5px] font-medium tracking-[0.16em] text-ink-400 uppercase">
           Account
         </p>
-        {session?.user ? (
+        {me ? (
           <div className="mt-2 flex flex-col gap-2 text-[12.5px]">
             <div className="flex items-baseline justify-between">
               <Link href="/settings" className="font-bold text-ink-900 hover:text-brand-ink" title="Settings">
-                {me?.nickname ?? session.user.name}
+                {me.nickname}
               </Link>
             </div>
-            {me && !me.nicknameConfirmed && (
+            {!me.nicknameConfirmed && (
               <Link
                 href="/settings"
                 className="rounded-[4px] border border-brand bg-brand-weak px-2 py-1 text-center text-[11.5px] font-semibold text-brand-ink hover:bg-brand hover:text-on-brand"
@@ -59,7 +52,7 @@ export default async function ConsoleSidebar() {
               </Link>
             )}
             <div className="flex items-center gap-3 text-[12px]">
-              {me && me.level >= ADMIN_MIN_LEVEL && (
+              {me.level >= ADMIN_MIN_LEVEL && (
                 <Link href="/admin" className="font-semibold text-ink-500 hover:text-brand-ink">
                   Admin
                 </Link>
@@ -89,7 +82,7 @@ export default async function ConsoleSidebar() {
         )}
         {/* 시스템 행 — 동시접속 · 다크모드 · 언어 */}
         <div className="mt-3 flex items-center gap-3 border-t border-hairline pt-3">
-          <LiveViewers />
+          <TodayVisits />
           <span className="ml-auto flex items-center gap-3">
             <ThemeToggle />
             <LangToggle />
