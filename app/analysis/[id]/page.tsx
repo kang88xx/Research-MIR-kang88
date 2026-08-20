@@ -65,7 +65,7 @@ export default async function AnalysisDetailPage({
     <div className="mx-auto max-w-4xl">
       <article className="border border-line bg-white">
         <header className="border-b border-line px-5 py-4">
-          <p className="eyebrow">{daily ? "공식 시장 분석 · 데일리" : "공식 시장 분석"}</p>
+          <p className="eyebrow">공식 시장 분석</p>
           <h1 className="text-xl font-bold text-navy-900">
             {daily && (
               // 소프트 필 — 목록(STANCE_COLOR)과 동일한 의미 색 틴트

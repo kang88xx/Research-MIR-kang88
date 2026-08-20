@@ -82,10 +82,7 @@ export default async function AnalysisPage() {
                   <h2 className="font-semibold text-navy-900">
                     {daily && (
                       <>
-                        {/* 소프트 필 — 파스텔 배경 + 동계열 텍스트 (스탠스는 의미 색 틴트) */}
-                        <span className="mr-1.5 inline-block rounded-full bg-brand-weak px-2.5 py-[3px] align-[1.5px] text-[10.5px] font-bold text-brand-ink">
-                          데일리
-                        </span>
+                        {/* 스탠스 소프트 필만 표기 — "데일리" 뱃지는 정보량 없이 자리만 차지해 제거(운영 결정 2026-08-20) */}
                         <span
                           className="mr-1.5 inline-block rounded-full px-2.5 py-[3px] align-[1.5px] text-[10.5px] font-bold"
                           style={{
