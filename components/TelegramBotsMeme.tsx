@@ -1,7 +1,7 @@
 // 텔레 봇 — 큐레이션 고정 목록 (뉴스·온체인·알림 텔레그램 채널/봇 8종)
 // 실시간 수집 대상이 아니라 리서치용 바로가기 타일. 필요 시 여기서 목록만 수정하면 된다.
 // active 미지정 항목은 준비중(비활성) — 링크 없이 흐리게만 노출. 확정되면 active: true.
-// (2026-08-20 운영자 큐레이션 교체 — GMGN만 유지, 나머지 7종 신규. 전 핸들 t.me 검증)
+// (2026-08-20 운영자 큐레이션 교체, 현재 8종 전부 활성. 전 핸들 t.me 검증)
 
 type Entry = {
   name: string;
@@ -19,7 +19,7 @@ const ENTRIES: Entry[] = [
   { name: "더따리 김프 알림", handle: "theddari_kimp", desc: "김프 0.5% 변동 알림 (업비트·바이낸스 기준)", tag: "BOT", active: true },
   { name: "BWEnews", handle: "BWEnews", desc: "최속 크립토 속보·알파 뉴스", tag: "BOT", active: true },
   { name: "Yndegen", handle: "Yndegen", desc: "밈코인 디젠 콜 채널", tag: "MEME", active: true },
-  { name: "GMGN", handle: "GMGN_sol_bot", desc: "밈코인 스마트머니 추적 + 트레이딩", tag: "MEME" },
+  { name: "GMGN", handle: "GMGN_sol_bot", desc: "밈코인 스마트머니 추적 + 트레이딩", tag: "MEME", active: true },
 ];
 
 export default function TelegramBotsMeme() {
