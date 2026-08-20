@@ -3,7 +3,15 @@ import { prisma } from "@/lib/prisma";
 import { getTickers } from "@/lib/ticker";
 import { auth } from "@/lib/auth";
 import { formatKrw, formatPercent, formatPostDate } from "@/lib/format";
-import { parseDaily, stanceLabel, STANCE_COLOR } from "@/lib/daily";
+import {
+  parseDaily,
+  stanceLabel,
+  directionLabel,
+  judgeDirection,
+  STANCE_COLOR,
+  DIRECTION_COLOR,
+  DIRECTION_BAND_PCT,
+} from "@/lib/daily";
 import PageTitle from "@/components/PageTitle";
 import { EDITOR_MIN_LEVEL } from "@/lib/roles";
 
@@ -33,6 +41,35 @@ export default async function AnalysisPage() {
 
   const priceNow = new Map(snapshot.tickers.map((t) => [t.symbol, t.priceKrw]));
 
+  // ── 데일리 방향 예측 판정 ──
+  // 발행 시점 BTC 기록가(priceAtPost) 대비 "다음 데일리"의 기록가(같은 09:00 KST 발행 기준)로
+  // 변동률을 계산해 적중을 가른다. 다음 데일리가 아직 없으면 발행 24시간 경과 후 현재가로 근사,
+  // 그 전에는 "판정 전". 구버전 데일리(direction 없음)는 판정 대상에서 제외한다.
+  // eslint-disable-next-line react-hooks/purity -- SSR(force-dynamic) 요청 시각 기준 판정
+  const nowMs = Date.now();
+  const btcNow = priceNow.get("BTC") ?? null;
+  const dailyRows = posts
+    .map((p) => ({ id: p.id, createdAt: p.createdAt, priceAtPost: p.priceAtPost, daily: parseDaily(p.content) }))
+    .filter((r) => r.daily?.direction && r.priceAtPost != null);
+  type Verdict = { changePct: number; hit: boolean } | "pending";
+  const verdicts = new Map<number, Verdict>();
+  for (let i = 0; i < dailyRows.length; i++) {
+    const cur = dailyRows[i];
+    // posts가 최신순이므로 바로 앞 원소가 "그 다음 날(더 최신)" 데일리
+    let nextPrice: number | null = dailyRows[i - 1]?.priceAtPost ?? null;
+    if (nextPrice == null) {
+      nextPrice = nowMs - cur.createdAt.getTime() >= 24 * 3600_000 ? btcNow : null;
+    }
+    if (nextPrice == null) {
+      verdicts.set(cur.id, "pending");
+      continue;
+    }
+    const changePct = ((nextPrice - cur.priceAtPost!) / cur.priceAtPost!) * 100;
+    verdicts.set(cur.id, { changePct, hit: judgeDirection(cur.daily!.direction!, changePct) });
+  }
+  const decided = [...verdicts.values()].filter((v): v is Exclude<Verdict, "pending"> => v !== "pending");
+  const hitCount = decided.filter((v) => v.hit).length;
+
   return (
     <div>
       <PageTitle
@@ -59,6 +96,19 @@ export default async function AnalysisPage() {
         }
       />
 
+      {decided.length > 0 && (
+        <div className="mb-3 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 border border-line bg-white px-4 py-2.5 text-[12.5px]">
+          <span className="font-bold text-navy-900">BTC 방향 예측 적중률</span>
+          <b className="font-mono text-[15px] font-bold tabular-nums text-navy-900">
+            {Math.round((hitCount / decided.length) * 100)}%
+          </b>
+          <span className="text-ink-500">
+            {hitCount}/{decided.length} 적중 · 상방/하방 ±{DIRECTION_BAND_PCT}% 기준 · 다음날 09:00
+            KST BTC 기록가로 판정
+          </span>
+        </div>
+      )}
+
       {posts.length === 0 ? (
         <p className="border border-line bg-white py-12 text-center text-sm text-ink-500">
           아직 분석 글이 없습니다.
@@ -72,6 +122,7 @@ export default async function AnalysisPage() {
                 ? ((now - post.priceAtPost) / post.priceAtPost) * 100
                 : null;
             const daily = parseDaily(post.content);
+            const verdict = verdicts.get(post.id) ?? null;
             return (
               <Link
                 key={post.id}
@@ -82,7 +133,7 @@ export default async function AnalysisPage() {
                   <h2 className="font-semibold text-navy-900">
                     {daily && (
                       <>
-                        {/* 스탠스 소프트 필만 표기 — "데일리" 뱃지는 정보량 없이 자리만 차지해 제거(운영 결정 2026-08-20) */}
+                        {/* 스탠스 소프트 필 — "데일리" 뱃지는 정보량 없이 자리만 차지해 제거(운영 결정 2026-08-20) */}
                         <span
                           className="mr-1.5 inline-block rounded-full px-2.5 py-[3px] align-[1.5px] text-[10.5px] font-bold"
                           style={{
@@ -92,6 +143,36 @@ export default async function AnalysisPage() {
                         >
                           {stanceLabel(daily.stance)}
                         </span>
+                        {/* 내일 BTC 방향 예측 + 다음날 판정 결과 */}
+                        {daily.direction && (
+                          <span
+                            className="mr-1.5 inline-block rounded-full px-2.5 py-[3px] align-[1.5px] text-[10.5px] font-bold"
+                            style={{
+                              color: DIRECTION_COLOR[daily.direction] ?? "var(--color-neutral)",
+                              background: `color-mix(in srgb, ${DIRECTION_COLOR[daily.direction] ?? "var(--color-neutral)"} 11%, transparent)`,
+                            }}
+                            title={`내일 BTC 방향 예측 (±${DIRECTION_BAND_PCT}% 기준)`}
+                          >
+                            예측 {directionLabel(daily.direction)}
+                          </span>
+                        )}
+                        {verdict && verdict !== "pending" && (
+                          <span
+                            className="mr-1.5 inline-block rounded-full px-2.5 py-[3px] align-[1.5px] text-[10.5px] font-bold"
+                            style={{
+                              color: verdict.hit ? "var(--color-good)" : "var(--color-up)",
+                              background: `color-mix(in srgb, ${verdict.hit ? "var(--color-good)" : "var(--color-up)"} 11%, transparent)`,
+                            }}
+                            title={`다음날 BTC ${verdict.changePct > 0 ? "+" : ""}${verdict.changePct.toFixed(2)}%`}
+                          >
+                            {verdict.hit ? "적중" : "미적중"}
+                          </span>
+                        )}
+                        {verdict === "pending" && (
+                          <span className="mr-1.5 inline-block rounded-full bg-paper2 px-2.5 py-[3px] align-[1.5px] text-[10.5px] font-bold text-ink-400">
+                            판정 전
+                          </span>
+                        )}
                       </>
                     )}
                     {post.title}

@@ -5,23 +5,28 @@
 import Anthropic from "@anthropic-ai/sdk";
 import {
   STANCES,
+  DIRECTIONS,
+  DIRECTION_BAND_PCT,
   ADVICE_POSITIONS,
   ADVICE_ACTIONS,
   type DailyData,
   type DailyAdvice,
   type StanceKey,
+  type DirectionKey,
   type AdviceActionKey,
 } from "@/lib/daily";
 
 export type DailyJudgment = {
   headline: string; // 제목용 헤드라인 (날짜 접두어 제외)
   stance: StanceKey;
+  direction: DirectionKey; // 다음날 BTC 방향 예측 — 다음날 자동 판정·공개
   verdict: string;
   opinion: string;
   advice: DailyAdvice[];
 };
 
 const STANCE_KEYS = STANCES.map((s) => s.key);
+const DIRECTION_KEYS = DIRECTIONS.map((d) => d.key);
 const ACTION_KEYS = ADVICE_ACTIONS.map((a) => a.key);
 
 // 구조화 출력 스키마 — 스탠스·액션은 enum으로 강제. 배열 길이 제약은 스키마가
@@ -29,13 +34,19 @@ const ACTION_KEYS = ADVICE_ACTIONS.map((a) => a.key);
 const JUDGMENT_SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["headline", "stance", "verdict", "opinion", "advice"],
+  required: ["headline", "stance", "direction", "verdict", "opinion", "advice"],
   properties: {
     headline: {
       type: "string",
       description: "글 제목용 헤드라인 한 문장. 날짜 없이 판단만. 40자 이내.",
     },
     stance: { type: "string", enum: STANCE_KEYS },
+    direction: {
+      type: "string",
+      enum: DIRECTION_KEYS,
+      description:
+        "내일 오전 9시(KST)까지 24시간 BTC 방향 예측. up=상방(+1% 이상 상승 기대) / down=하방(-1% 이상 하락 기대) / neutral=관망(±1% 이내 저변동 횡보 기대).",
+    },
     verdict: {
       type: "string",
       description: "오늘의 판단 한 문장. 200자 이내.",
@@ -69,6 +80,9 @@ const SYSTEM_PROMPT = `당신은 KMIR(Kang Market Intelligence & Research)의 �
 - 문체는 "~다"로 끝나는 단정한 분석체. 이모지·과장·호들갑 금지.
 - 줄표(—, "—" 기호)는 제목·본문 어디에도 쓰지 않는다. 문장을 나누거나 쉼표·"~로," 같은 연결로 표현한다.
 - 스탠스 5단계: reduce(축소) / conservative(보수) / wait(관망) / selective(선별 매수) / expand(확대). 판단·견해·자문의 톤은 선택한 스탠스와 일관되어야 한다.
+- 방향 예측(direction): 내일 오전 9시(KST)까지 24시간 BTC 방향을 up(상방)/down(하방)/neutral(관망) 중 하나로 예측한다. 기준은 ±${DIRECTION_BAND_PCT}%: up은 +${DIRECTION_BAND_PCT}% 이상 상승, down은 -${DIRECTION_BAND_PCT}% 이상 하락, neutral은 ±${DIRECTION_BAND_PCT}% 이내 저변동 횡보를 뜻한다. 다음날 실제 가격으로 자동 판정되어 적중 여부가 공개되므로, 근거가 충분할 때만 방향을 걸고 저변동이 기대되는 날은 neutral을 고른다. 방향의 근거는 견해에 반드시 포함한다.
+- 유동성 지표(총 시총과 24h 변화, BTC 도미넌스, BTC·ETH 거래대금)는 시장 전체 자금 흐름 판단에 활용한다.
+- "기관·규제 뉴스"는 텔레그램 공개 채널에서 자동 수집한 비공식 스니펫이다. 미국 법안·규제 동향과 기업·은행권의 BTC·ETH 대규모 매수 움직임 판단에 참고하되, 사실 단정의 근거로 쓰지 않는다. 관련 없거나 신뢰가 낮아 보이는 항목은 무시한다.
 - 견해(opinion)는 3~5문단, 문단 사이는 빈 줄 하나. 첫 문단은 시장 상황 요약, 이후 문단은 판단의 근거와 리스크, 마지막 문단은 오늘 지켜볼 것.
 - 자문(advice)은 정확히 3개, 순서 고정: ①현물 보유 ②신규 진입 ③단기 트레이딩. 각각 액션(hold/add/wait/avoid/cut)과 한 줄 조언.
 - 일정에 D-DAY 매크로 이벤트가 있으면 판단에 반드시 반영한다.`;
@@ -97,7 +111,10 @@ ${
     : "(수집된 일정 없음)"
 }
 
-이 데이터만 근거로 오늘의 데일리 시장분석을 작성하라.`;
+## 기관·규제 뉴스 (텔레그램 공개 채널 자동 수집, 최근 24시간, 비공식)
+${auto.news?.length ? auto.news.map((n) => `- ${n}`).join("\n") : "(수집된 뉴스 없음)"}
+
+이 데이터만 근거로 오늘의 데일리 시장분석을 작성하라. 내일 오전 9시까지의 BTC 방향(direction)도 반드시 예측하라.`;
 }
 
 // AI 응답 검증 — enum·개수·길이가 어긋나면 발행하지 않고 실패시킨다(반쪽 글 방지)
@@ -106,6 +123,7 @@ function validateJudgment(raw: unknown): DailyJudgment {
   if (!j || typeof j !== "object") throw new Error("AI 응답이 객체가 아닙니다.");
   if (!j.headline?.trim()) throw new Error("headline이 비어 있습니다.");
   if (!STANCE_KEYS.includes(j.stance)) throw new Error(`잘못된 stance: ${j.stance}`);
+  if (!DIRECTION_KEYS.includes(j.direction)) throw new Error(`잘못된 direction: ${j.direction}`);
   if (!j.verdict?.trim() || j.verdict.length > 200)
     throw new Error("verdict가 비었거나 200자를 초과합니다.");
   if (!j.opinion?.trim() || j.opinion.length > 10000)
@@ -125,6 +143,7 @@ function validateJudgment(raw: unknown): DailyJudgment {
   return {
     headline: j.headline.trim().slice(0, 60),
     stance: j.stance,
+    direction: j.direction,
     verdict: j.verdict.trim(),
     opinion: j.opinion.trim(),
     advice,

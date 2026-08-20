@@ -9,7 +9,16 @@ import { formatDateTime, formatKrw, formatPercent, formatPostDate } from "@/lib/
 import VoteButtons from "@/components/VoteButtons";
 import CommentForm from "@/components/CommentForm";
 import DailyPostBody from "@/components/DailyPostBody";
-import { parseDaily, stanceLabel, STANCE_COLOR } from "@/lib/daily";
+import {
+  parseDaily,
+  stanceLabel,
+  directionLabel,
+  judgeDirection,
+  STANCE_COLOR,
+  DIRECTION_COLOR,
+  DIRECTION_BAND_PCT,
+  DAILY_MARKER,
+} from "@/lib/daily";
 
 export const dynamic = "force-dynamic";
 
@@ -61,6 +70,32 @@ export default async function AnalysisDetailPage({
       ? ((now - post.priceAtPost) / post.priceAtPost) * 100
       : null;
 
+  // 방향 예측 판정 — 다음 데일리의 BTC 기록가(같은 09:00 KST 발행 기준) 대비.
+  // 다음 데일리가 없으면 발행 24시간 경과 후 현재가로 근사, 그 전엔 "판정 전"(목록과 동일 규칙).
+  let directionVerdict: { changePct: number; hit: boolean } | "pending" | null = null;
+  if (daily?.direction && post.priceAtPost != null) {
+    const nextDaily = await prisma.post.findFirst({
+      where: {
+        boardId: post.boardId,
+        createdAt: { gt: post.createdAt },
+        content: { startsWith: DAILY_MARKER },
+        priceAtPost: { not: null },
+      },
+      orderBy: { createdAt: "asc" },
+      select: { priceAtPost: true },
+    });
+    const nextPrice =
+      nextDaily?.priceAtPost ??
+      // eslint-disable-next-line react-hooks/purity -- SSR(force-dynamic) 요청 시각 기준 판정
+      (Date.now() - post.createdAt.getTime() >= 24 * 3600_000 ? now : null);
+    if (nextPrice == null) {
+      directionVerdict = "pending";
+    } else {
+      const changePct = ((nextPrice - post.priceAtPost) / post.priceAtPost) * 100;
+      directionVerdict = { changePct, hit: judgeDirection(daily.direction, changePct) };
+    }
+  }
+
   return (
     <div className="mx-auto max-w-4xl">
       <article className="border border-line bg-white">
@@ -77,6 +112,35 @@ export default async function AnalysisDetailPage({
                 }}
               >
                 {stanceLabel(daily.stance)}
+              </span>
+            )}
+            {daily?.direction && (
+              <span
+                className="mr-2 inline-block rounded-full px-2.5 py-[3px] align-[3px] text-[11px] font-bold"
+                style={{
+                  color: DIRECTION_COLOR[daily.direction] ?? "var(--color-neutral)",
+                  background: `color-mix(in srgb, ${DIRECTION_COLOR[daily.direction] ?? "var(--color-neutral)"} 11%, transparent)`,
+                }}
+                title={`내일 BTC 방향 예측 (±${DIRECTION_BAND_PCT}% 기준, 다음날 09:00 KST 판정)`}
+              >
+                예측 {directionLabel(daily.direction)}
+              </span>
+            )}
+            {directionVerdict && directionVerdict !== "pending" && (
+              <span
+                className="mr-2 inline-block rounded-full px-2.5 py-[3px] align-[3px] text-[11px] font-bold"
+                style={{
+                  color: directionVerdict.hit ? "var(--color-good)" : "var(--color-up)",
+                  background: `color-mix(in srgb, ${directionVerdict.hit ? "var(--color-good)" : "var(--color-up)"} 11%, transparent)`,
+                }}
+                title={`다음날 BTC ${directionVerdict.changePct > 0 ? "+" : ""}${directionVerdict.changePct.toFixed(2)}%`}
+              >
+                {directionVerdict.hit ? "적중" : "미적중"}
+              </span>
+            )}
+            {directionVerdict === "pending" && (
+              <span className="mr-2 inline-block rounded-full bg-paper2 px-2.5 py-[3px] align-[3px] text-[11px] font-bold text-ink-400">
+                판정 전
               </span>
             )}
             {post.title}

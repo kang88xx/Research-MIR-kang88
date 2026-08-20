@@ -68,6 +68,7 @@ export async function GET(req: Request) {
     const content = serializeDaily({
       v: 1,
       stance: judgment.stance,
+      direction: judgment.direction, // 다음날 BTC 방향 예측 — 다음날 자동 판정·공개
       verdict: judgment.verdict,
       opinion: judgment.opinion,
       advice: judgment.advice,

@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createDailyPost } from "@/lib/actions";
-import { buildDailyAuto, STANCES, ADVICE_POSITIONS, ADVICE_ACTIONS } from "@/lib/daily";
+import { buildDailyAuto, STANCES, DIRECTIONS, DIRECTION_BAND_PCT, ADVICE_POSITIONS, ADVICE_ACTIONS } from "@/lib/daily";
 import { kstDay } from "@/lib/time";
 import SubmitButton from "@/components/SubmitButton";
 import PageTitle from "@/components/PageTitle";
@@ -117,6 +117,25 @@ export default async function DailyWritePage() {
             placeholder="판단 한 문장 — 글 상단에 크게 표시됩니다 (예: 오늘 밤 고용보고서가 방향을 정한다. 확인 후 대응으로 충분하다.)"
             className={`${INPUT_CLS} mt-3 w-full`}
           />
+        </fieldset>
+
+        {/* ── 내일 BTC 방향 예측 — 다음날 자동 판정·공개 ── */}
+        <fieldset className="border border-line bg-white p-4">
+          <legend className="px-1 text-[13.5px] font-extrabold text-navy-900">내일 BTC 방향 예측</legend>
+          <div className="flex flex-wrap gap-2">
+            {DIRECTIONS.map((d) => (
+              <label
+                key={d.key}
+                className="flex cursor-pointer items-center gap-1.5 border border-line px-3 py-1.5 text-sm text-ink-700 has-[:checked]:border-brand has-[:checked]:bg-brand-weak has-[:checked]:font-bold has-[:checked]:text-brand-ink"
+              >
+                <input type="radio" name="direction" value={d.key} required defaultChecked={d.key === "neutral"} className="accent-brand" />
+                {d.label}
+              </label>
+            ))}
+          </div>
+          <p className="mt-2 text-xs text-ink-400">
+            다음날 09:00 KST BTC 기록가로 자동 판정됩니다. 상방 = +{DIRECTION_BAND_PCT}% 이상, 하방 = -{DIRECTION_BAND_PCT}% 이상 하락, 관망 = ±{DIRECTION_BAND_PCT}% 이내 저변동.
+          </p>
         </fieldset>
 
         {/* ── 견해 본문 ── */}

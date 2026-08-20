@@ -81,17 +81,20 @@ export async function createDailyPost(formData: FormData) {
     throw new Error("시장 분석 글은 운영진만 작성할 수 있습니다.");
   }
 
-  const { STANCES, ADVICE_POSITIONS, ADVICE_ACTIONS, buildDailyAuto, serializeDaily } =
+  const { STANCES, DIRECTIONS, ADVICE_POSITIONS, ADVICE_ACTIONS, buildDailyAuto, serializeDaily } =
     await import("@/lib/daily");
 
   const title = String(formData.get("title") ?? "").trim();
   const stance = String(formData.get("stance") ?? "");
+  const direction = String(formData.get("direction") ?? "");
   const verdict = String(formData.get("verdict") ?? "").trim();
   const opinion = String(formData.get("opinion") ?? "").trim();
   const retro = String(formData.get("retro") ?? "").trim();
 
   if (!title || title.length > 100) throw new Error("제목은 1~100자로 입력해 주세요.");
   if (!STANCES.some((s) => s.key === stance)) throw new Error("스탠스를 선택해 주세요.");
+  if (!DIRECTIONS.some((d) => d.key === direction))
+    throw new Error("내일 BTC 방향 예측을 선택해 주세요.");
   if (!verdict || verdict.length > 200) throw new Error("오늘의 판단을 1~200자로 입력해 주세요.");
   if (!opinion || opinion.length > 10000) throw new Error("견해 본문을 입력해 주세요.");
 
@@ -110,6 +113,7 @@ export async function createDailyPost(formData: FormData) {
   const content = serializeDaily({
     v: 1,
     stance: stance as (typeof STANCES)[number]["key"],
+    direction: direction as (typeof DIRECTIONS)[number]["key"],
     verdict,
     opinion,
     advice,
