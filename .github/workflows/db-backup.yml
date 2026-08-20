@@ -49,7 +49,8 @@ jobs:
           test -n "$DB_BACKUP_URL" || { echo "DB_BACKUP_URL secret missing"; exit 1; }
           test -n "$DB_BACKUP_PASSPHRASE" || { echo "DB_BACKUP_PASSPHRASE secret missing"; exit 1; }
           STAMP=$(date -u +%F)
-          pg_dump --format=custom --no-owner --no-privileges \
+          # /usr/bin/pg_dump 래퍼는 러너에 기본 설치된 16을 고른다 → 17 바이너리를 명시 호출
+          /usr/lib/postgresql/17/bin/pg_dump --format=custom --no-owner --no-privileges \
             --dbname="$DB_BACKUP_URL" --file="kmir-$STAMP.dump"
           # 덤프가 비정상적으로 작으면(연결은 됐지만 빈 DB 등) 실패 처리
           test "$(stat -c%s "kmir-$STAMP.dump")" -gt 100000 || { echo "dump too small"; exit 1; }
