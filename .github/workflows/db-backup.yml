@@ -1,0 +1,69 @@
+# Neon DB 일일 백업 — pg_dump → AES-256 암호화 → GitHub 아티팩트(30일 보관)
+#
+# 공개 리포지토리라 아티팩트를 누구나 내려받을 수 있으므로, 덤프는 반드시
+# DB_BACKUP_PASSPHRASE로 암호화해서만 올린다 (회원 이메일 등 개인정보 포함).
+#
+# 필요한 리포 시크릿:
+#   DB_BACKUP_URL        — Neon 직접 연결 URL (풀러 미경유, .env의 DIRECT_URL)
+#   DB_BACKUP_PASSPHRASE — 암호화 패스프레이즈 (로컬 .env.local에도 보관)
+#
+# 복원 방법:
+#   1) Actions → 해당 실행 → kmir-db-backup-... 아티팩트 다운로드 후 unzip
+#   2) openssl enc -d -aes-256-cbc -pbkdf2 -in kmir-YYYY-MM-DD.dump.enc \
+#        -out kmir.dump -pass env:DB_BACKUP_PASSPHRASE
+#   3) pg_restore --clean --if-exists -d "$DIRECT_URL" kmir.dump
+
+name: DB Backup
+
+on:
+  schedule:
+    - cron: "0 18 * * *" # 매일 03:00 KST (저트래픽 시간)
+  workflow_dispatch: {} # 수동 실행(테스트·이전 직전 백업)
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      # Neon이 PG 17이라 pg_dump도 17이 필요 (우분투 기본 클라이언트는 16)
+      - name: Install postgresql-client-17
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] \
+            https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-17
+
+      - name: Dump and encrypt
+        env:
+          DB_BACKUP_URL: ${{ secrets.DB_BACKUP_URL }}
+          DB_BACKUP_PASSPHRASE: ${{ secrets.DB_BACKUP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          test -n "$DB_BACKUP_URL" || { echo "DB_BACKUP_URL secret missing"; exit 1; }
+          test -n "$DB_BACKUP_PASSPHRASE" || { echo "DB_BACKUP_PASSPHRASE secret missing"; exit 1; }
+          STAMP=$(date -u +%F)
+          pg_dump --format=custom --no-owner --no-privileges \
+            --dbname="$DB_BACKUP_URL" --file="kmir-$STAMP.dump"
+          # 덤프가 비정상적으로 작으면(연결은 됐지만 빈 DB 등) 실패 처리
+          test "$(stat -c%s "kmir-$STAMP.dump")" -gt 100000 || { echo "dump too small"; exit 1; }
+          openssl enc -aes-256-cbc -pbkdf2 -salt \
+            -in "kmir-$STAMP.dump" -out "kmir-$STAMP.dump.enc" \
+            -pass env:DB_BACKUP_PASSPHRASE
+          rm "kmir-$STAMP.dump"
+          echo "STAMP=$STAMP" >> "$GITHUB_ENV"
+          ls -la kmir-*.enc
+
+      - name: Upload encrypted backup (30일 보관)
+        uses: actions/upload-artifact@v4
+        with:
+          name: kmir-db-backup-${{ env.STAMP }}
+          path: kmir-*.dump.enc
+          retention-days: 30
+          if-no-files-found: error
