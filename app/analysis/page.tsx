@@ -74,7 +74,6 @@ export default async function AnalysisPage() {
     <div>
       <PageTitle
         eyebrow="Official Market Analysis"
-        title="시장 분석"
         description="운영진이 작성하는 공식 분석입니다. 작성 시점 가격이 자동 기록되어 현재가와 비교됩니다."
         actions={
           canWrite && (

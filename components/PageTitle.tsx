@@ -9,7 +9,7 @@ export default function PageTitle({
   actions,
 }: {
   eyebrow: string;
-  title: ReactNode;
+  title?: ReactNode;
   description?: ReactNode;
   actions?: ReactNode;
 }) {
@@ -17,7 +17,7 @@ export default function PageTitle({
     <div className="mb-5 flex items-end justify-between gap-4 border-b border-hairline pb-4">
       <div>
         <p className="eyebrow">{eyebrow}</p>
-        <h1 className="console-title mt-1.5">{title}</h1>
+        {title != null && <h1 className="console-title mt-1.5">{title}</h1>}
         {description && <p className="mt-1.5 text-xs text-ink-500">{description}</p>}
       </div>
       {actions && <div className="shrink-0 pb-1">{actions}</div>}
