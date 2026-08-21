@@ -78,9 +78,15 @@ export default function DailyPostBody({ data }: { data: DailyData }) {
             <i key={s.key} className={`h-[7px] flex-1 rounded-sm ${i === stanceIdx ? "bg-brand" : "bg-paper2"}`} />
           ))}
         </div>
-        <div className="mt-1.5 flex justify-between text-[10.5px] text-ink-400">
+        {/* 라벨은 각 세그먼트와 같은 flex-1 폭을 차지해 그 아래 가운데 정렬된다 */}
+        <div className="mt-1.5 flex gap-[3px] text-[10.5px] text-ink-400">
           {STANCES.map((s, i) => (
-            <span key={s.key} className={i === stanceIdx ? "text-[12.5px] font-bold text-brand-ink" : ""}>
+            <span
+              key={s.key}
+              className={`flex-1 text-center ${
+                i === stanceIdx ? "text-[12.5px] font-bold text-brand-ink" : ""
+              }`}
+            >
               {s.label}
             </span>
           ))}
