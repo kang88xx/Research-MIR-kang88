@@ -159,21 +159,35 @@ export default async function AnalysisDetailPage({
         </header>
 
         {post.priceAtPost != null && post.priceSymbol && (
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-line bg-paper px-5 py-3 text-sm">
-            <span className="eyebrow">예측 검증</span>
-            <span className="text-ink-900">
-              작성 시점 <b>{post.priceSymbol}</b> {formatKrw(post.priceAtPost)}원
-            </span>
-            <span className="text-ink-900">현재 {formatKrw(now)}원</span>
-            {change != null && (
-              <span
-                className={`font-bold ${
-                  change > 0 ? "text-red-600" : change < 0 ? "text-indigo-700" : "text-ink-500"
-                }`}
-              >
-                작성 이후 {formatPercent(change)}
+          <div className="grid gap-x-6 gap-y-2 px-5 py-4 sm:grid-cols-[116px_minmax(0,1fr)]">
+            <span className="pt-0.5 text-xs font-bold tracking-wider text-ink-500">
+              예측 검증
+              <span className="mt-1 block text-[9.5px] font-medium tracking-widest text-ink-300">
+                PREDICTION
               </span>
-            )}
+            </span>
+            <div className="flex flex-wrap gap-x-10 gap-y-2 tabular-nums">
+              <span>
+                <span className="block text-[11px] text-ink-400">작성 시점 {post.priceSymbol}</span>
+                <b className="text-[15px] text-ink-900">{formatKrw(post.priceAtPost)}원</b>
+              </span>
+              <span>
+                <span className="block text-[11px] text-ink-400">현재</span>
+                <b className="text-[15px] text-ink-900">{formatKrw(now)}원</b>
+              </span>
+              {change != null && (
+                <span>
+                  <span className="block text-[11px] text-ink-400">작성 이후</span>
+                  <b
+                    className={`text-[15px] ${
+                      change > 0 ? "text-up" : change < 0 ? "text-down" : "text-ink-500"
+                    }`}
+                  >
+                    {formatPercent(change)}
+                  </b>
+                </span>
+              )}
+            </div>
           </div>
         )}
 

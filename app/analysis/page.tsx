@@ -114,28 +114,39 @@ export default async function AnalysisPage() {
           아직 분석 글이 없습니다.
         </p>
       ) : (
-        <div className="flex flex-col gap-3">
-          {posts.map((post) => {
-            const now = post.priceSymbol ? priceNow.get(post.priceSymbol) ?? null : null;
-            const change =
-              post.priceAtPost != null && now != null
-                ? ((now - post.priceAtPost) / post.priceAtPost) * 100
-                : null;
-            const daily = parseDaily(post.content);
-            const verdict = verdicts.get(post.id) ?? null;
-            return (
-              <Link
-                key={post.id}
-                href={`/analysis/${post.id}`}
-                className="border border-line bg-white p-4 hover:border-navy-300"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <h2 className="font-semibold text-navy-900">
+        // E7B 레지스터형 — 카드 대신 컬럼 정렬 시트. 행 전체가 링크(테이블 태그는 Link로 못 감싸 grid 사용)
+        <div className="border border-line bg-white">
+          <div className="divide-y divide-hairline">
+            {posts.map((post) => {
+              const now = post.priceSymbol ? priceNow.get(post.priceSymbol) ?? null : null;
+              const change =
+                post.priceAtPost != null && now != null
+                  ? ((now - post.priceAtPost) / post.priceAtPost) * 100
+                  : null;
+              const daily = parseDaily(post.content);
+              const verdict = verdicts.get(post.id) ?? null;
+              return (
+                <Link
+                  key={post.id}
+                  href={`/analysis/${post.id}`}
+                  className="grid gap-x-4 gap-y-1.5 px-4 py-3.5 transition-colors hover:bg-paper2 sm:grid-cols-[64px_108px_minmax(0,1fr)_140px_88px]"
+                >
+                  {/* 게시일 */}
+                  <span className="tabular-nums max-sm:text-xs max-sm:text-ink-500">
+                    <b className="text-[13.5px] font-bold text-ink-900 max-sm:text-xs max-sm:font-semibold">
+                      {post.createdAt.getMonth() + 1}/{post.createdAt.getDate()}
+                    </b>
+                    <span className="mt-0.5 block text-[10.5px] text-ink-300 max-sm:hidden">
+                      {post.createdAt.getFullYear()}
+                    </span>
+                  </span>
+
+                  {/* 판정 — 스탠스·예측·판정 배지 스택(데일리만) */}
+                  <span className="flex flex-wrap items-start gap-1 sm:flex-col">
                     {daily && (
                       <>
-                        {/* 스탠스 소프트 필 — "데일리" 뱃지는 정보량 없이 자리만 차지해 제거(운영 결정 2026-08-20) */}
                         <span
-                          className="mr-1.5 inline-block rounded-full px-2.5 py-[3px] align-[1.5px] text-[10.5px] font-bold"
+                          className="inline-block whitespace-nowrap rounded-full px-2.5 py-[2px] text-[10.5px] font-bold"
                           style={{
                             color: STANCE_COLOR[daily.stance] ?? "var(--color-neutral)",
                             background: `color-mix(in srgb, ${STANCE_COLOR[daily.stance] ?? "var(--color-neutral)"} 11%, transparent)`,
@@ -143,10 +154,9 @@ export default async function AnalysisPage() {
                         >
                           {stanceLabel(daily.stance)}
                         </span>
-                        {/* 내일 BTC 방향 예측 + 다음날 판정 결과 */}
                         {daily.direction && (
                           <span
-                            className="mr-1.5 inline-block rounded-full px-2.5 py-[3px] align-[1.5px] text-[10.5px] font-bold"
+                            className="inline-block whitespace-nowrap rounded-full px-2.5 py-[2px] text-[10px] font-bold"
                             style={{
                               color: DIRECTION_COLOR[daily.direction] ?? "var(--color-neutral)",
                               background: `color-mix(in srgb, ${DIRECTION_COLOR[daily.direction] ?? "var(--color-neutral)"} 11%, transparent)`,
@@ -158,7 +168,7 @@ export default async function AnalysisPage() {
                         )}
                         {verdict && verdict !== "pending" && (
                           <span
-                            className="mr-1.5 inline-block rounded-full px-2.5 py-[3px] align-[1.5px] text-[10.5px] font-bold"
+                            className="inline-block whitespace-nowrap rounded-full px-2.5 py-[2px] text-[10px] font-bold"
                             style={{
                               color: verdict.hit ? "var(--color-good)" : "var(--color-up)",
                               background: `color-mix(in srgb, ${verdict.hit ? "var(--color-good)" : "var(--color-up)"} 11%, transparent)`,
@@ -169,49 +179,73 @@ export default async function AnalysisPage() {
                           </span>
                         )}
                         {verdict === "pending" && (
-                          <span className="mr-1.5 inline-block rounded-full bg-paper2 px-2.5 py-[3px] align-[1.5px] text-[10.5px] font-bold text-ink-400">
+                          <span className="inline-block whitespace-nowrap rounded-full bg-paper2 px-2.5 py-[2px] text-[10px] font-bold text-ink-400">
                             판정 전
                           </span>
                         )}
                       </>
                     )}
-                    {post.title}
-                    {post.commentCount > 0 && (
-                      <span className="ml-1 text-xs text-indigo-700">[{post.commentCount}]</span>
-                    )}
-                  </h2>
-                  {post.priceAtPost != null && post.priceSymbol && (
-                    <span className="flex shrink-0 items-center gap-1.5 text-[11px]">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={`/logos/coins/${post.priceSymbol}.png`}
-                        alt=""
-                        className="h-3.5 w-3.5 rounded-full object-cover"
-                      />
-                      <b className="text-ink-900">{post.priceSymbol}</b>
-                      <span className="text-ink-500">작성시 {formatKrw(post.priceAtPost)}</span>
-                      {change != null && (
-                        <span
-                          className={`font-semibold ${
-                            change > 0 ? "text-up" : change < 0 ? "text-down" : "text-ink-500"
-                          }`}
-                        >
-                          이후 {formatPercent(change)}
+                  </span>
+
+                  {/* 제목 + 요약 + 메타 */}
+                  <span className="min-w-0">
+                    <h2 className="text-[14.5px] font-bold text-navy-900">
+                      {post.title}
+                      {post.commentCount > 0 && (
+                        <span className="ml-1 text-xs font-normal text-indigo-700">
+                          [{post.commentCount}]
                         </span>
                       )}
+                    </h2>
+                    <span className="mt-1 line-clamp-1 block text-[12.5px] text-ink-500">
+                      {daily ? daily.verdict : post.content}
                     </span>
-                  )}
-                </div>
-                <p className="mt-1 line-clamp-2 text-sm text-ink-500">
-                  {daily ? daily.verdict : post.content}
-                </p>
-                <p className="mt-2 text-xs text-ink-500">
-                  {post.author.nickname} · {formatPostDate(post.createdAt)} · 조회 {post.viewCount} · 추천{" "}
-                  {post.upvotes}
-                </p>
-              </Link>
-            );
-          })}
+                    <span className="mt-1 block text-[11px] text-ink-400">
+                      {post.author.nickname} · {formatPostDate(post.createdAt)} · 조회 {post.viewCount}{" "}
+                      · 추천 {post.upvotes}
+                    </span>
+                  </span>
+
+                  {/* 작성시 가격 */}
+                  <span className="tabular-nums sm:text-right">
+                    {post.priceAtPost != null && post.priceSymbol ? (
+                      <>
+                        <b className="text-[13px] font-semibold text-ink-900">
+                          {formatKrw(post.priceAtPost)}원
+                        </b>
+                        <span className="mt-0.5 flex items-center gap-1 text-[10.5px] text-ink-400 sm:justify-end">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={`/logos/coins/${post.priceSymbol}.png`}
+                            alt=""
+                            className="h-3 w-3 rounded-full object-cover"
+                          />
+                          {post.priceSymbol}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-ink-300 max-sm:hidden">—</span>
+                    )}
+                  </span>
+
+                  {/* 이후 변동률 */}
+                  <span className="tabular-nums text-[13px] font-bold sm:text-right">
+                    {change != null ? (
+                      <span
+                        className={
+                          change > 0 ? "text-up" : change < 0 ? "text-down" : "text-ink-500"
+                        }
+                      >
+                        {formatPercent(change)}
+                      </span>
+                    ) : (
+                      <span className="text-ink-300 max-sm:hidden">—</span>
+                    )}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
