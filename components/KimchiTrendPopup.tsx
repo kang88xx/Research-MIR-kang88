@@ -135,7 +135,27 @@ export default function KimchiTrendPopup({ history }: { history: KimchiDay[] }) 
     return () => document.removeEventListener("keydown", onKey);
   }, [open]);
 
-  const maxAbs = Math.max(1, ...history.map((d) => Math.abs(d.value)));
+  // 인라인 라인 차트 좌표 — 0% 기준선을 항상 포함하는 y 도메인 (E7B/K2 확정안)
+  const chart = useMemo(() => {
+    if (history.length === 0) return null;
+    const vals = history.map((d) => d.value);
+    const lo = Math.min(0, ...vals);
+    const hi = Math.max(0, ...vals);
+    const pad = Math.max(0.15, (hi - lo) * 0.2);
+    const yMin = lo - pad;
+    const yMax = hi + pad;
+    const W = 350;
+    const H = 76;
+    const XPAD = 10;
+    const x = (i: number) => XPAD + (i * (W - 2 * XPAD)) / Math.max(1, history.length - 1);
+    const y = (v: number) => ((yMax - v) / (yMax - yMin)) * H;
+    const points = history.map((d, i) => ({ x: x(i), y: y(d.value) }));
+    const last = history[history.length - 1].value;
+    const stroke =
+      last >= 0.05 ? "var(--color-up)" : last <= -0.05 ? "var(--color-down)" : "var(--color-neutral)";
+    return { W, H, points, zeroY: y(0), stroke };
+  }, [history]);
+
   const series = useMemo(() => (data ? toSeries(data.days, range) : []), [data, range]);
   const stats = useMemo(() => {
     if (series.length === 0) return null;
@@ -159,48 +179,90 @@ export default function KimchiTrendPopup({ history }: { history: KimchiDay[] }) 
         title="일간·주간·월간 추이 크게 보기"
       >
         <p className="flex items-baseline text-[11px] font-medium text-ink-500">
-          최근 7일 김프 추이
+          7일 추이 · 7D TREND
           <span className="ml-auto text-[10px] text-ink-400 underline-offset-2 group-hover:text-navy-900 group-hover:underline">
             일간·주간·월간 ↗
           </span>
         </p>
-        {history.length === 0 ? (
+        {history.length === 0 || !chart ? (
           <p className="mt-4 text-[11.5px] text-ink-400">추이 데이터를 불러오지 못했습니다.</p>
         ) : (
           <div className="mt-2">
-            <div className="flex h-[72px] items-stretch gap-1.5">
-              {history.map((d) => {
-                const up = d.value >= 0;
-                const hPct = Math.max(4, (Math.abs(d.value) / maxAbs) * 50);
+            {/* 라인+영역 차트 — 각 포인트가 아래 날짜 라벨 열과 같은 x 위치에 놓인다 */}
+            <svg
+              viewBox={`0 0 ${chart.W} ${chart.H}`}
+              className="block h-[72px] w-full"
+              preserveAspectRatio="none"
+              aria-hidden
+            >
+              <defs>
+                <linearGradient id="kimchi-trend-fill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={chart.stroke} stopOpacity="0.16" />
+                  <stop offset="100%" stopColor={chart.stroke} stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              <line
+                x1="0"
+                y1={chart.zeroY}
+                x2={chart.W}
+                y2={chart.zeroY}
+                stroke="var(--color-hairline)"
+                strokeDasharray="3 3"
+              />
+              <polygon
+                points={`${chart.points.map((p) => `${p.x},${p.y}`).join(" ")} ${
+                  chart.points[chart.points.length - 1].x
+                },${chart.H} ${chart.points[0].x},${chart.H}`}
+                fill="url(#kimchi-trend-fill)"
+              />
+              <polyline
+                points={chart.points.map((p) => `${p.x},${p.y}`).join(" ")}
+                fill="none"
+                stroke={chart.stroke}
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              {chart.points.map((p, i) =>
+                i === chart.points.length - 1 ? (
+                  <circle key={i} cx={p.x} cy={p.y} r="4" fill={chart.stroke} />
+                ) : (
+                  <circle
+                    key={i}
+                    cx={p.x}
+                    cy={p.y}
+                    r="2.5"
+                    fill="var(--color-surface)"
+                    stroke={chart.stroke}
+                    strokeWidth="1.5"
+                  />
+                ),
+              )}
+            </svg>
+            {/* 날짜·수치 라벨 — 포인트와 동일한 균등 분할, 격일 수치 표기·오늘 강조 */}
+            <div className="mt-1 flex">
+              {history.map((d, i) => {
+                const isLast = i === history.length - 1;
+                const showValue = (history.length - 1 - i) % 2 === 0;
                 return (
-                  <div
+                  <span
                     key={d.date}
-                    className="relative min-w-0 flex-1"
+                    className={`min-w-0 flex-1 text-center font-mono text-[9px] leading-[1.5] ${
+                      isLast ? "font-bold" : "text-ink-400"
+                    }`}
+                    style={isLast ? { color: chart.stroke } : undefined}
                     title={`${d.date} · ${pctText(d.value)}`}
                   >
-                    <span className="absolute left-0 right-0 top-1/2 h-px bg-line" />
-                    <span
-                      className="absolute left-1/2 w-[70%] max-w-[18px] -translate-x-1/2 rounded-[2px]"
-                      style={{
-                        height: `${hPct}%`,
-                        ...(up ? { bottom: "50%" } : { top: "50%" }),
-                        background: up ? "var(--color-up)" : "var(--color-down)",
-                        opacity: 0.35 + 0.6 * Math.min(1, Math.abs(d.value) / maxAbs),
-                      }}
-                    />
-                  </div>
+                    {isLast ? "오늘" : d.date}
+                    {showValue && (
+                      <>
+                        <br />
+                        {pctText(d.value)}
+                      </>
+                    )}
+                  </span>
                 );
               })}
-            </div>
-            <div className="mt-1 flex gap-1.5">
-              {history.map((d) => (
-                <span
-                  key={d.date}
-                  className="min-w-0 flex-1 truncate text-center font-mono text-[8.5px] text-ink-400"
-                >
-                  {d.date}
-                </span>
-              ))}
             </div>
           </div>
         )}
