@@ -14,8 +14,8 @@ sources:
       - /currencies/{id}/vesting/schedule
     cadence: daily
     trust_tier: 2
-    cost: "무료 Sandbox(400크레딧/일)로 시작 → 부족하면 Basic $19/월"
-    status: free-first   # 무료 Sandbox에 언락 엔드포인트 포함 여부 확인 후 사용
+    cost: "언락 엔드포인트는 유료 전용 (무료 Sandbox 미포함 — 2026-08-26 확인)"
+    status: on-hold   # 무료 Sandbox에 언락 없음 → 언락은 coindar 수집기 사용, 유료 전환 검토 시 재개
     notes: 언락 날짜 D-7/D-1 재확인 필수 (언락은 날짜 변동 잦음)
 
   - id: coindar
@@ -23,10 +23,11 @@ sources:
     categories: [unlock, listing, project, conference]
     method: api
     url: https://coindar.org (가입 → 액세스 토큰)
-    cadence: daily
+    cadence: manual   # 크론 없음 — 어드민 버튼(/admin/events) 또는 scripts/sync-unlocks.ts
     trust_tier: 3   # 크라우드소싱 — 교차 검증 필수
     cost: 무료
-    notes: 무료 언락/이벤트 보조 소스. 단독 발행 금지, T1/T2 소스와 교차 후 발행
+    status: active   # 2026-08-26 언락 수집기 구현 — lib/unlocks.ts (버블맵 100종목 기준, 검수 큐 경유)
+    notes: 무료 언락/이벤트 보조 소스. 단독 발행 금지, T1/T2 소스와 교차 후 발행. env COINDAR_ACCESS_TOKEN
 
   - id: defillama-unlocks-page
     name: DefiLlama 언락 페이지 (웹 UI, 수동 대조용)

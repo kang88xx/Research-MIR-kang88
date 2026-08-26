@@ -7,6 +7,7 @@ import {
   publishCalendarEvent,
 } from "@/lib/actions";
 import { kstDay } from "@/lib/time";
+import UnlockSyncButton from "@/components/UnlockSyncButton";
 
 export const dynamic = "force-dynamic";
 
@@ -293,8 +294,10 @@ export default async function AdminEventsPage({
 
       {/* 검수 큐 — 텔레그램 자동 포착(상장·상폐 후보) + 수기 초안 */}
       <section className="mb-6 border border-line bg-white">
-        <header className="border-b border-line px-4 py-2.5">
-          <h2 className="text-sm font-semibold text-navy-900">검수 큐 ({queue.length})</h2>
+        <header className="flex items-center justify-between gap-3 border-b border-line px-4 py-2.5">
+          <h2 className="shrink-0 text-sm font-semibold text-navy-900">검수 큐 ({queue.length})</h2>
+          {/* 버블맵 100종목 기준 Coindar 언락 수집 — 결과는 이 큐에 pending_review로 쌓인다 */}
+          <UnlockSyncButton />
         </header>
         {queue.length === 0 ? (
           <p className="px-4 py-6 text-center text-sm text-ink-500">검수 대기 이벤트가 없습니다.</p>

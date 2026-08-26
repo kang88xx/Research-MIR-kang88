@@ -115,6 +115,7 @@ model CalendarEvent {
   sources     Json? // [{name, url, tier(1~3), isOfficial}] — 수집된 모든 출처 보존 (T3는 공식 원문 포함 2개 이상)
   reviewStatus String  @default("published") // draft | pending_review | published | needs_recheck | archived
   nextCheck   DateTime? // 다음 재확인일 (언락·실적·규제 = D-7·D-1 / 그 외 = D-1)
+  externalId  String?  @unique // 외부 수집기 멱등 키 (예: "coindar:97486") — 수기 입력은 null
   createdAt   DateTime @default(now())
 
   @@index([date])

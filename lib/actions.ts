@@ -496,6 +496,28 @@ export async function deleteCalendarEvent(id: number) {
   revalidateCalendar();
 }
 
+// 언락 일정 수동 동기화 — 버블맵 100종목 기준 Coindar 언락 이벤트를 검수 큐로 수집.
+// 크론 없음: 어드민 버튼(useActionState) 또는 scripts/sync-unlocks.ts 로만 실행한다.
+export type UnlockSyncState = { ok: boolean; message: string } | null;
+
+// useActionState가 (이전 상태, FormData)를 넘기지만 여기선 쓰지 않는다 — 인자 생략 가능(구조적 타이핑)
+export async function syncUnlockCalendar(): Promise<UnlockSyncState> {
+  await requireAdmin();
+  // 전역 60초 쿨다운 — 연타로 Coindar를 두들기지 않게. failClosed: DB 장애 시 수집도 못 하므로 차단.
+  const { checkRateLimit } = await import("@/lib/ratelimit");
+  if (!(await checkRateLimit("unlock-sync:global", 1, 60_000, true))) {
+    return { ok: false, message: "잠시 후 다시 시도해 주세요 (60초 쿨다운)." };
+  }
+  try {
+    const { syncUnlockEvents } = await import("@/lib/unlocks");
+    const result = await syncUnlockEvents();
+    revalidateCalendar();
+    return { ok: true, message: result.message };
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : "언락 동기화에 실패했습니다." };
+  }
+}
+
 // 검수 큐 → 발행 승격. T3 이벤트는 공식 원문(출처) 확인 후 눌러야 한다.
 export async function publishCalendarEvent(id: number) {
   await requireAdmin();
