@@ -323,12 +323,14 @@ async function extractScheduledTime(url: string | null): Promise<string | null> 
 // 피드에서 발견한 상장건을 상태로 유지하고, 건별로 확인 주기를 달리한다.
 //  - 신규 발견: 즉시 1회 시각 추출
 //  - 시각 미정: 3시간마다 원문 재확인 (시각이 나올 때까지)
-//  - 시각 확정: 6시간마다 상장 완료 확인 → 상장 시각이 지났으면 목록에서 제거
+//  - 시각 확정: 6시간마다 원문 재확인(연기 반영)
+//  - 제거: 상장 후 12시간 경과 시 목록에서 제거 (시각 미정 건은 게시 시각을 상장 시각으로 간주)
+//    → 매 갱신(30분)마다 시계 비교만 하므로 외부 요청 없이 즉시 반영
 //  - 모든 건이 시각 확정 + 확인 주기 미도래면 원문 fetch 0건 (피드 1콜만)
 const TIME_RECHECK_MS = 3 * 3600_000; // 시각 미정 재확인 주기
-const LISTED_CHECK_MS = 6 * 3600_000; // 상장 완료 확인 주기
+const LISTED_CHECK_MS = 6 * 3600_000; // 확정 건 원문 재확인 주기
+const LISTED_GRACE_MS = 12 * 3600_000; // 상장 후 노출 유지 시간 — 지나면 제거
 const DISCOVER_WINDOW_MS = 48 * 3600_000; // 피드에서 신규로 받아들일 게시 범위
-const TBA_EXPIRE_MS = 48 * 3600_000; // 시각 미정 건 보관 한도 (게시 후)
 const STALE_EXPIRE_MS = 7 * 24 * 3600_000; // 어떤 경우든 이보다 오래된 건은 폐기
 const EXTRACT_CONCURRENCY = 6;
 const EXTRACT_BUDGET_MS = 10_000;
@@ -433,30 +435,26 @@ async function refreshState(prev: ListingsState | null): Promise<ListingsState> 
   const hasBithumb = targets.some((l) => l.exchange === "Bithumb");
   const bithumbNotices = hasBithumb ? await fetchBithumbNotices() : new Map<string, BithumbNotice>();
 
-  const listedIds = new Set<string>();
   await runWithBudget([
     ...needTime.map((it) => async () => {
       it.scheduledAt = await resolveScheduledAt(it, bithumbNotices);
       it.timeCheckedAt = nowIso;
-      // 시각이 나왔고 이미 지났으면 → 상장 완료
-      if (it.scheduledAt && new Date(it.scheduledAt).getTime() <= now) listedIds.add(it.id);
     }),
     ...needListed.map((it) => async () => {
       // 원문 재확인 — 일정 변경(연기)이 있으면 반영, 못 읽으면 기존 시각 유지
       const revised = await resolveScheduledAt(it, bithumbNotices);
       if (revised) it.scheduledAt = revised;
       it.listedCheckedAt = nowIso;
-      if (new Date(it.scheduledAt!).getTime() <= now) listedIds.add(it.id);
     }),
   ]);
 
-  // 제거: 상장 완료 · 미정 보관 한도 초과 · 절대 만료
+  // 제거: 상장 후 12시간 경과(미정 건은 게시 시각 기준) · 절대 만료
   const items: Tracked[] = [];
   for (const it of byId.values()) {
-    if (listedIds.has(it.id)) continue;
     const postedAt = new Date(it.date).getTime();
     if (now - postedAt > STALE_EXPIRE_MS) continue;
-    if (it.scheduledAt == null && now - postedAt > TBA_EXPIRE_MS) continue;
+    const listedAt = it.scheduledAt ? new Date(it.scheduledAt).getTime() : postedAt;
+    if (now - listedAt >= LISTED_GRACE_MS) continue;
     items.push(it);
   }
   items.sort((a, b) => (a.scheduledAt ?? a.date).localeCompare(b.scheduledAt ?? b.date));
