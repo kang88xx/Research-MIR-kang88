@@ -319,7 +319,28 @@ async function extractScheduledTime(url: string | null): Promise<string | null> 
   }
 }
 
-async function scrape(): Promise<{ listings: Listing[]; updatedAt: string }> {
+// ── 추적 상태(DB 공유 캐시) ──
+// 피드에서 발견한 상장건을 상태로 유지하고, 건별로 확인 주기를 달리한다.
+//  - 신규 발견: 즉시 1회 시각 추출
+//  - 시각 미정: 3시간마다 원문 재확인 (시각이 나올 때까지)
+//  - 시각 확정: 6시간마다 상장 완료 확인 → 상장 시각이 지났으면 목록에서 제거
+//  - 모든 건이 시각 확정 + 확인 주기 미도래면 원문 fetch 0건 (피드 1콜만)
+const TIME_RECHECK_MS = 3 * 3600_000; // 시각 미정 재확인 주기
+const LISTED_CHECK_MS = 6 * 3600_000; // 상장 완료 확인 주기
+const DISCOVER_WINDOW_MS = 48 * 3600_000; // 피드에서 신규로 받아들일 게시 범위
+const TBA_EXPIRE_MS = 48 * 3600_000; // 시각 미정 건 보관 한도 (게시 후)
+const STALE_EXPIRE_MS = 7 * 24 * 3600_000; // 어떤 경우든 이보다 오래된 건은 폐기
+const EXTRACT_CONCURRENCY = 6;
+const EXTRACT_BUDGET_MS = 10_000;
+
+type Tracked = Listing & {
+  timeCheckedAt: string | null; // 마지막 시각 추출 시도 (ISO)
+  listedCheckedAt: string | null; // 마지막 상장 완료 확인 (ISO)
+};
+
+type ListingsState = { items: Tracked[]; updatedAt: string };
+
+async function fetchFeed(): Promise<Listing[]> {
   const res = await fetch(SRC_URL, {
     signal: AbortSignal.timeout(8000),
     cache: "no-store",
@@ -339,44 +360,31 @@ async function scrape(): Promise<{ listings: Listing[]; updatedAt: string }> {
       `[listings] ${SRC_URL} 파싱 결과 0건 (html ${html.length}B) — t.me 위젯 마크업 변경 가능성`
     );
   }
-  const today = kstDay(new Date());
-  const yesterday = kstDay(new Date(Date.now() - 24 * 3600_000));
-  // 게시일이 오늘/어제인 후보까지 본다 — '어제 공지된 오늘 상장'을 놓치지 않기 위함.
-  // (상장 예정 시각 추출이 네트워크 비용이라 최신 40건으로 제한.)
-  const candidates = all
-    .filter((l) => {
-      const d = kstDay(new Date(l.date));
-      return d === today || d === yesterday;
-    })
-    .sort((a, b) => b.date.localeCompare(a.date))
-    .slice(0, 40);
+  return all;
+}
 
-  // 빗썸 공지 리스트 1콜(거래시각은 제목에 표기) — 매 리스팅 fetch 방지
-  const hasBithumb = candidates.some((l) => l.exchange === "Bithumb");
-  const bithumbNotices = hasBithumb ? await fetchBithumbNotices() : new Map<string, BithumbNotice>();
+// 원문에서 상장 예정 시각 추출 — 거래소별 전략 (빗썸은 공지 리스트 API 제목 우선)
+async function resolveScheduledAt(l: Listing, bithumbNotices: Map<string, BithumbNotice>): Promise<string | null> {
+  if (l.exchange === "Bithumb") {
+    const id = l.url?.match(/feed\.bithumb\.com\/notice\/(\d+)/)?.[1];
+    const notice = id ? bithumbNotices.get(id) : undefined;
+    const fromTitle = notice ? parseBithumbTradeTime(notice.title, notice.publishedAt) : null;
+    if (fromTitle) return fromTitle;
+  }
+  return extractScheduledTime(l.url);
+}
 
-  // 원문에서 상장 예정 시각 추출 — 동시성 6으로 제한(최대 40개 동시 소켓 방지) +
-  // 전체 10초 예산(콜드 캐시 인라인 경로가 오래 막히지 않게). 예산 초과분은 미정(null) 유지.
-  const extractOne = async (l: Listing) => {
-    if (l.exchange === "Bithumb") {
-      // 빗썸: 공지 제목의 "(거래 오픈 …)"을 우선 사용(안정적), 없으면 본문 best-effort
-      const id = l.url?.match(/feed\.bithumb\.com\/notice\/(\d+)/)?.[1];
-      const notice = id ? bithumbNotices.get(id) : undefined;
-      l.scheduledAt = notice ? parseBithumbTradeTime(notice.title, notice.publishedAt) : null;
-      if (!l.scheduledAt) l.scheduledAt = await extractScheduledTime(l.url);
-      return;
-    }
-    l.scheduledAt = await extractScheduledTime(l.url);
-  };
-  // 예산 초과 시 새 작업 배분을 멈추고(진행 중 건만 마무리), 타이머는 finally에서 해제.
-  const deadline = Date.now() + 10_000;
-  const queue = [...candidates];
-  const workers = Array.from({ length: Math.min(6, queue.length) }, async () => {
+// 동시성·시간 예산 안에서 확인 작업 실행 — 예산 초과분은 이번 회차에 건너뛴다(다음 회차 재시도).
+async function runWithBudget(tasks: Array<() => Promise<void>>): Promise<void> {
+  if (tasks.length === 0) return;
+  const deadline = Date.now() + EXTRACT_BUDGET_MS;
+  const queue = [...tasks];
+  const workers = Array.from({ length: Math.min(EXTRACT_CONCURRENCY, queue.length) }, async () => {
     for (;;) {
-      if (Date.now() >= deadline) return; // 예산 소진 — 남은 후보는 미정(null) 유지
-      const l = queue.shift();
-      if (!l) return;
-      await extractOne(l);
+      if (Date.now() >= deadline) return;
+      const t = queue.shift();
+      if (!t) return;
+      await t();
     }
   });
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -384,31 +392,94 @@ async function scrape(): Promise<{ listings: Listing[]; updatedAt: string }> {
     await Promise.race([
       Promise.all(workers),
       new Promise((resolve) => {
-        timer = setTimeout(resolve, 10_000);
+        timer = setTimeout(resolve, EXTRACT_BUDGET_MS);
       }),
     ]);
   } finally {
     clearTimeout(timer);
   }
-
-  // '금일'은 게시일이 아니라 상장 예정일(scheduledAt) 기준으로 확정 — 없으면 게시일로 폴백.
-  // 임박 순(예정 시각 빠른 것)으로 정렬해 위쪽에 가장 가까운 일정이 오게 한다.
-  // 얕은 복사로 스냅숏 — 예산 초과 후 뒤늦게 끝난 워커가 반환·캐시된 결과를 변형하지 못하게.
-  const listings = candidates
-    .filter((l) => kstDay(new Date(l.scheduledAt ?? l.date)) === today)
-    .sort((a, b) => (a.scheduledAt ?? a.date).localeCompare(b.scheduledAt ?? b.date))
-    .map((l) => ({ ...l }));
-
-  return { listings, updatedAt: new Date().toISOString() };
 }
 
-// 금일(KST) 신규 상장 예정 (바이낸스 선물·Upbit·Bithumb·Bybit·Robinhood·Coinbase·OKX) — DB 공유 캐시(30분)
+// 상태 갱신: 피드 병합 → 주기 도래 건만 확인 → 상장 완료/만료 건 제거
+async function refreshState(prev: ListingsState | null): Promise<ListingsState> {
+  const now = Date.now();
+  const nowIso = new Date(now).toISOString();
+  const feed = await fetchFeed();
+
+  // 직전 상태 위에 피드 병합 — 기존 건은 추적 메타 유지, 신규 건만 추가
+  const byId = new Map<string, Tracked>();
+  for (const it of prev?.items ?? []) byId.set(it.id, { ...it });
+  for (const l of feed) {
+    if (now - new Date(l.date).getTime() > DISCOVER_WINDOW_MS) continue;
+    if (byId.has(l.id)) continue;
+    byId.set(l.id, { ...l, scheduledAt: null, timeCheckedAt: null, listedCheckedAt: null });
+  }
+
+  // 확인 대상 선별
+  const needTime: Tracked[] = []; // 신규 or 미정 3h 경과 → 시각 추출
+  const needListed: Tracked[] = []; // 확정 6h 경과 → 상장 완료 확인(원문 재확인 + 시각 경과)
+  for (const it of byId.values()) {
+    if (it.scheduledAt == null) {
+      const last = it.timeCheckedAt ? new Date(it.timeCheckedAt).getTime() : 0;
+      if (now - last >= TIME_RECHECK_MS) needTime.push(it);
+    } else {
+      const last = it.listedCheckedAt ? new Date(it.listedCheckedAt).getTime() : 0;
+      if (now - last >= LISTED_CHECK_MS) needListed.push(it);
+    }
+  }
+
+  // 빗썸 공지 리스트 1콜(거래시각은 제목에 표기) — 확인 대상에 빗썸이 있을 때만
+  const targets = [...needTime, ...needListed];
+  const hasBithumb = targets.some((l) => l.exchange === "Bithumb");
+  const bithumbNotices = hasBithumb ? await fetchBithumbNotices() : new Map<string, BithumbNotice>();
+
+  const listedIds = new Set<string>();
+  await runWithBudget([
+    ...needTime.map((it) => async () => {
+      it.scheduledAt = await resolveScheduledAt(it, bithumbNotices);
+      it.timeCheckedAt = nowIso;
+      // 시각이 나왔고 이미 지났으면 → 상장 완료
+      if (it.scheduledAt && new Date(it.scheduledAt).getTime() <= now) listedIds.add(it.id);
+    }),
+    ...needListed.map((it) => async () => {
+      // 원문 재확인 — 일정 변경(연기)이 있으면 반영, 못 읽으면 기존 시각 유지
+      const revised = await resolveScheduledAt(it, bithumbNotices);
+      if (revised) it.scheduledAt = revised;
+      it.listedCheckedAt = nowIso;
+      if (new Date(it.scheduledAt!).getTime() <= now) listedIds.add(it.id);
+    }),
+  ]);
+
+  // 제거: 상장 완료 · 미정 보관 한도 초과 · 절대 만료
+  const items: Tracked[] = [];
+  for (const it of byId.values()) {
+    if (listedIds.has(it.id)) continue;
+    const postedAt = new Date(it.date).getTime();
+    if (now - postedAt > STALE_EXPIRE_MS) continue;
+    if (it.scheduledAt == null && now - postedAt > TBA_EXPIRE_MS) continue;
+    items.push(it);
+  }
+  items.sort((a, b) => (a.scheduledAt ?? a.date).localeCompare(b.scheduledAt ?? b.date));
+
+  // 얕은 복사로 스냅숏 — 예산 초과 후 뒤늦게 끝난 워커가 캐시된 결과를 변형하지 못하게
+  return { items: items.map((it) => ({ ...it })), updatedAt: nowIso };
+}
+
+// 신규 상장 예정 (바이낸스 선물·Upbit·Bithumb·Bybit·Robinhood·Coinbase·OKX) — DB 공유 상태(30분 주기 병합)
+// 노출: 상장 완료 전 건 중 예정일이 오늘(KST) 이하인 것 + 시각 미정 건. 임박 순 정렬.
 // ok=false 는 '수집 실패(직전 데이터 없음)' — UI가 진짜 0건과 장애를 구분하게 한다.
 export async function getTodayListings(): Promise<{ listings: Listing[]; updatedAt: string; ok: boolean }> {
   try {
-    // -v6: 상장 예정일(scheduledAt) 기준 필터로 변경 — 옛 캐시 무시하고 즉시 갱신
-    const r = await cachedJson("listings-v6", TTL_MS, scrape);
-    return { ...r, ok: true };
+    // -v7: 건별 추적 상태(미정 3h 재확인 · 확정 6h 상장 완료 확인)로 전환 — 옛 캐시 무시
+    const state = await cachedJson<ListingsState>("listings-v7", TTL_MS, refreshState);
+    const today = kstDay(new Date());
+    const listings = state.items
+      .filter((it) => it.scheduledAt == null || kstDay(new Date(it.scheduledAt)) <= today)
+      .map((it): Listing => ({
+        id: it.id, exchange: it.exchange, symbol: it.symbol, detail: it.detail,
+        text: it.text, url: it.url, date: it.date, scheduledAt: it.scheduledAt,
+      }));
+    return { listings, updatedAt: state.updatedAt, ok: true };
   } catch {
     return { listings: [], updatedAt: new Date(0).toISOString(), ok: false };
   }

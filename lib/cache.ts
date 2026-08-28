@@ -32,10 +32,11 @@ export function invalidateLocalCache(keys: string[]): void {
 }
 
 // 갱신 태스크 시작 (인스턴스 내 중복 합치기) — 반환된 프로미스는 항상 존재
-function startRefresh<T>(key: string, fetcher: () => Promise<T>): Promise<unknown> {
+// prev: 이 키의 직전 데이터(없으면 null) — 증분 갱신(직전 상태 위에 병합)이 필요한 fetcher용
+function startRefresh<T>(key: string, fetcher: (prev: T | null) => Promise<T>, prev: T | null): Promise<unknown> {
   if (!inflight.has(key)) {
     const p = (async () => {
-      const data = await fetcher();
+      const data = await fetcher(prev);
       lkgSetIfNewer(key, data, Date.now()); // DB 기록 실패해도 인메모리 LKG는 남긴다
       await prisma.marketCache
         .upsert({
@@ -51,10 +52,11 @@ function startRefresh<T>(key: string, fetcher: () => Promise<T>): Promise<unknow
   return inflight.get(key)!;
 }
 
+// fetcher는 직전 데이터(prev)를 인자로 받는다 — 무시해도 되고, 상태를 누적하는 수집기는 병합에 쓴다.
 export async function cachedJson<T>(
   key: string,
   ttlMs: number,
-  fetcher: () => Promise<T>
+  fetcher: (prev: T | null) => Promise<T>
 ): Promise<T> {
   let row: { data: unknown; updatedAt: Date } | null = null;
   try {
@@ -75,7 +77,7 @@ export async function cachedJson<T>(
 
   // 만료 + 직전 데이터 있음 → stale 즉시 반환 + 백그라운드 갱신 (SWR)
   if (best) {
-    const refresh = startRefresh(key, fetcher).catch((err) => {
+    const refresh = startRefresh(key, fetcher, best.data as T).catch((err) => {
       // 백그라운드 실패는 사용자에겐 안 보이므로 경고로 남겨 만료 누적을 감지한다
       const ageMin = Math.round((Date.now() - best.at) / 60000);
       console.warn(`[cache] ${key} 백그라운드 갱신 실패 → stale 유지 (${ageMin}분 경과)`, err);
@@ -90,7 +92,7 @@ export async function cachedJson<T>(
 
   // 직전 데이터 전무(진짜 첫 수집, 또는 DB 장애 + 인스턴스 콜드) → 인라인으로 기다린다
   try {
-    return (await startRefresh(key, fetcher)) as T;
+    return (await startRefresh(key, fetcher, null)) as T;
   } catch (err) {
     console.error(`[cache] ${key} 갱신 실패 + 직전 데이터 없음`, err);
     throw new Error(`marketCache:${key} 사용 불가`);
