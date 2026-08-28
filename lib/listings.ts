@@ -264,6 +264,60 @@ async function fetchUpbitNoticeTime(url: string | null): Promise<string | null> 
   }
 }
 
+// ── Binance 공지: 공개 CMS 상세 API(JSON)로 본문을 읽어 "Launch Time … YYYY-MM-DD HH:MM (UTC)"를 추출 ──
+// 피드 링크 binance.com/en/support/announcement/detail/<code> 의 code(32 hex)를 articleCode로 쓴다.
+const BINANCE_ARTICLE_API = "https://www.binance.com/bapi/composite/v1/public/cms/article/detail/query";
+
+async function fetchBinanceArticleTime(url: string | null): Promise<string | null> {
+  const code = url?.match(/binance\.com\/[a-z-]+\/support\/announcement\/(?:detail\/)?([0-9a-f]{32})/i)?.[1];
+  if (!code) return null;
+  try {
+    const res = await fetch(`${BINANCE_ARTICLE_API}?articleCode=${code}`, {
+      signal: AbortSignal.timeout(7000),
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36",
+        Accept: "application/json",
+      },
+    });
+    if (!res.ok) return null;
+    const json = (await res.json()) as { data?: { body?: string } };
+    const body = json.data?.body ?? "";
+    if (!body) return null;
+    // 본문은 노드 트리 JSON 문자열 — 텍스트만 정규식으로 본다. "Launch Time" 뒤 첫 시각 우선, 없으면 본문 첫 시각.
+    const utcRe = /(\d{4})-(\d{2})-(\d{2})\s+(\d{1,2}):(\d{2})\s*\(UTC\)/;
+    const after = body.slice(body.search(/Launch\s*Time/i) >= 0 ? body.search(/Launch\s*Time/i) : 0);
+    const m = after.match(utcRe) ?? body.match(utcRe);
+    if (!m) return null;
+    return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5])).toISOString();
+  } catch {
+    return null;
+  }
+}
+
+// ── Coinbase: 공지 링크가 X라 시각을 못 읽는다 → 거래소 공개 상품 API로 "이미 거래 중(online)"인지 확인 ──
+const COINBASE_PRODUCTS_API = "https://api.exchange.coinbase.com/products";
+
+async function isCoinbaseProductOnline(symbol: string | null): Promise<boolean> {
+  if (!symbol) return false;
+  try {
+    const res = await fetch(`${COINBASE_PRODUCTS_API}/${encodeURIComponent(symbol)}-USD`, {
+      signal: AbortSignal.timeout(5000),
+      headers: { "User-Agent": "Mozilla/5.0", Accept: "application/json" },
+    });
+    if (!res.ok) return false;
+    const p = (await res.json()) as { status?: string; trading_disabled?: boolean };
+    return p.status === "online" && !p.trading_disabled;
+  } catch {
+    return false;
+  }
+}
+
+// 피드 문구 자체가 "이미 상장됨"을 뜻하는 경우 (예: "live on Robinhood spot", "listed on Coinbase spot", "added to Coinbase roadmap")
+// → 게시 시각을 상장 시각으로 본다. 예정형("will list", "to list", "listing on")은 제외.
+const LIVE_TEXT_RE = /\b(live on|now live|is live|now available|added to .* roadmap)\b/i;
+const FUTURE_TEXT_RE = /\b(will|to list|upcoming|listing on|scheduled)\b/i;
+
 // 상장 예정 시각을 읽기 위해 fetch를 허용할 거래소 공식 도메인 (allow-list).
 // 정적 도메인만 허용하므로 DNS 리바인딩(TOCTOU)/HTTP 다운그레이드가 원천 무력화된다.
 // 목록 밖 도메인은 fetch하지 않고 '미정'(null) 처리 — scheduledAt은 best-effort라 안전.
@@ -326,15 +380,27 @@ async function extractScheduledTime(url: string | null): Promise<string | null> 
   if (u.protocol !== "https:" || !isAllowedFetchHost(hostname)) return null;
   if (!(await isSafePublicUrl(url))) return null; // 추가 방어: 사설 IP로 해석되는 호스트 차단
   try {
-    const res = await fetch(url, {
-      signal: AbortSignal.timeout(7000),
-      redirect: "manual", // 리다이렉트로 사설망 우회 방지
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36",
-        Accept: "text/html",
-      },
-    });
+    const headers = {
+      "User-Agent":
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36",
+      Accept: "text/html",
+    };
+    // 리다이렉트는 수동 처리 — 같은 allow-list 도메인의 https 로만 최대 2회 따라간다
+    // (Bybit 공지가 /en-US/ → /en/ 으로 301. 사설망·타 도메인으로의 우회는 차단)
+    let res = await fetch(url, { signal: AbortSignal.timeout(7000), redirect: "manual", headers });
+    for (let hop = 0; hop < 2 && res.status >= 300 && res.status < 400; hop++) {
+      const loc = res.headers.get("location");
+      if (!loc) return null;
+      let next: URL;
+      try {
+        next = new URL(loc, url);
+      } catch {
+        return null;
+      }
+      if (next.protocol !== "https:" || !isAllowedFetchHost(next.hostname)) return null;
+      if (!(await isSafePublicUrl(next.href))) return null;
+      res = await fetch(next.href, { signal: AbortSignal.timeout(7000), redirect: "manual", headers });
+    }
     if (!res.ok) return null;
     // HTML만 파싱 — 바이너리/JSON 응답을 통째로 텍스트 변환하지 않는다
     const ct = res.headers.get("content-type") ?? "";
@@ -346,15 +412,26 @@ async function extractScheduledTime(url: string | null): Promise<string | null> 
       .replace(/&amp;/g, "&")
       .replace(/\s+/g, " ");
     // 두 가지 어순 모두 대응
-    const a = t.match(/([A-Z][a-z]{2,8})\.?\s+(\d{1,2}),?\s*(\d{4}),?\s+(\d{1,2}):(\d{2})\s*\(?UTC/);
-    const b = t.match(/(\d{1,2}):(\d{2})\s*\(?UTC\)?\s+on\s+([A-Z][a-z]{2,8})\.?\s+(\d{1,2}),?\s*(\d{4})/);
+    // "Aug 28, 2026 7:00 UTC"(OKX) · "Aug 27, 2026, 8:00AM UTC"(Bybit) · "Sep 1, 2026 12:00 (UTC)"
+    const a = t.match(
+      /([A-Z][a-z]{2,8})\.?\s+(\d{1,2}),?\s*(\d{4}),?\s+(\d{1,2}):(\d{2})\s*(AM|PM|am|pm)?\s*\(?UTC/
+    );
+    const b = t.match(
+      /(\d{1,2}):(\d{2})\s*(AM|PM|am|pm)?\s*\(?UTC\)?\s+on\s+([A-Z][a-z]{2,8})\.?\s+(\d{1,2}),?\s*(\d{4})/
+    );
+    const to24 = (h: number, ap?: string) => {
+      const p = ap?.toUpperCase();
+      if (p === "PM" && h < 12) return h + 12;
+      if (p === "AM" && h === 12) return 0;
+      return h;
+    };
     let y: number | undefined, mo: number | undefined, d: number, hh: number, mm: number;
     let idx = Infinity;
     if (a && a.index !== undefined && a.index < idx) {
-      mo = MON[a[1].slice(0, 3).toLowerCase()]; d = +a[2]; y = +a[3]; hh = +a[4]; mm = +a[5]; idx = a.index;
+      mo = MON[a[1].slice(0, 3).toLowerCase()]; d = +a[2]; y = +a[3]; hh = to24(+a[4], a[6]); mm = +a[5]; idx = a.index;
     }
     if (b && b.index !== undefined && b.index < idx) {
-      hh = +b[1]; mm = +b[2]; mo = MON[b[3].slice(0, 3).toLowerCase()]; d = +b[4]; y = +b[5]; idx = b.index;
+      hh = to24(+b[1], b[3]); mm = +b[2]; mo = MON[b[4].slice(0, 3).toLowerCase()]; d = +b[5]; y = +b[6]; idx = b.index;
     }
     if (idx === Infinity || mo == null || y == null) {
       // 영문 UTC 표기가 없으면 한국어 공지(빗썸 등) "예상 거래시간 … YYYY년 M월 D일 HH:MM"(KST) 시도
@@ -436,6 +513,18 @@ async function resolveScheduledAt(l: Listing, bithumbNotices: Map<string, Bithum
     const fromApi = await fetchUpbitNoticeTime(l.url);
     if (fromApi) return fromApi;
   }
+  if (l.exchange === "Binance") {
+    // 바이낸스 선물: CMS 상세 API의 "Launch Time" 우선, 없으면 원문 best-effort
+    const fromApi = await fetchBinanceArticleTime(l.url);
+    if (fromApi) return fromApi;
+  }
+  if (l.exchange === "Coinbase") {
+    // 코인베이스: 로드맵 추가는 게시 시점이 곧 이벤트. 현물 상장은 상품 API가 online이면 이미 거래 중 → 게시 시각
+    if (/roadmap/i.test(l.text)) return l.date;
+    if (await isCoinbaseProductOnline(l.symbol)) return l.date;
+  }
+  // "live on …" 류 완료형 문구 → 게시 시각이 상장 시각 (Robinhood 등 원문을 못 읽는 거래소 공통)
+  if (LIVE_TEXT_RE.test(l.text) && !FUTURE_TEXT_RE.test(l.text)) return l.date;
   return extractScheduledTime(l.url);
 }
 
