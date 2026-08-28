@@ -208,6 +208,62 @@ function parseBithumbTradeTime(title: string, publishedAt: string): string | nul
   return kstToUtcIso(y, mo, d, hh, mm);
 }
 
+// ── Upbit 공지: 공개 공지 API(JSON)로 본문을 읽어 "거래지원 개시 시점 … M월 D일 H시 (M분) 예정"(KST)을 추출 ──
+// upbit.com/service_center/notice?id=<uuid> 의 uuid를 그대로 API id로 쓸 수 있다.
+const UPBIT_NOTICE_API = "https://api-manager.upbit.com/api/v1/announcements";
+
+async function fetchUpbitNoticeTime(url: string | null): Promise<string | null> {
+  const id = url?.match(/upbit\.com\/service_center\/notice\?id=(\d+)/)?.[1];
+  if (!id) return null;
+  try {
+    const res = await fetch(`${UPBIT_NOTICE_API}/${id}?os=web`, {
+      signal: AbortSignal.timeout(7000),
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36",
+        Accept: "application/json",
+        "Accept-Language": "ko-KR,ko;q=0.9",
+      },
+    });
+    if (!res.ok) return null;
+    const json = (await res.json()) as { data?: { body?: string; listed_at?: string } };
+    const body = json.data?.body ?? "";
+    const listedAt = json.data?.listed_at ? new Date(json.data.listed_at) : null;
+    if (!body || !listedAt || Number.isNaN(listedAt.getTime())) return null;
+    const text = decodeEntities(body);
+    // 연기 공지는 본문 맨 앞에 "변경된 거래지원 개시 시점 : 2026-08-21 19:00 KST"가 최신순으로 덧붙는다 → 첫 매치가 최종 시각
+    const changed = text.match(
+      /변경된\s*거래\s*(?:지원\s*)?개시\s*시점\s*[:：]\s*(\d{4})-(\d{2})-(\d{2})\s+(\d{1,2}):(\d{2})/
+    );
+    if (changed) return kstToUtcIso(+changed[1], +changed[2], +changed[3], +changed[4], +changed[5]);
+    const seg = text.match(/거래\s*(?:지원\s*)?(?:개시|시작|오픈)\s*시점[\s\S]{0,400}/)?.[0] ?? text;
+    // "8월 28일 14시 예정" · "8월 23일 12시 30분 예정" · "8월 28일 오후 2시" · "8월 28일 14:00"
+    const m = seg.match(
+      /(\d{1,2})월\s*(\d{1,2})일\s*(오전|오후)?\s*(\d{1,2})\s*(?:시(?:\s*(\d{1,2})\s*분)?|:(\d{2}))/
+    );
+    // 공지 게시 시각(KST) 기준으로 연도를 채운다 — 12월 공지의 1월 상장은 다음 해로 보정
+    const postedKst = new Date(listedAt.getTime() + KST_MS);
+    let y = postedKst.getUTCFullYear();
+    if (m) {
+      const mo = +m[1];
+      const d = +m[2];
+      let hh = +m[4];
+      const mm = m[5] ? +m[5] : m[6] ? +m[6] : 0;
+      if (m[3] === "오후" && hh < 12) hh += 12;
+      if (m[3] === "오전" && hh === 12) hh = 0;
+      if (mo < 1 || mo > 12 || d < 1 || d > 31 || hh > 23 || mm > 59) return null;
+      if (mo < postedKst.getUTCMonth() + 1 - 6) y += 1;
+      return kstToUtcIso(y, mo, d, hh, mm);
+    }
+    // 명시 시각이 없고 "공지 게시 시점으로부터 N시간 이내"만 있으면 게시 + N시간을 상장 시각으로 본다
+    const within = seg.match(/게시\s*시점으로부터\s*(\d{1,2})\s*시간\s*이내/);
+    if (within) return new Date(listedAt.getTime() + +within[1] * 3600_000).toISOString();
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 // 상장 예정 시각을 읽기 위해 fetch를 허용할 거래소 공식 도메인 (allow-list).
 // 정적 도메인만 허용하므로 DNS 리바인딩(TOCTOU)/HTTP 다운그레이드가 원천 무력화된다.
 // 목록 밖 도메인은 fetch하지 않고 '미정'(null) 처리 — scheduledAt은 best-effort라 안전.
@@ -324,12 +380,14 @@ async function extractScheduledTime(url: string | null): Promise<string | null> 
 //  - 신규 발견: 즉시 1회 시각 추출
 //  - 시각 미정: 3시간마다 원문 재확인 (시각이 나올 때까지)
 //  - 시각 확정: 6시간마다 원문 재확인(연기 반영)
-//  - 제거: 상장 후 12시간 경과 시 목록에서 제거 (시각 미정 건은 게시 시각을 상장 시각으로 간주)
-//    → 매 갱신(30분)마다 시계 비교만 하므로 외부 요청 없이 즉시 반영
+//  - 제거: 상장 시각 + 12시간 경과 시 목록에서 제거 (매 갱신마다 시계 비교 — 외부 요청 없음)
+//    시각 미정 건은 3시간 재확인으로 상장 시각을 먼저 확인하고 그 기준으로 12시간을 센다.
+//    끝내 시각을 못 읽는 건만 게시 후 48시간에 안전 만료.
 //  - 모든 건이 시각 확정 + 확인 주기 미도래면 원문 fetch 0건 (피드 1콜만)
 const TIME_RECHECK_MS = 3 * 3600_000; // 시각 미정 재확인 주기
 const LISTED_CHECK_MS = 6 * 3600_000; // 확정 건 원문 재확인 주기
 const LISTED_GRACE_MS = 12 * 3600_000; // 상장 후 노출 유지 시간 — 지나면 제거
+const TBA_FALLBACK_MS = 48 * 3600_000; // 시각을 끝내 못 읽은 건의 안전 만료 (게시 후)
 const DISCOVER_WINDOW_MS = 48 * 3600_000; // 피드에서 신규로 받아들일 게시 범위
 const STALE_EXPIRE_MS = 7 * 24 * 3600_000; // 어떤 경우든 이보다 오래된 건은 폐기
 const EXTRACT_CONCURRENCY = 6;
@@ -372,6 +430,11 @@ async function resolveScheduledAt(l: Listing, bithumbNotices: Map<string, Bithum
     const notice = id ? bithumbNotices.get(id) : undefined;
     const fromTitle = notice ? parseBithumbTradeTime(notice.title, notice.publishedAt) : null;
     if (fromTitle) return fromTitle;
+  }
+  if (l.exchange === "Upbit") {
+    // 업비트: 공지 API 본문의 "거래지원 개시 시점" 우선(안정적), 없으면 원문 best-effort
+    const fromApi = await fetchUpbitNoticeTime(l.url);
+    if (fromApi) return fromApi;
   }
   return extractScheduledTime(l.url);
 }
@@ -448,13 +511,16 @@ async function refreshState(prev: ListingsState | null): Promise<ListingsState> 
     }),
   ]);
 
-  // 제거: 상장 후 12시간 경과(미정 건은 게시 시각 기준) · 절대 만료
+  // 제거: 상장 시각 + 12시간 경과 · 시각 미확인 건은 게시 후 48시간 안전 만료 · 절대 만료
   const items: Tracked[] = [];
   for (const it of byId.values()) {
     const postedAt = new Date(it.date).getTime();
     if (now - postedAt > STALE_EXPIRE_MS) continue;
-    const listedAt = it.scheduledAt ? new Date(it.scheduledAt).getTime() : postedAt;
-    if (now - listedAt >= LISTED_GRACE_MS) continue;
+    if (it.scheduledAt) {
+      if (now - new Date(it.scheduledAt).getTime() >= LISTED_GRACE_MS) continue;
+    } else if (now - postedAt >= TBA_FALLBACK_MS) {
+      continue;
+    }
     items.push(it);
   }
   items.sort((a, b) => (a.scheduledAt ?? a.date).localeCompare(b.scheduledAt ?? b.date));
