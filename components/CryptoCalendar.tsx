@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import EventIcon from "@/components/EventIcon";
 import Spinner from "@/components/Spinner";
 import { KST_MS } from "@/lib/time";
+import { sourceLogoFor } from "@/lib/source-logos";
 
 type EventSource = {
   name: string;
@@ -27,6 +28,18 @@ type CalendarEvent = {
   importance?: number; // 1~3
   sources?: EventSource[]; // 수집된 모든 출처 (없으면 sourceUrl 폴백)
 };
+
+// 출처 신뢰도 티어 — 툴팁 표기용 (T1 공식 원문 / T2 주요 매체·데이터 / T3 보조 소스)
+const TIER_LABEL: Record<number, string> = { 1: "T1 공식·1차", 2: "T2 주요 매체·데이터", 3: "T3 보조 소스" };
+
+// 출처 URL의 호스트(www. 제거) — 로고 없는 출처의 이니셜 뱃지·툴팁에 사용
+function sourceHost(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return "";
+  }
+}
 
 // 날짜 상태 뱃지 — confirmed(기본)는 표시하지 않음
 const DATE_STATUS_BADGE: Record<string, { label: string; cls: string }> = {
@@ -601,31 +614,53 @@ export default function CryptoCalendar({
             <p className="mt-3 border-t border-line pt-3 text-sm leading-6 text-ink-900">
               {selected.description}
             </p>
-            {/* 개별 출처 — 수집된 모든 출처를 티어 뱃지와 함께 나열 (docs/data-collection 소스 보존 규칙) */}
+            {/* 개별 출처 — 수집된 모든 출처를 플랫폼 로고와 함께 나열 (docs/data-collection 소스 보존 규칙).
+                로고는 public/logos/sources/ (scripts/collect-source-logos.mjs), 없으면 호스트 이니셜 뱃지.
+                신뢰도 티어(T1~3)는 툴팁으로만 노출. */}
             {selected.sources && selected.sources.length > 0 && (
               <div className="mt-4 border-t border-line pt-3">
                 <span className="text-[11px] font-semibold text-navy-400">개별 출처</span>
                 <ul className="mt-1.5 flex flex-col gap-1">
-                  {selected.sources.map((s, i) => (
-                    <li key={i} className="flex items-center gap-1.5 text-xs">
-                      {s.tier && (
-                        <span className="shrink-0 bg-paper2 px-1 py-px font-mono text-[10px] text-navy-500">
-                          T{s.tier}
-                        </span>
-                      )}
-                      <a
-                        href={s.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="truncate text-navy-700 underline-offset-2 hover:underline"
-                      >
-                        {s.name} ↗
-                      </a>
-                      {s.isOfficial && (
-                        <span className="shrink-0 text-[10px] text-emerald-700">공식</span>
-                      )}
-                    </li>
-                  ))}
+                  {selected.sources.map((s, i) => {
+                    const logo = sourceLogoFor(s.url);
+                    const host = sourceHost(s.url);
+                    const tip = [logo?.label ?? host, s.tier ? TIER_LABEL[s.tier] : null]
+                      .filter(Boolean)
+                      .join(" · ");
+                    return (
+                      <li key={i} className="flex items-center gap-1.5 text-xs">
+                        <a
+                          href={s.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title={tip}
+                          className="flex min-w-0 items-center gap-1.5 text-navy-700 underline-offset-2 hover:underline"
+                        >
+                          {logo ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={`/logos/sources/${logo.file}`}
+                              alt=""
+                              width={14}
+                              height={14}
+                              className="h-3.5 w-3.5 shrink-0 rounded-[2px] object-contain"
+                            />
+                          ) : (
+                            <span
+                              aria-hidden
+                              className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[2px] bg-paper2 font-mono text-[9px] font-semibold uppercase text-navy-500"
+                            >
+                              {host.charAt(0) || "·"}
+                            </span>
+                          )}
+                          <span className="truncate">{s.name} ↗</span>
+                        </a>
+                        {s.isOfficial && (
+                          <span className="shrink-0 text-[10px] text-emerald-700">공식</span>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             )}
