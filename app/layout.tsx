@@ -21,9 +21,22 @@ const geistMono = Geist_Mono({
   weight: ["400", "500", "600", "700"],
 });
 
+// 링크 공유 카드의 절대 URL 기준점. 썸네일(app/opengraph-image.tsx)은 파일 컨벤션이라
+// 경로가 자동 생성되지만, metadataBase가 없으면 localhost로 찍혀 외부 미리보기가 깨진다.
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ??
+  (process.env.VERCEL ? "https://kmir.kang88.io" : "http://localhost:3000");
+
+const title = "KMIR — Kang Market Intelligence & Research";
+const description =
+  "Kang의 투자 리서치 종합 지표 콘솔 — 실시간 시세·김치프리미엄·시장 분석·일정";
+
 export const metadata: Metadata = {
-  title: "KMIR — Kang Market Intelligence & Research",
-  description: "Kang의 투자 리서치 종합 지표 콘솔 — 실시간 시세·김치프리미엄·시장 분석·일정",
+  metadataBase: new URL(siteUrl),
+  title,
+  description,
+  openGraph: { title, description, siteName: "KMIR", type: "website" },
+  twitter: { card: "summary_large_image", title, description },
 };
 
 export default function RootLayout({

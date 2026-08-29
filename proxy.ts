@@ -11,9 +11,13 @@ import { ADMIN_MIN_LEVEL } from "@/lib/roles";
 // - /login: 로그인 화면 (비로그인 진입점)
 // - /api/auth: NextAuth OAuth 콜백·세션
 // - /api/cron: Vercel 크론 — 세션 없이 CRON_SECRET Bearer로 자체 인증
+// - /opengraph-image: 링크 공유 썸네일 — 카카오톡·슬랙 크롤러는 세션이 없다.
+//   게이트에 걸리면 미리보기가 로그인 리다이렉트를 받아 썸네일이 통째로 깨진다.
+//   내용은 워드마크뿐이라 공개해도 새는 정보가 없다.
 function isPublic(pathname: string): boolean {
   return (
     pathname === "/login" ||
+    pathname === "/opengraph-image" ||
     pathname.startsWith("/api/auth/") ||
     pathname.startsWith("/api/cron/")
   );
