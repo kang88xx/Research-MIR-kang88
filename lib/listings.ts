@@ -128,8 +128,11 @@ function parseListings(html: string): Listing[] {
     const link = after.match(/href="(https:\/\/t\.me\/[^"]+\/(\d+))"/);
     const url = srcUrl ?? link?.[1] ?? null;
     const id = link?.[2] ?? `${out.length}`;
-    const sym = text.match(/^\$?([A-Z0-9]{1,15})\b/)?.[1] ?? null;
-    const detail = sym ? text.replace(/^\$?[A-Z0-9]{1,15}\s*/, "") : text;
+    // $ 접두어가 있으면 비ASCII 티커도 허용 (예: "$牛来 listed on Binance futures"),
+    // 접두어가 없으면 영문 대문자·숫자만 심볼로 인정 (일반 단어 오인 방지)
+    const symMatch = text.match(/^\$(\S{1,15})(?=\s|$)/) ?? text.match(/^([A-Z0-9]{1,15})\b/);
+    const sym = symMatch?.[1].replace(/[.,:;!?]+$/, "") || null;
+    const detail = symMatch ? text.slice(symMatch[0].length).trim() : text;
     out.push({
       id,
       exchange,
@@ -623,8 +626,8 @@ async function refreshState(prev: ListingsState | null): Promise<ListingsState> 
 // ok=false 는 '수집 실패(직전 데이터 없음)' — UI가 진짜 0건과 장애를 구분하게 한다.
 export async function getTodayListings(): Promise<{ listings: Listing[]; updatedAt: string; ok: boolean }> {
   try {
-    // -v7: 건별 추적 상태(미정 3h 재확인 · 확정 6h 상장 완료 확인)로 전환 — 옛 캐시 무시
-    const state = await cachedJson<ListingsState>("listings-v7", TTL_MS, refreshState);
+    // -v8: 심볼 파서 확장($ 접두어 비ASCII 티커) — symbol=null로 박제된 옛 캐시 무시
+    const state = await cachedJson<ListingsState>("listings-v8", TTL_MS, refreshState);
     const today = kstDay(new Date());
     const listings = state.items
       .filter((it) => it.scheduledAt == null || kstDay(new Date(it.scheduledAt)) <= today)
