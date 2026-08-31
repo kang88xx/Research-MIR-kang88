@@ -188,57 +188,70 @@ export default function KimchiTrendPopup({ history }: { history: KimchiDay[] }) 
           <p className="mt-4 text-[11.5px] text-ink-400">추이 데이터를 불러오지 못했습니다.</p>
         ) : (
           <div className="mt-2">
-            {/* 라인+영역 차트 — 각 포인트가 아래 날짜 라벨 열과 같은 x 위치에 놓인다 */}
-            <svg
-              viewBox={`0 0 ${chart.W} ${chart.H}`}
-              className="block h-[72px] w-full"
-              preserveAspectRatio="none"
-              aria-hidden
-            >
-              <defs>
-                <linearGradient id="kimchi-trend-fill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={chart.stroke} stopOpacity="0.16" />
-                  <stop offset="100%" stopColor={chart.stroke} stopOpacity="0" />
-                </linearGradient>
-              </defs>
-              <line
-                x1="0"
-                y1={chart.zeroY}
-                x2={chart.W}
-                y2={chart.zeroY}
-                stroke="var(--color-hairline)"
-                strokeDasharray="3 3"
-              />
-              <polygon
-                points={`${chart.points.map((p) => `${p.x},${p.y}`).join(" ")} ${
-                  chart.points[chart.points.length - 1].x
-                },${chart.H} ${chart.points[0].x},${chart.H}`}
-                fill="url(#kimchi-trend-fill)"
-              />
-              <polyline
-                points={chart.points.map((p) => `${p.x},${p.y}`).join(" ")}
-                fill="none"
-                stroke={chart.stroke}
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              {chart.points.map((p, i) =>
-                i === chart.points.length - 1 ? (
-                  <circle key={i} cx={p.x} cy={p.y} r="4" fill={chart.stroke} />
-                ) : (
-                  <circle
+            {/* 라인+영역 차트 — 각 포인트가 아래 날짜 라벨 열과 같은 x 위치에 놓인다.
+                SVG는 가로로 늘려 그리되(preserveAspectRatio=none) 선 두께는 화면 픽셀로 고정하고,
+                포인트 마커는 HTML 오버레이로 얹어 어떤 폭에서도 원이 찌그러지지 않게 한다 */}
+            <div className="relative">
+              <svg
+                viewBox={`0 0 ${chart.W} ${chart.H}`}
+                className="block h-[72px] w-full"
+                preserveAspectRatio="none"
+                aria-hidden
+              >
+                <defs>
+                  <linearGradient id="kimchi-trend-fill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={chart.stroke} stopOpacity="0.16" />
+                    <stop offset="100%" stopColor={chart.stroke} stopOpacity="0" />
+                  </linearGradient>
+                </defs>
+                <line
+                  x1="0"
+                  y1={chart.zeroY}
+                  x2={chart.W}
+                  y2={chart.zeroY}
+                  stroke="var(--color-hairline)"
+                  strokeDasharray="3 3"
+                  vectorEffect="non-scaling-stroke"
+                />
+                <polygon
+                  points={`${chart.points.map((p) => `${p.x},${p.y}`).join(" ")} ${
+                    chart.points[chart.points.length - 1].x
+                  },${chart.H} ${chart.points[0].x},${chart.H}`}
+                  fill="url(#kimchi-trend-fill)"
+                />
+                <polyline
+                  points={chart.points.map((p) => `${p.x},${p.y}`).join(" ")}
+                  fill="none"
+                  stroke={chart.stroke}
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  vectorEffect="non-scaling-stroke"
+                />
+              </svg>
+              {chart.points.map((p, i) => {
+                const isLast = i === chart.points.length - 1;
+                return (
+                  <span
                     key={i}
-                    cx={p.x}
-                    cy={p.y}
-                    r="2.5"
-                    fill="var(--color-surface)"
-                    stroke={chart.stroke}
-                    strokeWidth="1.5"
+                    aria-hidden
+                    className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full"
+                    style={{
+                      left: `${(p.x / chart.W) * 100}%`,
+                      top: `${(p.y / chart.H) * 100}%`,
+                      ...(isLast
+                        ? { width: 8, height: 8, background: chart.stroke }
+                        : {
+                            width: 7,
+                            height: 7,
+                            background: "var(--color-surface)",
+                            border: `1.5px solid ${chart.stroke}`,
+                          }),
+                    }}
                   />
-                ),
-              )}
-            </svg>
+                );
+              })}
+            </div>
             {/* 날짜·수치 라벨 — 포인트와 동일한 균등 분할, 격일 수치 표기·오늘 강조 */}
             <div className="mt-1 flex">
               {history.map((d, i) => {
