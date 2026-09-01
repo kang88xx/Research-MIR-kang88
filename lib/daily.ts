@@ -35,6 +35,16 @@ export const STANCE_COLOR: Record<string, string> = {
   expand: "var(--color-good)",
 };
 
+// 스탠스 칩 글리프 — Chip의 ChipIconName과 짝. 색만으로 구분하던 필에 형태 단서를 더해
+// 색각 이상·흑백 출력에서도 방어/공격이 읽히게 한다.
+export const STANCE_ICON: Record<string, string> = {
+  reduce: "down",
+  conservative: "shield",
+  wait: "clock",
+  selective: "target",
+  expand: "trend",
+};
+
 // ── BTC 다음날 방향 예측 — 발행 다음날 같은 시각(09:00 KST) 가격으로 자동 판정·공개 ──
 // 관망(neutral)은 "변동성이 거의 없다"는 예측: ±BAND% 미만 횡보해야 적중.
 // 상방/하방은 각각 +BAND% 이상 / -BAND% 이하로 움직여야 적중 — 애매한 움직임에
@@ -54,6 +64,13 @@ export const DIRECTION_COLOR: Record<string, string> = {
   up: "var(--color-up)",
   down: "var(--color-down)",
   neutral: "var(--color-neutral)",
+};
+
+// 방향 예측 칩 글리프 — 상방↑ / 하방↓ / 관망 —
+export const DIRECTION_ICON: Record<string, string> = {
+  up: "up",
+  down: "down",
+  neutral: "flat",
 };
 
 export const DIRECTION_BAND_PCT = 1.0; // 적중 판정 기준 변동폭 (%)

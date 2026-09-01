@@ -5,6 +5,7 @@ import Sparkline from "@/components/Sparkline";
 import LiveSparkline from "@/components/LiveSparkline";
 import MarketStatus, { type Mkt } from "@/components/MarketStatus";
 import TileIcon from "@/components/TileIcon";
+import ChangeArrow from "@/components/ChangeArrow";
 
 // 2a 파이낸스 그레이드 — 12개 지표 카드 공통 셸 (radius 14 · 보더 기반 · 그림자 없음)
 const CARD = "rounded-[6px] border border-line bg-white px-3 py-2";
@@ -91,6 +92,7 @@ function UsdtTile({ t }: { t: BarTile }) {
         <span className={`${VAL_LG} ${km.text}`}>
           {u.tetherKimchi != null ? formatPercent(u.tetherKimchi) : "-"}
         </span>
+        <ChangeArrow pct={u.tetherKimchi} size={13} className="self-center" />
         <span className="font-mono text-[11.5px] font-medium tabular-nums whitespace-nowrap text-navy-600">
           {u.tetherKrw != null ? `${Math.round(u.tetherKrw).toLocaleString("ko-KR")}원` : "-"}
         </span>
@@ -185,7 +187,12 @@ function FxTile({ t }: { t: BarTile }) {
       </div>
       <div className="mt-1 flex items-baseline gap-[9px]">
         <span className={VAL}>{t.value}</span>
-        {t.changePct != null && <span className={`${CHG} ${c.text}`}>{formatPercent(t.changePct)}</span>}
+        {t.changePct != null && (
+          <span className="flex items-center gap-1">
+            <span className={`${CHG} ${c.text}`}>{formatPercent(t.changePct)}</span>
+            <ChangeArrow pct={t.changePct} size={13} />
+          </span>
+        )}
       </div>
       {/* 최근 영업일 — "1D(1일 전)·2D…" 상대 날짜 + 값, 들어가는 만큼(최신 5일)만 한 줄 */}
       {fx6.length > 1 && (
@@ -258,7 +265,12 @@ function Tile({ t }: { t: BarTile }) {
           </div>
           <div className="mt-1 flex items-baseline gap-2">
             <span className={VAL}>{t.value}</span>
-            {t.changePct != null && <span className={`${CHG} ${c.text}`}>{formatPercent(t.changePct)}</span>}
+            {t.changePct != null && (
+              <span className="flex items-center gap-1">
+                <span className={`${CHG} ${c.text}`}>{formatPercent(t.changePct)}</span>
+                <ChangeArrow pct={t.changePct} size={13} />
+              </span>
+            )}
           </div>
         </div>
 

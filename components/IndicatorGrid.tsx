@@ -11,6 +11,7 @@ import { formatPercent } from "@/lib/format";
 import Sparkline from "@/components/Sparkline";
 import MarketStatus, { type Mkt } from "@/components/MarketStatus";
 import TileIcon, { ICONS } from "@/components/TileIcon";
+import ChangeArrow from "@/components/ChangeArrow";
 
 // 서브행 — 홈 마켓바(MarketBar)와 동일 문법: 상단 헤어라인 + 9.5px, 가로 1줄 고정
 const SUB =
@@ -225,6 +226,7 @@ function CardValue({ t }: { t: BarTile }) {
         <span className={`font-mono text-[22px] font-semibold leading-none tabular-nums ${km.text}`}>
           {t.usdt.tetherKimchi != null ? formatPercent(t.usdt.tetherKimchi) : "-"}
         </span>
+        <ChangeArrow pct={t.usdt.tetherKimchi} size={14} className="self-center" />
         <span className="font-mono text-[12px] font-medium tabular-nums text-navy-600">
           {t.usdt.tetherKrw != null ? `${Math.round(t.usdt.tetherKrw).toLocaleString("ko-KR")}원` : "-"}
         </span>
@@ -260,9 +262,12 @@ function CardValue({ t }: { t: BarTile }) {
           {t.value}
         </span>
         {deltaPp != null && (
-          <span className={`font-mono text-[11.5px] font-medium tabular-nums ${d.text}`}>
-            전일 {deltaPp > 0 ? "+" : ""}
-            {deltaPp.toFixed(2)}%p
+          <span className="flex items-center gap-1">
+            <span className={`font-mono text-[11.5px] font-medium tabular-nums ${d.text}`}>
+              전일 {deltaPp > 0 ? "+" : ""}
+              {deltaPp.toFixed(2)}%p
+            </span>
+            <ChangeArrow pct={deltaPp} size={14} />
           </span>
         )}
       </div>
@@ -275,8 +280,11 @@ function CardValue({ t }: { t: BarTile }) {
         {t.value}
       </span>
       {t.changePct != null && (
-        <span className={`font-mono text-[11.5px] font-medium tabular-nums ${c.text}`}>
-          {formatPercent(t.changePct)}
+        <span className="flex items-center gap-1">
+          <span className={`font-mono text-[11.5px] font-medium tabular-nums ${c.text}`}>
+            {formatPercent(t.changePct)}
+          </span>
+          <ChangeArrow pct={t.changePct} size={14} />
         </span>
       )}
     </div>
@@ -409,6 +417,7 @@ function DetailModal({ t, onClose }: { t: BarTile; onClose: () => void }) {
                   height={64}
                   stroke={series.stroke}
                   baseline={series.baseline}
+                  guides
                 />
               </div>
             )}

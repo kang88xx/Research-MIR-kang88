@@ -9,13 +9,16 @@ import { formatDateTime, formatKrw, formatPercent, formatPostDate } from "@/lib/
 import VoteButtons from "@/components/VoteButtons";
 import CommentForm from "@/components/CommentForm";
 import DailyPostBody from "@/components/DailyPostBody";
+import Chip, { type ChipIconName } from "@/components/Chip";
 import {
   parseDaily,
   stanceLabel,
   directionLabel,
   judgeDirection,
   STANCE_COLOR,
+  STANCE_ICON,
   DIRECTION_COLOR,
+  DIRECTION_ICON,
   DIRECTION_BAND_PCT,
   DAILY_MARKER,
 } from "@/lib/daily";
@@ -105,45 +108,42 @@ export default async function AnalysisDetailPage({
           <p className="eyebrow">공식 시장 분석</p>
           <h1 className="text-xl font-bold text-navy-900">
             {daily && (
-              // 소프트 필 — 목록(STANCE_COLOR)과 동일한 의미 색 틴트
-              <span
-                className="mr-2 inline-block rounded-full px-2.5 py-[3px] align-[3px] text-[11px] font-bold"
-                style={{
-                  color: STANCE_COLOR[daily.stance] ?? "var(--color-neutral)",
-                  background: `color-mix(in srgb, ${STANCE_COLOR[daily.stance] ?? "var(--color-neutral)"} 11%, transparent)`,
-                }}
+              // 소프트 필 — 목록과 동일한 Chip 프리미티브(의미 색 틴트 + 형태 글리프)
+              <Chip
+                size="md"
+                className="mr-2 align-[3px]"
+                tone={STANCE_COLOR[daily.stance] ?? "var(--color-neutral)"}
+                icon={(STANCE_ICON[daily.stance] ?? "flat") as ChipIconName}
               >
                 {stanceLabel(daily.stance)}
-              </span>
+              </Chip>
             )}
             {daily?.direction && (
-              <span
-                className="mr-2 inline-block rounded-full px-2.5 py-[3px] align-[3px] text-[11px] font-bold"
-                style={{
-                  color: DIRECTION_COLOR[daily.direction] ?? "var(--color-neutral)",
-                  background: `color-mix(in srgb, ${DIRECTION_COLOR[daily.direction] ?? "var(--color-neutral)"} 11%, transparent)`,
-                }}
+              <Chip
+                size="md"
+                className="mr-2 align-[3px]"
+                tone={DIRECTION_COLOR[daily.direction] ?? "var(--color-neutral)"}
+                icon={(DIRECTION_ICON[daily.direction] ?? "flat") as ChipIconName}
                 title={`내일 BTC 방향 예측 (±${DIRECTION_BAND_PCT}% 기준, 다음날 09:00 KST 판정)`}
               >
                 예측 {directionLabel(daily.direction)}
-              </span>
+              </Chip>
             )}
             {directionVerdict && directionVerdict !== "pending" && (
-              <span
-                className="mr-2 inline-block rounded-full px-2.5 py-[3px] align-[3px] text-[11px] font-bold"
-                style={{
-                  color: directionVerdict.hit ? "var(--color-good)" : "var(--color-up)",
-                  background: `color-mix(in srgb, ${directionVerdict.hit ? "var(--color-good)" : "var(--color-up)"} 11%, transparent)`,
-                }}
+              <Chip
+                size="md"
+                className="mr-2 align-[3px]"
+                tone={directionVerdict.hit ? "var(--color-good)" : "var(--color-up)"}
+                icon={directionVerdict.hit ? "check" : "cross"}
                 title={`다음날 BTC ${directionVerdict.changePct > 0 ? "+" : ""}${directionVerdict.changePct.toFixed(2)}%`}
               >
                 {directionVerdict.hit ? "적중" : "미적중"}
-              </span>
+              </Chip>
             )}
             {directionVerdict === "pending" && (
-              <span className="mr-2 inline-block rounded-full bg-paper2 px-2.5 py-[3px] align-[3px] text-[11px] font-bold text-ink-400">
+              <Chip size="md" variant="surface" icon="clock" className="mr-2 align-[3px]">
                 판정 전
-              </span>
+              </Chip>
             )}
             {post.title}
           </h1>

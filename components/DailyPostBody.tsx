@@ -9,15 +9,18 @@ import {
   type DailyData,
   type DailyStat,
 } from "@/lib/daily";
+import Chip, { type ChipIconName, type ChipVariant } from "@/components/Chip";
 
 const TONE_TEXT = { up: "text-up", down: "text-down", flat: "text-ink-500" } as const;
 
-const ACTION_STYLE: Record<string, string> = {
-  hold: "bg-brand-weak text-brand-ink",
-  add: "bg-brand text-on-brand",
-  wait: "bg-paper2 text-ink-500",
-  avoid: "border border-up text-up",
-  cut: "border border-up text-up",
+// 포지션별 자문 액션 — Chip 프리미티브의 톤·변형·글리프로 표현.
+// 유지/확대는 브랜드 톤(중립~긍정), 대기는 무채색, 경계/축소는 레드 아웃라인.
+const ACTION_CHIP: Record<string, { tone?: string; variant: ChipVariant; icon: ChipIconName }> = {
+  hold: { tone: "var(--color-brand-ink)", variant: "tint", icon: "shield" },
+  add: { tone: "var(--color-brand)", variant: "solid", icon: "trend" },
+  wait: { variant: "surface", icon: "clock" },
+  avoid: { tone: "var(--color-up)", variant: "outline", icon: "cross" },
+  cut: { tone: "var(--color-up)", variant: "outline", icon: "down" },
 };
 
 // 좌측 라벨 + 우측 콘텐츠 행 — 섹션 사이는 헤어라인 한 줄로만 구분
@@ -118,13 +121,14 @@ export default function DailyPostBody({ data }: { data: DailyData }) {
               <span className="w-[84px] shrink-0 text-[13px] font-semibold text-ink-900">
                 {a.position}
               </span>
-              <span
-                className={`inline-block shrink-0 whitespace-nowrap rounded-full px-2.5 py-px text-[11px] font-bold ${
-                  ACTION_STYLE[a.action] ?? "bg-paper2 text-ink-500"
-                }`}
+              <Chip
+                size="md"
+                tone={ACTION_CHIP[a.action]?.tone}
+                variant={ACTION_CHIP[a.action]?.variant ?? "surface"}
+                icon={ACTION_CHIP[a.action]?.icon ?? "flat"}
               >
                 {adviceActionLabel(a.action)}
-              </span>
+              </Chip>
               <span className="text-[12.5px] leading-relaxed text-ink-700">{a.note}</span>
             </div>
           ))}
@@ -161,13 +165,14 @@ export default function DailyPostBody({ data }: { data: DailyData }) {
                 }`}
               >
                 <span className="flex shrink-0 items-center whitespace-nowrap">
-                  <span
-                    className={`mr-2 inline-block rounded-full px-2 font-mono text-[10px] font-bold ${
-                      e.importance >= 3 ? "bg-brand text-on-brand" : "bg-brand-weak text-brand-ink"
-                    }`}
+                  <Chip
+                    size="xs"
+                    tone={e.importance >= 3 ? "var(--color-brand)" : "var(--color-brand-ink)"}
+                    variant={e.importance >= 3 ? "solid" : "tint"}
+                    className="mr-2 font-mono"
                   >
                     {e.dday}
-                  </span>
+                  </Chip>
                   <span className="text-ink-400">{e.date}</span>
                 </span>
                 <span className={`min-w-0 flex-1 truncate ${e.importance >= 3 ? "font-bold" : ""}`}>

@@ -10,10 +10,13 @@ import {
   directionLabel,
   judgeDirection,
   STANCE_COLOR,
+  STANCE_ICON,
   DIRECTION_COLOR,
+  DIRECTION_ICON,
   DIRECTION_BAND_PCT,
 } from "@/lib/daily";
 import PageTitle from "@/components/PageTitle";
+import Chip, { type ChipIconName } from "@/components/Chip";
 import { EDITOR_MIN_LEVEL } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
@@ -144,43 +147,36 @@ export default async function AnalysisPage() {
                   <span className="flex flex-wrap items-start gap-1 sm:flex-col">
                     {daily && (
                       <>
-                        <span
-                          className="inline-block whitespace-nowrap rounded-full px-2.5 py-[2px] text-[10.5px] font-bold"
-                          style={{
-                            color: STANCE_COLOR[daily.stance] ?? "var(--color-neutral)",
-                            background: `color-mix(in srgb, ${STANCE_COLOR[daily.stance] ?? "var(--color-neutral)"} 11%, transparent)`,
-                          }}
+                        <Chip
+                          tone={STANCE_COLOR[daily.stance] ?? "var(--color-neutral)"}
+                          icon={(STANCE_ICON[daily.stance] ?? "flat") as ChipIconName}
                         >
                           {stanceLabel(daily.stance)}
-                        </span>
+                        </Chip>
                         {daily.direction && (
-                          <span
-                            className="inline-block whitespace-nowrap rounded-full px-2.5 py-[2px] text-[10px] font-bold"
-                            style={{
-                              color: DIRECTION_COLOR[daily.direction] ?? "var(--color-neutral)",
-                              background: `color-mix(in srgb, ${DIRECTION_COLOR[daily.direction] ?? "var(--color-neutral)"} 11%, transparent)`,
-                            }}
+                          <Chip
+                            size="xs"
+                            tone={DIRECTION_COLOR[daily.direction] ?? "var(--color-neutral)"}
+                            icon={(DIRECTION_ICON[daily.direction] ?? "flat") as ChipIconName}
                             title={`내일 BTC 방향 예측 (±${DIRECTION_BAND_PCT}% 기준)`}
                           >
                             예측 {directionLabel(daily.direction)}
-                          </span>
+                          </Chip>
                         )}
                         {verdict && verdict !== "pending" && (
-                          <span
-                            className="inline-block whitespace-nowrap rounded-full px-2.5 py-[2px] text-[10px] font-bold"
-                            style={{
-                              color: verdict.hit ? "var(--color-good)" : "var(--color-up)",
-                              background: `color-mix(in srgb, ${verdict.hit ? "var(--color-good)" : "var(--color-up)"} 11%, transparent)`,
-                            }}
+                          <Chip
+                            size="xs"
+                            tone={verdict.hit ? "var(--color-good)" : "var(--color-up)"}
+                            icon={verdict.hit ? "check" : "cross"}
                             title={`다음날 BTC ${verdict.changePct > 0 ? "+" : ""}${verdict.changePct.toFixed(2)}%`}
                           >
                             {verdict.hit ? "적중" : "미적중"}
-                          </span>
+                          </Chip>
                         )}
                         {verdict === "pending" && (
-                          <span className="inline-block whitespace-nowrap rounded-full bg-paper2 px-2.5 py-[2px] text-[10px] font-bold text-ink-400">
+                          <Chip size="xs" variant="surface" icon="clock">
                             판정 전
-                          </span>
+                          </Chip>
                         )}
                       </>
                     )}

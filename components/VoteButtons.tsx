@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { votePost } from "@/lib/actions";
+import { ChipIcon } from "@/components/Chip";
 
 export default function VoteButtons({
   postId,
@@ -31,7 +32,9 @@ export default function VoteButtons({
           disabled={pending}
           className="group flex items-center gap-1.5 rounded-full border border-line px-4 py-2 text-[13px] font-semibold text-ink-900 transition-colors hover:border-[var(--color-up)] hover:bg-paper2 hover:text-[var(--color-up)] disabled:opacity-50"
         >
-          <span className="text-[10px] text-[var(--color-up)]">▲</span>
+          <span className="text-[var(--color-up)]">
+            <ChipIcon name="up" size={12} />
+          </span>
           추천
           <span className="font-mono font-bold tabular-nums">{upvotes}</span>
         </button>
@@ -40,7 +43,9 @@ export default function VoteButtons({
           disabled={pending}
           className="group flex items-center gap-1.5 rounded-full border border-line px-4 py-2 text-[13px] font-semibold text-ink-900 transition-colors hover:border-[var(--color-down)] hover:bg-paper2 hover:text-[var(--color-down)] disabled:opacity-50"
         >
-          <span className="text-[10px] text-[var(--color-down)]">▼</span>
+          <span className="text-[var(--color-down)]">
+            <ChipIcon name="down" size={12} />
+          </span>
           비추천
           <span className="font-mono font-bold tabular-nums">{downvotes}</span>
         </button>
