@@ -230,12 +230,21 @@ const usdCompact = (n: number | null | undefined): string => {
 export async function buildDailyAuto(): Promise<DailyData["auto"]> {
   const { now, startUtc, endUtc } = upcomingKstRange(8);
 
-  const [tickers, overview, bubbles, bar, news, calendarEvents] = await Promise.all([
+  const [tickers, overview, bubbles, bar, news, prevDaily, calendarEvents] = await Promise.all([
     getTickers(),
     getMarketOverview(),
     getBubbles(),
     getMarketBar(),
     getRegulatoryNews(),
+    // 직전 데일리의 BTC 기록가 — 스탯 스트립의 BTC 변동률을 "전일(직전 데일리) 대비"로 표기해
+    // 방향 예측 적중 판정(priceAtPost 대비)과 같은 기준을 쓰게 한다.
+    prisma.post
+      .findFirst({
+        where: { board: { slug: "analysis" }, content: { startsWith: DAILY_MARKER }, priceAtPost: { not: null } },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        select: { priceAtPost: true },
+      })
+      .catch(() => null),
     prisma.calendarEvent
       .findMany({
         where: {
@@ -264,7 +273,17 @@ export async function buildDailyAuto(): Promise<DailyData["auto"]> {
   const btc = tickers.tickers.find((t) => t.symbol === "BTC");
   const eth = tickers.tickers.find((t) => t.symbol === "ETH");
   if (btc) {
-    stats.push({ label: "BTC", value: manwon(btc.priceKrw), delta: pct(btc.change24h), tone: tone(btc.change24h) });
+    // 전일(직전 데일리 기록가) 대비 변동률. 직전 데일리가 없으면 24h 변동률로 대체.
+    const prevKrw = prevDaily?.priceAtPost ?? null;
+    const vsPrev =
+      btc.priceKrw != null && prevKrw != null && prevKrw > 0 ? ((btc.priceKrw - prevKrw) / prevKrw) * 100 : null;
+    const btcChange = vsPrev ?? btc.change24h;
+    stats.push({
+      label: "BTC",
+      value: manwon(btc.priceKrw),
+      delta: vsPrev != null ? `전일 ${pct(vsPrev)}` : pct(btc.change24h),
+      tone: tone(btcChange),
+    });
     stats.push({ label: "김프", value: pct(btc.kimchiPremium), tone: tone(btc.kimchiPremium) });
   }
   if (eth) {
