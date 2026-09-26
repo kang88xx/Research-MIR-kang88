@@ -8,13 +8,13 @@ import {
   DAILY_MARKER,
   stanceLabel,
   directionLabel,
-  judgeDirection,
   STANCE_COLOR,
   STANCE_ICON,
   DIRECTION_COLOR,
   DIRECTION_ICON,
   DIRECTION_BAND_PCT,
 } from "@/lib/daily";
+import { judgeDailyDirections, type DirectionVerdict } from "@/lib/daily-verdict";
 import PageTitle from "@/components/PageTitle";
 import Chip, { type ChipIconName } from "@/components/Chip";
 import { EDITOR_MIN_LEVEL } from "@/lib/roles";
@@ -45,32 +45,17 @@ export default async function AnalysisPage() {
 
   const priceNow = new Map(snapshot.tickers.map((t) => [t.symbol, t.priceKrw]));
 
-  // ── 데일리 방향 예측 판정 ──
-  // 경계는 "바로 다음(더 최신) 데일리"로 고정한다 — direction 유무와 무관하게 모든 데일리가
-  // 경계가 되므로, 구버전 데일리를 건너뛰어 다른 날 가격으로 판정하는 일이 없다(Codex 교차검수).
-  // 다음 데일리가 없거나 그 기록가가 없으면 "판정 전" — 현재가 폴백을 쓰지 않아 한번 내려진
-  // 판정이 시세에 따라 뒤집히지 않는다(판정 불변성). 상세 페이지와 동일 규칙.
-  // 경계 판별은 마커 prefix 기준 — 상세 페이지의 DB 조회(startsWith)와 동일 기준을 써서
-  // JSON이 깨진 데일리도 양쪽에서 똑같이 경계로 취급된다(파싱 성공 여부로 갈리지 않게).
-  const allDailies = posts
-    .filter((p) => p.content.startsWith(DAILY_MARKER))
-    .map((p) => ({ id: p.id, createdAt: p.createdAt, priceAtPost: p.priceAtPost, daily: parseDaily(p.content) }))
-    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || b.id - a.id);
-  type Verdict = { changePct: number; hit: boolean } | "pending";
-  const verdicts = new Map<number, Verdict>();
-  for (let i = 0; i < allDailies.length; i++) {
-    const cur = allDailies[i];
-    if (!cur.daily?.direction || cur.priceAtPost == null) continue; // 구버전·가격 누락은 판정 대상 아님
-    // 최신순 정렬 — 바로 앞 원소가 "그 다음 날(더 최신)" 데일리 (direction 없어도 경계로 사용)
-    const nextPrice = allDailies[i - 1]?.priceAtPost ?? null;
-    if (nextPrice == null) {
-      verdicts.set(cur.id, "pending");
-      continue;
-    }
-    const changePct = ((nextPrice - cur.priceAtPost) / cur.priceAtPost) * 100;
-    verdicts.set(cur.id, { changePct, hit: judgeDirection(cur.daily.direction, changePct) });
-  }
-  const decided = [...verdicts.values()].filter((v): v is Exclude<Verdict, "pending"> => v !== "pending");
+  // ── 데일리 방향 예측 판정 — 다음날 09:00 KST 업비트 일봉 시가 기준(lib/daily-verdict.ts) ──
+  // 예측 정의("내일 오전 9시까지")와 같은 창으로 판정한다. 이전에는 "바로 다음 데일리의 기록가"로
+  // 판정해 글 사이 공백이 길면 24시간 예측이 며칠 변동으로 채점됐다(2026-09-26 감사로 교정).
+  // 판정 시각 전이거나 시가를 못 받으면 "판정 전" — 현재가·다음 글 기록가 폴백을 쓰지 않아
+  // 한번 내려진 판정이 뒤집히지 않는다(판정 불변성).
+  const verdicts = await judgeDailyDirections(
+    posts
+      .filter((p) => p.content.startsWith(DAILY_MARKER))
+      .map((p) => ({ id: p.id, createdAt: p.createdAt, priceAtPost: p.priceAtPost, direction: parseDaily(p.content)?.direction }))
+  );
+  const decided = [...verdicts.values()].filter((v): v is Exclude<DirectionVerdict, "pending"> => v !== "pending");
   const hitCount = decided.filter((v) => v.hit).length;
 
   return (
@@ -105,8 +90,8 @@ export default async function AnalysisPage() {
             {Math.round((hitCount / decided.length) * 100)}%
           </b>
           <span className="text-ink-500">
-            {hitCount}/{decided.length} 적중 · ±{DIRECTION_BAND_PCT}% 기준 · 다음 데일리의 BTC
-            기록가로 판정 · 최근 글 30개 범위
+            {hitCount}/{decided.length} 적중 · ±{DIRECTION_BAND_PCT}% 기준 · 다음날 09:00 KST 업비트
+            BTC 시가로 판정 · 최근 글 30개 범위
           </span>
         </div>
       )}
@@ -168,7 +153,7 @@ export default async function AnalysisPage() {
                             size="xs"
                             tone={verdict.hit ? "var(--color-good)" : "var(--color-up)"}
                             icon={verdict.hit ? "check" : "cross"}
-                            title={`다음날 BTC ${verdict.changePct > 0 ? "+" : ""}${verdict.changePct.toFixed(2)}%`}
+                            title={`다음날 09:00 KST BTC ${formatKrw(verdict.judgedAtKrw)}원 (${verdict.changePct > 0 ? "+" : ""}${verdict.changePct.toFixed(2)}%)`}
                           >
                             {verdict.hit ? "적중" : "미적중"}
                           </Chip>

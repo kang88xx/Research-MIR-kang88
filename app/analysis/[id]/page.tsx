@@ -14,14 +14,13 @@ import {
   parseDaily,
   stanceLabel,
   directionLabel,
-  judgeDirection,
   STANCE_COLOR,
   STANCE_ICON,
   DIRECTION_COLOR,
   DIRECTION_ICON,
   DIRECTION_BAND_PCT,
-  DAILY_MARKER,
 } from "@/lib/daily";
+import { judgeDailyDirection } from "@/lib/daily-verdict";
 
 export const dynamic = "force-dynamic";
 
@@ -74,32 +73,14 @@ export default async function AnalysisDetailPage({
       ? ((now - post.priceAtPost) / post.priceAtPost) * 100
       : null;
 
-  // 방향 예측 판정 — 경계는 "바로 다음(더 최신) 데일리"의 BTC 기록가로 고정(목록과 동일 규칙).
-  // direction 유무와 무관하게 바로 다음 데일리를 경계로 쓰고, 없거나 기록가가 없으면 "판정 전".
-  // 현재가 폴백은 쓰지 않는다 — 판정이 시세에 따라 뒤집히지 않게(불변성, Codex 교차검수).
-  let directionVerdict: { changePct: number; hit: boolean } | "pending" | null = null;
-  if (daily?.direction && post.priceAtPost != null) {
-    // createdAt 동률까지 목록과 동일한 순서(createdAt, id)로 "바로 다음" 데일리를 고른다
-    const nextDaily = await prisma.post.findFirst({
-      where: {
-        boardId: post.boardId,
-        content: { startsWith: DAILY_MARKER },
-        OR: [
-          { createdAt: { gt: post.createdAt } },
-          { createdAt: post.createdAt, id: { gt: post.id } },
-        ],
-      },
-      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-      select: { priceAtPost: true },
-    });
-    const nextPrice = nextDaily?.priceAtPost ?? null;
-    if (nextPrice == null) {
-      directionVerdict = "pending";
-    } else {
-      const changePct = ((nextPrice - post.priceAtPost) / post.priceAtPost) * 100;
-      directionVerdict = { changePct, hit: judgeDirection(daily.direction, changePct) };
-    }
-  }
+  // 방향 예측 판정 — 다음날 09:00 KST 업비트 일봉 시가 기준(목록과 동일 규칙, lib/daily-verdict.ts).
+  // 판정 시각 전·시가 미수신이면 "판정 전". 현재가·다음 글 기록가 폴백은 쓰지 않는다(판정 불변성).
+  const directionVerdict = await judgeDailyDirection({
+    id: post.id,
+    createdAt: post.createdAt,
+    priceAtPost: post.priceAtPost,
+    direction: daily?.direction,
+  });
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -135,7 +116,7 @@ export default async function AnalysisDetailPage({
                 className="mr-2 align-[3px]"
                 tone={directionVerdict.hit ? "var(--color-good)" : "var(--color-up)"}
                 icon={directionVerdict.hit ? "check" : "cross"}
-                title={`다음날 BTC ${directionVerdict.changePct > 0 ? "+" : ""}${directionVerdict.changePct.toFixed(2)}%`}
+                title={`다음날 09:00 KST BTC ${formatKrw(directionVerdict.judgedAtKrw)}원 (${directionVerdict.changePct > 0 ? "+" : ""}${directionVerdict.changePct.toFixed(2)}%)`}
               >
                 {directionVerdict.hit ? "적중" : "미적중"}
               </Chip>
